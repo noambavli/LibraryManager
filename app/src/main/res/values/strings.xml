@@ -1,6 +1,30 @@
 <resources>
-    <string name="app_name">LibraryManager</string>
-    <string name="kiosk_active">Kiosk mode active</string>
-    <string name="kiosk_setup_required">Device owner not configured</string>
-    <string name="kiosk_setup_command">Connect via USB and run:\nadb shell dpm set-device-owner com.mh.librarymanager/.KioskDeviceAdminReceiver\n\nDevice must have no Google account and no other device owner.</string>
+    <string name="app_name">ספריה</string>
+
+    <string name="search_title">חיפוש מתקדם</string>
+    <string name="search_field_general">חיפוש כללי</string>
+    <string name="search_field_name">שם הספר</string>
+    <string name="search_field_topics">ענינים</string>
+    <string name="search_field_writer">המחבר</string>
+    <string name="search_field_letter">אות</string>
+    <string name="search_field_color">צבע</string>
+    <string name="search_field_category">קטגוריה</string>
+    <string name="search_field_subcategory">תת קטגוריה</string>
+    <string name="search_field_notes">הערות</string>
+
+    <string name="results_total">%1$d תוצאות מתוך %2$d ספרים</string>
+    <string name="results_empty">לא נמצאו תוצאות</string>
+    <string name="results_empty_hint">נסו לקצר את החיפוש או להסיר מסננים</string>
+    <string name="results_idle">הקלידו כדי לחפש</string>
+    <string name="results_loading">טוען קטלוג…</string>
+
+    <string name="book_unknown_writer">מחבר לא ידוע</string>
+    <string name="book_no_category">ללא קטגוריה</string>
+    <string name="book_chip_letter">אות %1$s</string>
+    <string name="book_chip_color">%1$s</string>
+    <string name="book_chip_number">מספר %1$s</string>
+
+    <string name="kiosk_active">מצב קיוסק פעיל</string>
+    <string name="kiosk_setup_required">לא הוגדר Device Owner — האפליקציה רצה במצב רגיל</string>
+    <string name="kiosk_setup_command">חבר את הטאבלט במצב פיתוח והרץ:\nadb shell dpm set-device-owner com.mh.librarymanager/.KioskDeviceAdminReceiver</string>
 </resources>

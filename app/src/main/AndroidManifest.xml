@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
+        android:name=".LibraryApp"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -18,12 +19,14 @@
         <activity
             android:name=".MainActivity"
             android:clearTaskOnLaunch="true"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|uiMode"
             android:excludeFromRecents="true"
             android:exported="true"
             android:launchMode="singleTask"
             android:lockTaskMode="if_whitelisted"
             android:stateNotNeeded="true"
-            android:theme="@style/Theme.LibraryManager">
+            android:theme="@style/Theme.LibraryManager"
+            android:windowSoftInputMode="stateAlwaysHidden|adjustNothing">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

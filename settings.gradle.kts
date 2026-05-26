@@ -24,5 +24,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "LibraryManager"
 include(":app")
-include(":catalog-deprovision")
+// Maintenance APK only — no launcher. Build when needed:
+//   ./gradlew :catalog-deprovision:assembleDebug
+// (Re-add `include(":catalog-deprovision")` temporarily for that task.)
  

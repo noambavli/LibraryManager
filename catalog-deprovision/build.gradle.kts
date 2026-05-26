@@ -1,3 +1,7 @@
+// Not included in settings.gradle.kts by default (no LAUNCHER → breaks Android Studio Run).
+// To build: add include(":catalog-deprovision") in settings.gradle.kts, then:
+//   ./gradlew :catalog-deprovision:assembleDebug
+
 plugins {
     alias(libs.plugins.android.application)
 }

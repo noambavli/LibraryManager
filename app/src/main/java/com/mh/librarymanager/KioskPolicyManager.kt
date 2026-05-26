@@ -47,6 +47,15 @@ object KioskPolicyManager {
 
             setHomeLauncher(context, dpm, admin)
 
+            // Keep USB debugging and file transfer available for adb deploy / maintenance.
+            val allowForMaintenance = arrayOf(
+                UserManager.DISALLOW_USB_FILE_TRANSFER,
+                UserManager.DISALLOW_DEBUGGING_FEATURES,
+            )
+            for (restriction in allowForMaintenance) {
+                dpm.clearUserRestriction(admin, restriction)
+            }
+
             val restrictions = arrayOf(
                 UserManager.DISALLOW_SAFE_BOOT,
                 UserManager.DISALLOW_FACTORY_RESET,
@@ -56,8 +65,6 @@ object KioskPolicyManager {
                 UserManager.DISALLOW_UNINSTALL_APPS,
                 UserManager.DISALLOW_CONFIG_WIFI,
                 UserManager.DISALLOW_CONFIG_BLUETOOTH,
-                UserManager.DISALLOW_USB_FILE_TRANSFER,
-                UserManager.DISALLOW_DEBUGGING_FEATURES,
                 UserManager.DISALLOW_ADJUST_VOLUME,
                 UserManager.DISALLOW_CREATE_WINDOWS,
                 UserManager.DISALLOW_FUN,
