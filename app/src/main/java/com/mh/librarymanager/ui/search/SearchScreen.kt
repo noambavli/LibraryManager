@@ -1,0 +1,347 @@
+package com.mh.librarymanager.ui.search
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mh.librarymanager.R
+import com.mh.librarymanager.domain.Book
+import com.mh.librarymanager.domain.CustomColor
+import com.mh.librarymanager.ui.components.BookCard
+
+/**
+ * Half/half search screen. Left pane holds search fields and the in-app
+ * keyboard; right pane shows live results. Everything is always visible —
+ * there is no collapse / minimise affordance by design.
+ */
+@Composable
+fun SearchScreen(
+    viewModel: SearchViewModel,
+    onBack: (() -> Unit)? = null,
+) {
+    val fieldValues by viewModel.fieldValues.collectAsStateWithLifecycle()
+    val focusedField by viewModel.focusedField.collectAsStateWithLifecycle()
+    val results by viewModel.results.collectAsStateWithLifecycle()
+    val catalogSize by viewModel.catalogSize.collectAsStateWithLifecycle()
+    val isImporting by viewModel.isImporting.collectAsStateWithLifecycle()
+    val customColors by viewModel.customColors.collectAsStateWithLifecycle()
+    val parentNameLookup by viewModel.parentNameLookup.collectAsStateWithLifecycle()
+
+    SuppressPlatformKeyboardEffect()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
+        if (onBack != null) {
+            BackBar(onBack = onBack)
+        }
+        Row(modifier = Modifier.fillMaxSize()) {
+            SearchPane(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                fieldValues = fieldValues,
+                focusedField = focusedField,
+                onSetValue = viewModel::setValue,
+                onSetFocused = viewModel::setFocused,
+                onKey = viewModel::handleKey,
+            )
+
+            SectionDividerVertical()
+
+            ResultsPane(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                results = results,
+                catalogSize = catalogSize,
+                queryIsEmpty = fieldValues.values.all { it.text.isBlank() },
+                isImporting = isImporting,
+                customColors = customColors,
+                parentNameLookup = parentNameLookup,
+            )
+        }
+    }
+}
+
+@Composable
+private fun BackBar(onBack: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TextButton(onClick = onBack) {
+            Text(
+                text = "‹  " + stringResource(R.string.back),
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchPane(
+    modifier: Modifier,
+    fieldValues: Map<SearchField, androidx.compose.ui.text.input.TextFieldValue>,
+    focusedField: SearchField,
+    onSetValue: (SearchField, androidx.compose.ui.text.input.TextFieldValue) -> Unit,
+    onSetFocused: (SearchField) -> Unit,
+    onKey: (KeyAction) -> Unit,
+) {
+    Column(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .weight(0.48f)
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.search_title),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+
+            SearchFieldsGrid(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                fieldValues = fieldValues,
+                focusedField = focusedField,
+                onSetValue = onSetValue,
+                onSetFocused = onSetFocused,
+                compactInput = true,
+            )
+        }
+
+        SectionDividerHorizontal()
+
+        HebrewKeyboard(
+            onKey = onKey,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(0.52f)
+                .fillMaxHeight(),
+        )
+    }
+}
+
+@Composable
+private fun SearchFieldsGrid(
+    modifier: Modifier,
+    fieldValues: Map<SearchField, androidx.compose.ui.text.input.TextFieldValue>,
+    focusedField: SearchField,
+    onSetValue: (SearchField, androidx.compose.ui.text.input.TextFieldValue) -> Unit,
+    onSetFocused: (SearchField) -> Unit,
+    compactInput: Boolean = false,
+) {
+    @Composable
+    fun field(target: SearchField, modifier: Modifier = Modifier) {
+        KeyboardEditField(
+            modifier = modifier,
+            label = stringResource(target.labelRes),
+            value = fieldValues[target] ?: androidx.compose.ui.text.input.TextFieldValue(""),
+            onValueChange = { onSetValue(target, it) },
+            isActive = focusedField == target,
+            onFocus = { onSetFocused(target) },
+            onClear = {
+                onSetValue(target, androidx.compose.ui.text.input.TextFieldValue(""))
+                onSetFocused(target)
+            },
+            compact = compactInput,
+        )
+    }
+
+    val spacing = if (compactInput) 7.dp else 10.dp
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(spacing),
+    ) {
+        field(SearchField.GENERAL)
+        field(SearchField.NAME)
+        Row(horizontalArrangement = Arrangement.spacedBy(spacing)) {
+            field(SearchField.TOPICS, Modifier.weight(1f))
+            field(SearchField.WRITER, Modifier.weight(1f))
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(spacing)) {
+            field(SearchField.CATEGORY, Modifier.weight(1f))
+            field(SearchField.SUBCATEGORY, Modifier.weight(1f))
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(spacing)) {
+            field(SearchField.LETTER, Modifier.weight(1f))
+            field(SearchField.COLOR, Modifier.weight(1f))
+        }
+        field(SearchField.NOTES)
+    }
+}
+
+private val SectionDividerColor = Color.Black
+
+@Composable
+private fun SectionDividerHorizontal() {
+    HorizontalDivider(
+        modifier = Modifier.fillMaxWidth(),
+        thickness = 2.dp,
+        color = SectionDividerColor,
+    )
+}
+
+@Composable
+private fun SectionDividerVertical() {
+    Box(
+        modifier = Modifier
+            .width(2.dp)
+            .fillMaxHeight()
+            .background(SectionDividerColor),
+    )
+}
+
+@Composable
+private fun ResultsPane(
+    modifier: Modifier,
+    results: List<Book>,
+    catalogSize: Int,
+    queryIsEmpty: Boolean,
+    isImporting: Boolean,
+    customColors: List<CustomColor>,
+    parentNameLookup: Map<String, String>,
+) {
+    val listState = rememberLazyListState()
+    Column(
+        modifier = modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        ResultsHeader(
+            count = results.size,
+            catalogSize = catalogSize,
+            queryIsEmpty = queryIsEmpty,
+            isImporting = isImporting,
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Spacer(modifier = Modifier.height(10.dp))
+
+        when {
+            isImporting -> CenteredHint(
+                primary = stringResource(R.string.results_loading),
+                secondary = null,
+                showSpinner = true,
+            )
+            catalogSize == 0 -> CenteredHint(
+                primary = stringResource(R.string.results_loading),
+                secondary = null,
+                showSpinner = true,
+            )
+            results.isEmpty() && queryIsEmpty -> CenteredHint(
+                primary = stringResource(R.string.results_idle),
+                secondary = null,
+            )
+            results.isEmpty() -> CenteredHint(
+                primary = stringResource(R.string.results_empty),
+                secondary = stringResource(R.string.results_empty_hint),
+            )
+            else -> LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                state = listState,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(bottom = 12.dp),
+            ) {
+                items(results, key = { it.id }) { book ->
+                    BookCard(
+                        book = book,
+                        parentName = book.parentBookId?.let { parentNameLookup[it] },
+                        customColors = customColors,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResultsHeader(
+    count: Int,
+    catalogSize: Int,
+    queryIsEmpty: Boolean,
+    isImporting: Boolean,
+) {
+    val text = when {
+        isImporting -> stringResource(R.string.results_loading)
+        catalogSize == 0 -> stringResource(R.string.results_loading)
+        queryIsEmpty && count == 0 -> stringResource(R.string.results_idle)
+        else -> stringResource(R.string.results_total, count, catalogSize)
+    }
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onBackground,
+        fontWeight = FontWeight.SemiBold,
+    )
+}
+
+@Composable
+private fun CenteredHint(primary: String, secondary: String?, showSpinner: Boolean = false) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            if (showSpinner) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(36.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 3.dp,
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            Text(
+                text = primary,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (secondary != null) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = secondary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            }
+        }
+    }
+}

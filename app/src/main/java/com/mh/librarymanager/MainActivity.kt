@@ -11,20 +11,27 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import com.mh.librarymanager.ui.search.SearchScreen
+import com.mh.librarymanager.ui.AppRoot
+import com.mh.librarymanager.ui.management.BooksManagementViewModel
+import com.mh.librarymanager.ui.management.ManagementSession
 import com.mh.librarymanager.ui.search.SearchViewModel
 import com.mh.librarymanager.ui.theme.LibraryManagerTheme
 
 class MainActivity : ComponentActivity() {
 
     private val searchViewModel: SearchViewModel by viewModels()
+    private val managementViewModel: BooksManagementViewModel by viewModels()
+    private val managementSession: ManagementSession by viewModels()
+
+    /**
+     * Compose-supplied back handler. AppRoot registers a navigator-aware
+     * callback here; if it can't pop anything we swallow the press to keep
+     * kiosk mode intact.
+     */
+    private var composeBackHandler: (() -> Boolean)? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,7 +39,7 @@ class MainActivity : ComponentActivity() {
             this,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    // Swallow back in kiosk mode.
+                    composeBackHandler?.invoke()
                 }
             },
         )
@@ -44,9 +51,14 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             LibraryManagerTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    SearchScreen(viewModel = searchViewModel)
-                }
+                AppRoot(
+                    searchViewModel = searchViewModel,
+                    managementViewModel = managementViewModel,
+                    managementSession = managementSession,
+                    onRegisterBackHandler = { handler ->
+                        composeBackHandler = handler
+                    },
+                )
             }
         }
     }
@@ -77,6 +89,56 @@ class MainActivity : ComponentActivity() {
         val activityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
         if (activityManager.lockTaskModeState == ActivityManager.LOCK_TASK_MODE_NONE) {
             try {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 startLockTask()
             } catch (_: Exception) {
                 // Lock task requires device owner provisioning.
@@ -96,6 +158,7 @@ class MainActivity : ComponentActivity() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.insetsController?.let { c ->
+                c.hide(WindowInsetsCompat.Type.ime())
                 c.systemBarsBehavior =
                     WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             }

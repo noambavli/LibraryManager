@@ -24,6 +24,7 @@
             android:exported="true"
             android:launchMode="singleTask"
             android:lockTaskMode="if_whitelisted"
+            android:screenOrientation="sensorLandscape"
             android:stateNotNeeded="true"
             android:theme="@style/Theme.LibraryManager"
             android:windowSoftInputMode="stateAlwaysHidden|adjustNothing">
@@ -59,6 +60,19 @@
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <!-- Device-owner silent update (adb push APK + broadcast). -->
+        <receiver
+            android:name=".MaintenanceInstallReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.mh.librarymanager.INSTALL_UPDATE" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".InstallResultReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

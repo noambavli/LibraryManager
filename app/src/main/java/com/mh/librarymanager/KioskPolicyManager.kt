@@ -8,7 +8,6 @@ import android.content.IntentFilter
 import android.os.Build
 import android.os.UserManager
 import android.util.Log
-
 object KioskPolicyManager {
 
     private const val TAG = "KioskPolicyManager"
@@ -56,21 +55,24 @@ object KioskPolicyManager {
                 dpm.clearUserRestriction(admin, restriction)
             }
 
-            val restrictions = arrayOf(
-                UserManager.DISALLOW_SAFE_BOOT,
-                UserManager.DISALLOW_FACTORY_RESET,
-                UserManager.DISALLOW_ADD_USER,
-                UserManager.DISALLOW_MOUNT_PHYSICAL_MEDIA,
-                UserManager.DISALLOW_INSTALL_APPS,
-                UserManager.DISALLOW_UNINSTALL_APPS,
-                UserManager.DISALLOW_CONFIG_WIFI,
-                UserManager.DISALLOW_CONFIG_BLUETOOTH,
-                UserManager.DISALLOW_ADJUST_VOLUME,
-                UserManager.DISALLOW_CREATE_WINDOWS,
-                UserManager.DISALLOW_FUN,
-                UserManager.DISALLOW_OUTGOING_CALLS,
-                UserManager.DISALLOW_SMS,
-            )
+            // Never block installs/uninstalls — that breaks Android Studio / adb deploy.
+            // Kiosk is enforced via lock task + home launcher, not via these restrictions.
+            dpm.clearUserRestriction(admin, UserManager.DISALLOW_INSTALL_APPS)
+            dpm.clearUserRestriction(admin, UserManager.DISALLOW_UNINSTALL_APPS)
+
+            val restrictions = buildList {
+                add(UserManager.DISALLOW_SAFE_BOOT)
+                add(UserManager.DISALLOW_FACTORY_RESET)
+                add(UserManager.DISALLOW_ADD_USER)
+                add(UserManager.DISALLOW_MOUNT_PHYSICAL_MEDIA)
+                add(UserManager.DISALLOW_CONFIG_WIFI)
+                add(UserManager.DISALLOW_CONFIG_BLUETOOTH)
+                add(UserManager.DISALLOW_ADJUST_VOLUME)
+                add(UserManager.DISALLOW_CREATE_WINDOWS)
+                add(UserManager.DISALLOW_FUN)
+                add(UserManager.DISALLOW_OUTGOING_CALLS)
+                add(UserManager.DISALLOW_SMS)
+            }
             for (restriction in restrictions) {
                 dpm.addUserRestriction(admin, restriction)
             }

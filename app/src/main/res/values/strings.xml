@@ -1,6 +1,15 @@
 <resources>
     <string name="app_name">ספריה</string>
 
+    <!-- Home -->
+    <string name="home_title">ספריית בית המדרש</string>
+    <string name="home_subtitle">בחר/י פעולה</string>
+    <string name="home_search">חיפוש ספרים</string>
+    <string name="home_search_subtitle">חיפוש מתקדם בקטלוג</string>
+    <string name="home_management">ניהול הספריה</string>
+    <string name="home_management_subtitle">עריכת ספרים והגדרות (דרושה סיסמה)</string>
+
+    <!-- Search -->
     <string name="search_title">חיפוש מתקדם</string>
     <string name="search_field_general">חיפוש כללי</string>
     <string name="search_field_name">שם הספר</string>
@@ -20,10 +29,81 @@
 
     <string name="book_unknown_writer">מחבר לא ידוע</string>
     <string name="book_no_category">ללא קטגוריה</string>
-    <string name="book_chip_letter">אות %1$s</string>
-    <string name="book_chip_color">%1$s</string>
-    <string name="book_chip_number">מספר %1$s</string>
+    <string name="book_place_otzar">אוצר הספרים</string>
+    <string name="book_place_beis_midrash">בית מדרש</string>
+    <string name="book_place_other">אחר</string>
+    <string name="book_place_unspecified">לא צוין</string>
+    <string name="book_state_available">זמין</string>
+    <string name="book_state_unavailable">לא זמין</string>
+    <string name="book_state_in_repair">בתיקון</string>
+    <string name="book_inside_of">בתוך %1$s</string>
 
+    <!-- Management gateway -->
+    <string name="back">חזרה</string>
+    <string name="cancel">ביטול</string>
+    <string name="save">שמירה</string>
+    <string name="save_and_duplicate">שמירה ושכפול</string>
+    <string name="delete">מחיקה</string>
+    <string name="confirm_delete">למחוק את הספר הזה?</string>
+    <string name="confirm_delete_body">פעולה זו לא ניתנת לביטול.</string>
+    <string name="confirm">אישור</string>
+    <string name="add">הוספה</string>
+
+    <string name="password_title">כניסה לניהול</string>
+    <string name="password_subtitle">הזן/י קוד גישה</string>
+    <string name="password_wrong">קוד שגוי. נסו שוב.</string>
+    <string name="password_unlock">פתח</string>
+    <string name="logout">התנתקות</string>
+
+    <string name="inactivity_warning_title">עומדים להתנתק</string>
+    <string name="inactivity_warning_body">לחצו על המסך כדי להישאר מחוברים. התנתקות אוטומטית בעוד %1$d שניות.</string>
+    <string name="inactivity_stay">הישאר מחובר</string>
+
+    <!-- Management dashboard -->
+    <string name="management_title">ניהול</string>
+    <string name="management_books">ניהול ספרים</string>
+    <string name="management_books_subtitle">חיפוש, עריכה, הוספה ושכפול</string>
+
+    <!-- Books management -->
+    <string name="books_management_title">ניהול ספרים</string>
+    <string name="add_book">הוספת ספר</string>
+    <string name="edit_book">עריכת ספר</string>
+    <string name="duplicate_book">שכפול</string>
+
+    <!-- Book editor -->
+    <string name="field_name">שם הספר</string>
+    <string name="field_writer">המחבר</string>
+    <string name="field_book_number">מספר במערכת</string>
+    <string name="field_display_number">מספר (תצוגה)</string>
+    <string name="field_place">מקום</string>
+    <string name="field_letter">אות</string>
+    <string name="field_color">צבע</string>
+    <string name="field_category">קטגוריה</string>
+    <string name="field_subcategories">תתי קטגוריה</string>
+    <string name="field_state">סטטוס</string>
+    <string name="field_parent">ספר אב (אם נמצא בתוך ספר אחר)</string>
+    <string name="field_relations">קישורים</string>
+    <string name="field_notes">הערות</string>
+    <string name="field_topics">ענינים</string>
+
+    <string name="add_value">הוספה</string>
+    <string name="remove">הסרה</string>
+    <string name="none_selected">לא נבחר</string>
+    <string name="choose_parent">בחר/י ספר אב</string>
+    <string name="clear_parent">ללא ספר אב</string>
+    <string name="search_books_hint">חיפוש ספר…</string>
+
+    <string name="add_color">הוספת צבע חדש</string>
+    <string name="color_name">שם הצבע</string>
+    <string name="color_name_placeholder">למשל: תכלת</string>
+    <string name="color_picker_title">בחירת צבע</string>
+    <string name="color_red">אדום</string>
+    <string name="color_green">ירוק</string>
+    <string name="color_blue">כחול</string>
+    <string name="color_invalid_name">יש להזין שם לצבע</string>
+    <string name="color_already_exists">שם הצבע כבר קיים</string>
+
+    <!-- Kiosk -->
     <string name="kiosk_active">מצב קיוסק פעיל</string>
     <string name="kiosk_setup_required">לא הוגדר Device Owner — האפליקציה רצה במצב רגיל</string>
     <string name="kiosk_setup_command">חבר את הטאבלט במצב פיתוח והרץ:\nadb shell dpm set-device-owner com.mh.librarymanager/.KioskDeviceAdminReceiver</string>
