@@ -8,8 +8,10 @@ import com.mh.librarymanager.LibraryApp
 import com.mh.librarymanager.data.civ.CivCatalogIO
 import com.mh.librarymanager.data.civ.CivExportMeta
 import com.mh.librarymanager.data.store.CatalogStore
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,8 +32,7 @@ class CatalogTransferViewModel(app: Application) : AndroidViewModel(app) {
             val added: Int,
             val skipped: Int,
             val totalAfter: Int,
-            val previousCount: Int,
-            val meta: CivExportMeta?,
+            val fileLabel: String,
         ) : Status
         data class Restored(val count: Int) : Status
         data class Error(val message: String) : Status
@@ -41,6 +42,7 @@ class CatalogTransferViewModel(app: Application) : AndroidViewModel(app) {
         val bookCount: Int,
         val lastImport: CivCatalogIO.LastImportSummary,
         val hasBackup: Boolean,
+        val hasSummary: Boolean,
     )
 
     private val _status = MutableStateFlow<Status>(Status.Idle)
@@ -49,22 +51,30 @@ class CatalogTransferViewModel(app: Application) : AndroidViewModel(app) {
     private val _hasBackup = MutableStateFlow(io.hasBackup())
     val hasBackup: StateFlow<Boolean> = _hasBackup.asStateFlow()
 
-    private val _lastImport = MutableStateFlow(io.lastImportSummary())
-    val lastImport: StateFlow<CivCatalogIO.LastImportSummary> = _lastImport.asStateFlow()
+    private val _importSummary = MutableStateFlow(io.importSummary())
+    val importSummary: StateFlow<CivCatalogIO.ImportSummaryDetail> = _importSummary.asStateFlow()
 
     private val _preview = MutableStateFlow<CivCatalogIO.ImportPreview?>(null)
     val preview: StateFlow<CivCatalogIO.ImportPreview?> = _preview.asStateFlow()
 
+    private val _openSummary = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val openSummary = _openSummary.asSharedFlow()
+
     val dashboard: StateFlow<DashboardState> = container.repository
         .observeAll()
         .combine(_hasBackup) { books, backup -> books.size to backup }
-        .combine(_lastImport) { (count, backup), last ->
-            DashboardState(bookCount = count, lastImport = last, hasBackup = backup)
+        .combine(_importSummary) { (count, backup), summary ->
+            DashboardState(
+                bookCount = count,
+                lastImport = io.lastImportSummary(),
+                hasBackup = backup,
+                hasSummary = summary.hasData,
+            )
         }
         .stateIn(
             viewModelScope,
             SharingStarted.Eagerly,
-            DashboardState(0, io.lastImportSummary(), io.hasBackup()),
+            DashboardState(0, io.lastImportSummary(), io.hasBackup(), io.importSummary().hasData),
         )
 
     fun loadPreview(uri: Uri) {
@@ -112,36 +122,42 @@ class CatalogTransferViewModel(app: Application) : AndroidViewModel(app) {
         if (_status.value !is Status.Working) _status.value = Status.Idle
     }
 
+    fun refreshSummary() {
+        _importSummary.value = io.importSummary()
+    }
+
     private fun applyResult(result: CivCatalogIO.ImportResult) {
         _status.value = when (result) {
-            is CivCatalogIO.ImportResult.Ok ->
+            is CivCatalogIO.ImportResult.Ok -> {
+                refreshMeta()
+                if (result.addedCount > 0) {
+                    _openSummary.tryEmit(Unit)
+                }
+                val label = result.meta?.fileLabel() ?: _importSummary.value.fileLabel
                 Status.Imported(
                     added = result.addedCount,
                     skipped = result.skippedCount,
                     totalAfter = result.totalAfter,
-                    previousCount = result.previousCount,
-                    meta = result.meta,
+                    fileLabel = label,
                 )
+            }
             is CivCatalogIO.ImportResult.WrongVersion ->
                 Status.Error(
-                    "הקובץ בגרסה ישנה (${result.found}). דרושה גרסה ${result.expected}. " +
-                        "ייצאו מחדש מהמחשב באמצעות LibraryTool העדכני.",
+                    "הקובץ בגרסה ישנה (${result.found}). דרושה גרסה ${result.expected}.",
                 )
             is CivCatalogIO.ImportResult.NewerVersion ->
                 Status.Error(
-                    "הקובץ בגרסה חדשה (${result.found}) שאינה נתמכת על ידי אפליקציה זו " +
-                        "(גרסה ${result.expected}). יש לעדכן את האפליקציה בטאבלט.",
+                    "הקובץ בגרסה חדשה (${result.found}). עדכנו את האפליקציה.",
                 )
-            is CivCatalogIO.ImportResult.Empty ->
-                Status.Error("הקובץ ריק.")
+            is CivCatalogIO.ImportResult.Empty -> Status.Error("הקובץ ריק.")
             is CivCatalogIO.ImportResult.Invalid ->
-                Status.Error("הקובץ אינו קובץ ‎.civ תקין: ${result.reason}")
+                Status.Error("הקובץ אינו תקין: ${result.reason}")
             is CivCatalogIO.ImportResult.TooLarge ->
-                Status.Error("הקובץ גדול מהמותר (${result.sizeBytes / (1024 * 1024)} MB).")
+                Status.Error("הקובץ גדול מדי (${result.sizeBytes / (1024 * 1024)} MB).")
             is CivCatalogIO.ImportResult.IoFailure ->
-                Status.Error("בעיית אחסון: ${result.reason}. הקטלוג לא שונה.")
+                Status.Error("בעיית אחסון: ${result.reason}")
         }
-        refreshMeta()
+        if (result !is CivCatalogIO.ImportResult.Ok) refreshMeta()
     }
 
     private fun mapError(result: CivCatalogIO.ImportResult): Status.Error = when (result) {
@@ -159,7 +175,7 @@ class CatalogTransferViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun refreshMeta() {
         _hasBackup.value = io.hasBackup()
-        _lastImport.value = io.lastImportSummary()
+        _importSummary.value = io.importSummary()
         _preview.value = null
     }
 }

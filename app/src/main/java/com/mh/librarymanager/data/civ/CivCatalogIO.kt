@@ -63,6 +63,8 @@ class CivCatalogIO(
 
         /** Written after an adb-triggered import so the PC can read the outcome. */
         const val RESULT_PATH = "/sdcard/Download/catalog-import-result.txt"
+        const val RESULT_PATH_TMP = "/data/local/tmp/catalog-import-result.txt"
+        val RESULT_PATHS = listOf(RESULT_PATH_TMP, RESULT_PATH)
 
         private const val PREF_LAST_AT = "last_at"
         private const val PREF_LAST_ADDED = "last_added"
@@ -71,6 +73,29 @@ class CivCatalogIO(
         private const val PREF_LAST_TOOL = "last_tool"
         private const val PREF_LAST_TOOL_VER = "last_tool_ver"
         private const val PREF_LAST_SOURCE = "last_source"
+        private const val PREF_LAST_BATCH = "last_batch"
+        private const val PREF_LAST_ADDED_BOOKS = "last_added_books"
+        const val MAX_STORED_ADDED_BOOKS = 150
+    }
+
+    data class AddedBookLine(
+        val name: String,
+        val writer: String,
+    )
+
+    data class ImportSummaryDetail(
+        val batchNumber: Int,
+        val fileLabel: String,
+        val sourceFile: String,
+        val at: Long,
+        val added: Int,
+        val skipped: Int,
+        val totalAfter: Int,
+        val addedBooks: List<AddedBookLine>,
+    ) {
+        val hasData: Boolean get() = at > 0L
+        val displayLimit: Int get() = addedBooks.size.coerceAtMost(100)
+        val hasMoreBooks: Boolean get() = added > displayLimit
     }
 
     sealed interface PreviewOutcome {
@@ -111,6 +136,24 @@ class CivCatalogIO(
     }
     private val mutex = Mutex()
 
+    fun importSummary(): ImportSummaryDetail {
+        val booksJson = prefs.getString(PREF_LAST_ADDED_BOOKS, "[]") ?: "[]"
+        val books = parseAddedBooksJson(booksJson)
+        val batch = prefs.getInt(PREF_LAST_BATCH, 0)
+        val source = prefs.getString(PREF_LAST_SOURCE, "").orEmpty()
+        val label = if (batch > 0) batch.toString() else source.ifBlank { "?" }
+        return ImportSummaryDetail(
+            batchNumber = batch,
+            fileLabel = label,
+            sourceFile = source,
+            at = prefs.getLong(PREF_LAST_AT, 0L),
+            added = prefs.getInt(PREF_LAST_ADDED, 0),
+            skipped = prefs.getInt(PREF_LAST_SKIPPED, 0),
+            totalAfter = prefs.getInt(PREF_LAST_TOTAL, 0),
+            addedBooks = books,
+        )
+    }
+
     fun lastImportSummary(): LastImportSummary = LastImportSummary(
         at = prefs.getLong(PREF_LAST_AT, 0L),
         added = prefs.getInt(PREF_LAST_ADDED, 0),
@@ -140,9 +183,12 @@ class CivCatalogIO(
                 "No catalog.civ found. Expected one of: ${INCOMING_PATHS.joinToString()}",
             )
         val text = try {
-            file.readText(Charsets.UTF_8)
+            file.inputStream().use { readBoundedText(it) }
         } catch (e: Exception) {
-            return@withContext ImportResult.Invalid(e.message ?: "Could not read file")
+            return@withContext when (e) {
+                is IllegalStateException -> ImportResult.TooLarge(MAX_BYTES)
+                else -> ImportResult.Invalid(e.message ?: "Could not read file")
+            }
         }
         val result = importFromText(text)
         if (result is ImportResult.Ok) {
@@ -168,10 +214,12 @@ class CivCatalogIO(
             is ImportResult.TooLarge -> "ERR:too_large"
             is ImportResult.IoFailure -> "ERR:${result.reason}"
         }
-        try {
-            File(RESULT_PATH).writeText(line, Charsets.UTF_8)
-        } catch (_: Exception) {
-            // Best effort — the PC can still assume success if push succeeded.
+        for (path in RESULT_PATHS) {
+            try {
+                File(path).writeText(line, Charsets.UTF_8)
+            } catch (_: Exception) {
+                // Best effort — tmp path is readable by adb on device-owner tablets.
+            }
         }
     }
 
@@ -287,16 +335,18 @@ class CivCatalogIO(
 
     private suspend fun commitMerge(books: List<Book>, meta: CivExportMeta?): ImportResult {
         return try {
-            val previous = repository.snapshotForBackup()
-            writeBackup(previous)
-            val merge = repository.mergeImport(books)
-            recordImportHistory(merge, meta)
+            val outcome = repository.mergeImport(books)
+            val merge = outcome.result
+            if (merge.added > 0) {
+                writeBackup(outcome.previous)
+                recordImportHistory(merge, meta, merge.addedBooks)
+            }
             ImportResult.Ok(
                 addedCount = merge.added,
                 skippedCount = merge.skipped,
                 totalAfter = merge.totalAfter,
-                previousCount = previous.size,
-                backupAvailable = true,
+                previousCount = outcome.previous.size,
+                backupAvailable = merge.added > 0 || hasBackup(),
                 meta = meta,
             )
         } catch (e: Exception) {
@@ -307,16 +357,52 @@ class CivCatalogIO(
     private fun recordImportHistory(
         merge: BookRepository.MergeImportResult,
         meta: CivExportMeta?,
+        addedBooks: List<Book>,
     ) {
+        val batch = meta?.batchNumber ?: 0
+        val booksJson = encodeAddedBooks(addedBooks)
         prefs.edit()
             .putLong(PREF_LAST_AT, System.currentTimeMillis())
             .putInt(PREF_LAST_ADDED, merge.added)
             .putInt(PREF_LAST_SKIPPED, merge.skipped)
             .putInt(PREF_LAST_TOTAL, merge.totalAfter)
+            .putInt(PREF_LAST_BATCH, batch)
             .putString(PREF_LAST_TOOL, meta?.tool.orEmpty())
             .putString(PREF_LAST_TOOL_VER, meta?.toolVersion.orEmpty())
             .putString(PREF_LAST_SOURCE, meta?.sourceFile.orEmpty())
+            .putString(PREF_LAST_ADDED_BOOKS, booksJson)
             .apply()
+    }
+
+    private fun encodeAddedBooks(books: List<Book>): String {
+        val arr = JSONArray()
+        for (b in books.take(MAX_STORED_ADDED_BOOKS)) {
+            arr.put(
+                JSONObject()
+                    .put("name", b.name)
+                    .put("writer", b.writer),
+            )
+        }
+        return arr.toString()
+    }
+
+    private fun parseAddedBooksJson(json: String): List<AddedBookLine> {
+        return try {
+            val arr = JSONArray(json)
+            buildList {
+                for (i in 0 until arr.length()) {
+                    val o = arr.optJSONObject(i) ?: continue
+                    add(
+                        AddedBookLine(
+                            name = o.optString("name", ""),
+                            writer = o.optString("writer", ""),
+                        ),
+                    )
+                }
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
     /** True iff a one-tap undo of the most recent import is available. */
@@ -351,8 +437,13 @@ class CivCatalogIO(
             // Clear the now-redundant backup. Best effort; if the delete fails,
             // the worst case is the Undo button stays visible.
             try { backupFile.delete() } catch (_: Exception) { }
+            clearImportHistoryPrefs()
             books.size
         }
+    }
+
+    private fun clearImportHistoryPrefs() {
+        prefs.edit().clear().apply()
     }
 
     private fun readBoundedText(input: InputStream): String {

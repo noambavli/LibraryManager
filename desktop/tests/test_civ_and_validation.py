@@ -21,15 +21,48 @@ def _book(i, name="n", writer="w", display="", **kw):
     return Book(**base)
 
 
-def test_export_filename_includes_version_and_source():
-    name = civ.export_filename(
-        "My Catalog.xlsx",
-        when=__import__("datetime").datetime(2026, 6, 9, 14, 30),
+def test_export_filename_is_simple_number(tmp_path, monkeypatch):
+    counter = tmp_path / "export_counter.txt"
+    monkeypatch.setattr(
+        "library_tool.export_counter._counter_file",
+        lambda: str(counter),
     )
-    assert name.startswith(f"catalog-v{CATALOG_FORMAT_VERSION}-pc-")
-    assert name.endswith(".civ")
-    assert "My-Catalog" in name
-    assert "20260609-1430" in name
+    assert civ.export_filename() == "1.civ"
+    from library_tool.export_counter import next_batch_number
+    next_batch_number()
+    assert civ.export_filename() == "2.civ"
+
+
+def test_local_save_does_not_consume_send_counter(tmp_path, monkeypatch):
+    counter = tmp_path / "export_counter.txt"
+    monkeypatch.setattr(
+        "library_tool.export_counter._counter_file",
+        lambda: str(counter),
+    )
+    path = os.path.join(tmp_path, "local.civ")
+    civ.write_file(path, [_book(1)], consume_counter=False, batch_number=0)
+    assert civ.export_filename() == "1.civ"
+    with open(path, encoding="utf-8") as fh:
+        root = json.load(fh)
+    assert root["meta"]["batchNumber"] == 0
+
+
+def test_send_counter_commits_only_after_success(tmp_path, monkeypatch):
+    from library_tool.export_counter import (
+        commit_batch_number,
+        peek_next_batch_number,
+    )
+
+    counter = tmp_path / "export_counter.txt"
+    monkeypatch.setattr(
+        "library_tool.export_counter._counter_file",
+        lambda: str(counter),
+    )
+    assert peek_next_batch_number() == 1
+    commit_batch_number(1)
+    assert peek_next_batch_number() == 2
+    # Failed send would not call commit — counter stays at 2.
+    assert peek_next_batch_number() == 2
 
 
 def test_civ_roundtrip_preserves_books(tmp_path):

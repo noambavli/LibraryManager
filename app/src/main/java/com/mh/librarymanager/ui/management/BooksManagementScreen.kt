@@ -54,7 +54,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Management list screen. Left half is the same advanced search the public
- * uses; right half is the result list with edit/duplicate/delete affordances.
+ * uses; right half is the result list with edit/delete affordances.
  * Tapping a card opens the full editor.
  */
 @Composable
@@ -306,21 +306,6 @@ private fun ResultsPane(
                         parentName = book.parentBookId?.let { parentNameLookup[it] },
                         customColors = customColors,
                         onEdit = { onOpenEditor(book.id) },
-                        onDuplicate = {
-                            val copy = book.copy(
-                                id = viewModel.newBookId(),
-                                logicalBookId = viewModel.newBookId(),
-                                version = 1,
-                                isLatest = true,
-                                bookNumber = viewModel.suggestNextBookNumber(),
-                                createdAt = System.currentTimeMillis(),
-                                updatedAt = System.currentTimeMillis(),
-                            )
-                            scope.launch {
-                                viewModel.saveAwait(copy)
-                                onOpenEditor(copy.id)
-                            }
-                        },
                         onDelete = { deleteCandidate = book },
                     )
                 }
@@ -346,7 +331,6 @@ private fun ManagementBookRow(
     parentName: String?,
     customColors: List<CustomColor>,
     onEdit: () -> Unit,
-    onDuplicate: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Column {
@@ -372,9 +356,6 @@ private fun ManagementBookRow(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Spacer(modifier = Modifier.weight(1f))
-            OutlinedButton(onClick = onDuplicate, contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)) {
-                Text(stringResource(R.string.duplicate_book))
-            }
             OutlinedButton(onClick = onEdit, contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)) {
                 Text(stringResource(R.string.edit_book))
             }

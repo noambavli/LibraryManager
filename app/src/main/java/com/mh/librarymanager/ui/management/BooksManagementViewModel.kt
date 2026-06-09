@@ -35,7 +35,7 @@ import java.util.UUID
  * screens have meaningfully different result-lifecycle semantics and tying
  * them together makes both harder to change).
  *
- * On top of search it owns CRUD: [save], [duplicate], [delete] and the custom
+ * On top of search it owns CRUD: [save], [delete] and the custom
  * color palette upsert. Everything is persisted through [BookRepository] so a
  * background screen change immediately sees fresh data.
  */
@@ -115,18 +115,6 @@ class BooksManagementViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /**
-     * Inserts both books and suspends until the catalog is on disk. Callers
-     * that need the new book to be immediately visible in [catalog] (e.g.
-     * "save and edit the duplicate") should use this variant.
-     */
-    suspend fun saveBothAwait(original: Book, duplicate: Book) {
-        withContext(Dispatchers.IO) {
-            container.repository.upsert(original.copy(updatedAt = System.currentTimeMillis()))
-            container.repository.upsert(duplicate.copy(updatedAt = System.currentTimeMillis()))
-        }
-    }
-
     suspend fun delete(id: String) {
         withContext(Dispatchers.IO) { container.repository.delete(id) }
     }
@@ -136,9 +124,6 @@ class BooksManagementViewModel(app: Application) : AndroidViewModel(app) {
             container.repository.upsertColor(color)
         }
     }
-
-    /** Generates a stable new book id. UUID keeps it collision-free across imports. */
-    fun newBookId(): String = "book-${UUID.randomUUID()}"
 
     /** Computes the next system-visible book number (max+1, padded) for new books. */
     fun suggestNextBookNumber(): String {

@@ -29,6 +29,16 @@ def test_parse_import_count_merge_format():
     assert _parse_import_count("OK:42") == 42
 
 
+def test_is_final_result_rejects_stale_garbage():
+    from library_tool.adb_transfer import _is_final_result
+
+    assert _is_final_result("OK:added=1:skipped=0:total=10")
+    assert _is_final_result("ERR:empty")
+    assert not _is_final_result("")
+    assert not _is_final_result("still working...")
+    assert not _is_final_result("importing")
+
+
 def test_parse_devices_output_empty():
     out = "List of devices attached\n"
     parsed = parse_devices_output(out)

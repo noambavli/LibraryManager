@@ -70,7 +70,7 @@ private enum class EditField {
     NAME, WRITER, BOOK_NUMBER, DISPLAY_NUMBER, LETTER, CATEGORY, TOPICS, NOTES,
 }
 
-/** Snapshot of the form. Stored as one struct so save/duplicate is trivial. */
+/** Snapshot of the form. Stored as one struct so save is straightforward. */
 private data class FormState(
     val id: String,
     val logicalBookId: String,
@@ -142,7 +142,6 @@ fun BookEditorScreen(
     bookId: String?,
     onBack: () -> Unit,
     onLogout: () -> Unit,
-    onReplaceWith: (newBookId: String) -> Unit,
 ) {
     val catalog by viewModel.catalog.collectAsStateWithLifecycle()
     val customColors by viewModel.customColors.collectAsStateWithLifecycle()
@@ -152,7 +151,7 @@ fun BookEditorScreen(
     val now = remember { System.currentTimeMillis() }
     // Generate the placeholder UUID once per editor instance so the form
     // doesn't reset every recomposition while we wait for the catalog flow
-    // to catch up after a save-and-duplicate.
+    // to catch up after a save.
     val fallbackId = remember(bookId) {
         bookId ?: "book-${UUID.randomUUID()}"
     }
@@ -186,10 +185,9 @@ fun BookEditorScreen(
         mutableStateOf(initialFieldValues(seed))
     }
 
-    // When the catalog finally produces an entry for the bookId we're editing
-    // (e.g. directly after a save-and-duplicate save lands), refresh the form
-    // with the real persisted data — but only once, while the form still
-    // matches the placeholder state.
+    // When the catalog finally produces an entry for the bookId we're editing,
+    // refresh the form with the real persisted data — but only once, while the
+    // form still matches the placeholder state.
     LaunchedEffect(catalog, bookId) {
         if (bookId == null) return@LaunchedEffect
         val persisted = catalog.firstOrNull { it.id == bookId } ?: return@LaunchedEffect
@@ -257,21 +255,6 @@ fun BookEditorScreen(
                 scope.launch {
                     viewModel.saveAwait(form.toBook())
                     onBack()
-                }
-            },
-            onSaveAndDuplicate = {
-                val original = form.toBook()
-                val dup = original.copy(
-                    id = "book-${UUID.randomUUID()}",
-                    logicalBookId = "book-${UUID.randomUUID()}",
-                    version = 1,
-                    bookNumber = viewModel.suggestNextBookNumber(),
-                    createdAt = System.currentTimeMillis(),
-                    updatedAt = System.currentTimeMillis(),
-                )
-                scope.launch {
-                    viewModel.saveBothAwait(original, dup)
-                    onReplaceWith(dup.id)
                 }
             },
             onDelete = { confirmingDelete = true },
@@ -405,7 +388,6 @@ private fun EditorHeader(
     onBack: () -> Unit,
     onLogout: () -> Unit,
     onSave: () -> Unit,
-    onSaveAndDuplicate: () -> Unit,
     onDelete: () -> Unit,
     canDelete: Boolean,
 ) {
@@ -444,10 +426,6 @@ private fun EditorHeader(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
             }
-            OutlinedButton(onClick = onSaveAndDuplicate) {
-                Text(stringResource(R.string.save_and_duplicate))
-            }
-            Spacer(modifier = Modifier.width(8.dp))
             Button(onClick = onSave) { Text(stringResource(R.string.save)) }
             Spacer(modifier = Modifier.width(8.dp))
             OutlinedButton(onClick = onLogout) { Text(stringResource(R.string.logout)) }

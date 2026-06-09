@@ -42,6 +42,15 @@ class CatalogImportReceiver : BroadcastReceiver() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Import crashed", e)
+                try {
+                    app.civCatalogIo.writeImportResult(
+                        com.mh.librarymanager.data.civ.CivCatalogIO.ImportResult.IoFailure(
+                            e.message ?: "Import crashed",
+                        ),
+                    )
+                } catch (_: Exception) {
+                    // Best effort — PC will time out if this also fails.
+                }
             } finally {
                 pending.finish()
             }

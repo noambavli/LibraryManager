@@ -8,6 +8,8 @@ import com.mh.librarymanager.domain.CustomColor
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.UUID
 
 /**
@@ -23,6 +25,8 @@ class BookRepository(
     private val store: CatalogStore,
     private val auditStore: AuditStore,
 ) {
+
+    private val catalogMutex = Mutex()
 
     fun observeAll(): Flow<List<Book>> = store.books
         .map { books -> books.filter { it.isLatest } }
@@ -45,19 +49,19 @@ class BookRepository(
      * Used by callers (e.g. .civ import) that need to back up the existing
      * state synchronously before doing a destructive replace.
      */
-    suspend fun snapshotForBackup(): List<Book> {
+    suspend fun snapshotForBackup(): List<Book> = catalogMutex.withLock {
         store.loadFromDisk()
-        return store.books.value.toList()
+        store.books.value.toList()
     }
 
-    suspend fun replaceAll(books: List<Book>) {
+    suspend fun replaceAll(books: List<Book>) = catalogMutex.withLock {
         store.replaceAll(books)
         auditStore.append(
             AuditEvent.Imported(
                 id = UUID.randomUUID().toString(),
                 timestamp = System.currentTimeMillis(),
                 importedCount = books.size,
-            )
+            ),
         )
     }
 
@@ -65,47 +69,80 @@ class BookRepository(
         val added: Int,
         val skipped: Int,
         val totalAfter: Int,
+        val addedBooks: List<Book> = emptyList(),
+    )
+
+    data class MergeImportOutcome(
+        val previous: List<Book>,
+        val result: MergeImportResult,
     )
 
     /**
      * Add books from a PC export without removing existing rows.
      * A row is skipped when its [Book.id] already exists on the tablet.
+     * Duplicate IDs inside the same file are ignored (first wins).
      */
-    suspend fun mergeImport(incoming: List<Book>): MergeImportResult {
+    suspend fun mergeImport(incoming: List<Book>): MergeImportOutcome = catalogMutex.withLock {
         store.loadFromDisk()
-        val existing = store.books.value
-        val existingIds = existing.map { it.id }.toSet()
-        val toAdd = incoming.filter { it.id !in existingIds }
+        val previous = store.books.value.toList()
+        val prepared = prepareIncoming(incoming)
+        val existingIds = previous.map { it.id }.toSet()
+        val toAdd = prepared.filter { it.id !in existingIds }
         if (toAdd.isEmpty()) {
-            return MergeImportResult(added = 0, skipped = incoming.size, totalAfter = existing.size)
+            return@withLock MergeImportOutcome(
+                previous = previous,
+                result = MergeImportResult(
+                    added = 0,
+                    skipped = incoming.size,
+                    totalAfter = previous.size,
+                    addedBooks = emptyList(),
+                ),
+            )
         }
-        val merged = existing + toAdd
+        val merged = previous + toAdd
         store.replaceAll(merged)
         auditStore.append(
             AuditEvent.Imported(
                 id = UUID.randomUUID().toString(),
                 timestamp = System.currentTimeMillis(),
                 importedCount = toAdd.size,
-            )
+            ),
         )
-        return MergeImportResult(
-            added = toAdd.size,
-            skipped = incoming.size - toAdd.size,
-            totalAfter = merged.size,
+        MergeImportOutcome(
+            previous = previous,
+            result = MergeImportResult(
+                added = toAdd.size,
+                skipped = incoming.size - toAdd.size,
+                totalAfter = merged.size,
+                addedBooks = toAdd,
+            ),
         )
     }
 
     /** Count how many incoming rows would be added vs skipped (no writes). */
     suspend fun previewMerge(incoming: List<Book>): MergeImportResult {
+        val prepared = prepareIncoming(incoming)
         store.loadFromDisk()
         val existingIds = store.books.value.map { it.id }.toSet()
-        val toAdd = incoming.count { it.id !in existingIds }
+        val toAdd = prepared.filter { it.id !in existingIds }
         val total = store.books.value.size
         return MergeImportResult(
-            added = toAdd,
-            skipped = incoming.size - toAdd,
-            totalAfter = total + toAdd,
+            added = toAdd.size,
+            skipped = incoming.size - toAdd.size,
+            totalAfter = total + toAdd.size,
+            addedBooks = toAdd,
         )
+    }
+
+    private fun prepareIncoming(incoming: List<Book>): List<Book> {
+        val seen = mutableSetOf<String>()
+        val out = ArrayList<Book>()
+        for (book in incoming) {
+            if (book.id.isBlank() || book.id in seen) continue
+            seen.add(book.id)
+            out.add(book)
+        }
+        return out
     }
 
     /**
@@ -113,10 +150,10 @@ class BookRepository(
      * false the caller is responsible for emitting the right event (e.g.
      * the restore helpers below do their own bookkeeping).
      */
-    suspend fun upsert(book: Book, recordAudit: Boolean = true) {
+    suspend fun upsert(book: Book, recordAudit: Boolean = true) = catalogMutex.withLock {
         val existing = store.books.value.firstOrNull { it.id == book.id }
         store.upsert(book)
-        if (!recordAudit) return
+        if (!recordAudit) return@withLock
         val now = System.currentTimeMillis()
         val event: AuditEvent = if (existing == null) {
             AuditEvent.Added(
@@ -136,15 +173,15 @@ class BookRepository(
                 after = book,
             )
         } else {
-            return
+            return@withLock
         }
         auditStore.append(event)
     }
 
-    suspend fun delete(id: String, recordAudit: Boolean = true) {
+    suspend fun delete(id: String, recordAudit: Boolean = true) = catalogMutex.withLock {
         val existing = store.books.value.firstOrNull { it.id == id }
         store.delete(id)
-        if (!recordAudit || existing == null) return
+        if (!recordAudit || existing == null) return@withLock
         auditStore.append(
             AuditEvent.Deleted(
                 id = UUID.randomUUID().toString(),
@@ -152,7 +189,7 @@ class BookRepository(
                 bookId = existing.id,
                 bookName = existing.name,
                 snapshot = existing,
-            )
+            ),
         )
     }
 

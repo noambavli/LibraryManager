@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from typing import Callable, List, Optional
 
 from . import adb_transfer, backups, civ, transfer, validation
+from .export_counter import peek_next_batch_number
 from .converter import ConvertResult, convert_rows
 from .model import Book
 from .xlsx_reader import read_first_sheet
@@ -70,6 +71,7 @@ class Session:
     def __init__(self) -> None:
         self.books: List[Book] = []
         self.source_path: Optional[str] = None
+        self.last_sent_batch: Optional[int] = None
         # True once the working set has been changed since the last import,
         # which is when a "clean restore to pre-import" is no longer guaranteed.
         self.dirty: bool = False
@@ -194,10 +196,34 @@ class Session:
 
     def save_civ(self, path: str) -> str:
         """Save the working catalog to a local .civ file (no transfer)."""
-        return civ.write_file(path, self.books, source_file=self.source_path or "")
+        return civ.write_file(
+            path,
+            self.books,
+            source_file=self.source_path or "",
+            batch_number=0,
+            consume_counter=False,
+        )
 
     def suggested_export_filename(self) -> str:
-        return civ.export_filename(self.source_path or "")
+        return civ.export_filename()
+
+    def next_send_batch(self) -> int:
+        return peek_next_batch_number()
+
+    def tablet_pick_hint(self) -> str:
+        """Tell staff which numbered file to open in the tablet Download folder."""
+        if self.last_sent_batch is not None:
+            return (
+                f"On the tablet: open Download and choose  {self.last_sent_batch}.civ  "
+                f"(already sent from this PC)"
+            )
+        if self.books:
+            n = self.next_send_batch()
+            return (
+                f"On the tablet: after Send, open Download and choose  {n}.civ  "
+                f"(only if importing manually on the tablet)"
+            )
+        return "On the tablet: files appear in Download as 1.civ, 2.civ, 3.civ …"
 
     def send_to_tablet(
         self,
@@ -208,12 +234,15 @@ class Session:
         abort = abort or AbortFlag()
         progress("Looking for tablet (adb)…", 0.1)
         abort.check()
+        batch = peek_next_batch_number()
         progress("Sending catalog to tablet…", 0.45)
         result = adb_transfer.send_books(
             civ.write_file,
             self.books,
             source_file=self.source_path or "",
+            batch_number=batch,
         )
+        self.last_sent_batch = batch
         abort.check()
         progress("Tablet import complete.", 1.0)
         return result

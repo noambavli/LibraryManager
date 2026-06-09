@@ -16,14 +16,13 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import re
 import tempfile
 import time
 from dataclasses import dataclass
-from datetime import datetime
 from typing import List, Optional
 
 from . import APP_NAME, CATALOG_FORMAT_VERSION, __version__
+from .export_counter import next_batch_number, peek_next_batch_number
 from .model import Book
 
 CIV_EXTENSION = ".civ"
@@ -41,8 +40,10 @@ class CivDocument:
         return len(self.books)
 
 
-def build_meta(source_file: str = "") -> dict:
+def build_meta(source_file: str = "", batch_number: Optional[int] = None) -> dict:
     """Metadata the tablet shows in its sync dashboard."""
+    if batch_number is None:
+        batch_number = peek_next_batch_number()
     return {
         "tool": APP_NAME,
         "toolVersion": __version__,
@@ -50,28 +51,24 @@ def build_meta(source_file: str = "") -> dict:
         "sourceFile": os.path.basename(source_file) if source_file else "",
         "exportKind": EXPORT_KIND_MERGE,
         "origin": ORIGIN_PC,
+        "batchNumber": batch_number,
     }
 
 
-def export_filename(source_path: str = "", when: Optional[datetime] = None) -> str:
-    """Versioned, human-readable filename for saved .civ exports."""
-    when = when or datetime.now()
-    ts = when.strftime("%Y%m%d-%H%M")
-    stem = ""
-    if source_path:
-        raw = os.path.splitext(os.path.basename(source_path))[0]
-        stem = re.sub(r"[^\w\-]+", "-", raw).strip("-")[:24]
-    if stem:
-        return f"catalog-v{CATALOG_FORMAT_VERSION}-pc-{stem}-{ts}{CIV_EXTENSION}"
-    return f"catalog-v{CATALOG_FORMAT_VERSION}-pc-{ts}{CIV_EXTENSION}"
+def export_filename(batch_number: Optional[int] = None) -> str:
+    """Simple numbered export: 1.civ, 2.civ, 3.civ …"""
+    n = batch_number if batch_number is not None else peek_next_batch_number()
+    return f"{n}{CIV_EXTENSION}"
 
 
-def serialize(books: List[Book], source_file: str = "") -> str:
+def serialize(books: List[Book], source_file: str = "", batch_number: Optional[int] = None) -> str:
     """Produce the JSON text the tablet expects. ``ensure_ascii=False`` keeps
     Hebrew readable on disk; the tablet reads UTF-8."""
+    if batch_number is None:
+        batch_number = next_batch_number()
     root = {
         "version": CATALOG_FORMAT_VERSION,
-        "meta": build_meta(source_file),
+        "meta": build_meta(source_file, batch_number=batch_number),
         "books": [b.to_json() for b in books],
     }
     return json.dumps(root, ensure_ascii=False, separators=(",", ":"))
@@ -105,7 +102,14 @@ def read_file(path: str) -> CivDocument:
         return parse(fh.read())
 
 
-def write_file(path: str, books: List[Book], source_file: str = "") -> str:
+def write_file(
+    path: str,
+    books: List[Book],
+    source_file: str = "",
+    batch_number: Optional[int] = None,
+    *,
+    consume_counter: bool = True,
+) -> str:
     """Write ``books`` to ``path`` and return the SHA-256 of the bytes written.
 
     Preferred path is atomic: write to a temp file in the same directory, fsync,
@@ -115,7 +119,9 @@ def write_file(path: str, books: List[Book], source_file: str = "") -> str:
     caller (export/backup) verifies the result by reading it back and comparing
     this hash, so a truncated or interrupted write is always detected.
     """
-    text = serialize(books, source_file=source_file)
+    if batch_number is None:
+        batch_number = next_batch_number() if consume_counter else peek_next_batch_number()
+    text = serialize(books, source_file=source_file, batch_number=batch_number)
     data = text.encode("utf-8")
     directory = os.path.dirname(os.path.abspath(path)) or "."
     os.makedirs(directory, exist_ok=True)

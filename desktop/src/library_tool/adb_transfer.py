@@ -3,7 +3,7 @@
 Flow (same pattern as the app's APK update):
   1. Detect adb + a connected tablet
   2. Best-effort enable USB file-transfer mode on the device
-  3. Push catalog.civ to /sdcard/Download/catalog.civ
+  3. Push catalog.civ to /data/local/tmp/catalog.civ
   4. Broadcast IMPORT_CATALOG to the tablet app
   5. Read catalog-import-result.txt to confirm the tablet imported it
 
@@ -25,7 +25,9 @@ from typing import List, Optional, Tuple
 
 REMOTE_CIV_TMP = "/data/local/tmp/catalog.civ"
 REMOTE_CIV_DOWNLOAD = "/sdcard/Download/catalog.civ"
+REMOTE_RESULT_TMP = "/data/local/tmp/catalog-import-result.txt"
 REMOTE_RESULT = "/sdcard/Download/catalog-import-result.txt"
+REMOTE_RESULTS = [REMOTE_RESULT_TMP, REMOTE_RESULT]
 IMPORT_ACTION = "com.mh.librarymanager.IMPORT_CATALOG"
 IMPORT_RECEIVER = "com.mh.librarymanager/.CatalogImportReceiver"
 PACKAGE = "com.mh.librarymanager"
@@ -162,8 +164,9 @@ def parse_devices_output(out: str) -> List[RawDevice]:
     return devices
 
 
-def list_devices(adb: str) -> List[DeviceInfo]:
-    _ensure_server(adb)
+def list_devices(adb: str, *, restart_server: bool = False) -> List[DeviceInfo]:
+    if restart_server:
+        _ensure_server(adb)
     code, out, err = _run(adb, ["devices", "-l"])
     if code != 0:
         return []
@@ -174,7 +177,7 @@ def list_devices(adb: str) -> List[DeviceInfo]:
     ]
 
 
-def diagnose() -> AdbDiagnosis:
+def diagnose(*, restart_server: bool = True) -> AdbDiagnosis:
     """Full connection check with actionable error text for the GUI."""
     adb = find_adb()
     if not adb:
@@ -192,7 +195,8 @@ def diagnose() -> AdbDiagnosis:
             ),
         )
 
-    _ensure_server(adb)
+    if restart_server:
+        _ensure_server(adb)
     code, out, err = _run(adb, ["devices", "-l"], timeout=20)
     raw = out if out else err
     parsed = parse_devices_output(raw)
@@ -261,18 +265,62 @@ def prepare_usb(adb: str, serial: str) -> None:
         _run(adb, args, timeout=15)
 
 
+def _local_sha256(path: str) -> str:
+    with open(path, "rb") as fh:
+        return hashlib.sha256(fh.read()).hexdigest()
+
+
+def _verify_remote_file(adb: str, serial: str, local_path: str, remote_path: str) -> None:
+    """Confirm the pushed file on the tablet matches the local copy."""
+    expected = _local_sha256(local_path)
+    code, out, _ = _run(
+        adb, ["-s", serial, "shell", "sha256sum", remote_path], timeout=45,
+    )
+    if code == 0 and out.strip():
+        got = out.split()[0].strip()
+        if got == expected:
+            return
+
+    local_size = os.path.getsize(local_path)
+    code, out, _ = _run(
+        adb, ["-s", serial, "shell", "stat", "-c", "%s", remote_path], timeout=15,
+    )
+    if code != 0:
+        code, out, _ = _run(
+            adb, ["-s", serial, "shell", "wc", "-c", remote_path], timeout=15,
+        )
+    if code == 0 and out.strip():
+        try:
+            remote_size = int(out.split()[0])
+            if remote_size == local_size:
+                return
+        except ValueError:
+            pass
+
+    raise IOError(
+        "Push verification failed: the file on the tablet does not match the PC copy."
+    )
+
+
+def _is_final_result(line: str) -> bool:
+    stripped = line.strip()
+    return stripped.startswith("OK:") or stripped.startswith("ERR:")
+
+
 def push_and_import(adb: str, serial: str, local_civ: str) -> AdbSendResult:
     """Push catalog.civ and trigger silent import on the tablet."""
     prepare_usb(adb, serial)
 
-    # Remove stale result so we don't read an old success.
-    _run(adb, ["-s", serial, "shell", "rm", "-f", REMOTE_RESULT], timeout=15)
+    for path in REMOTE_RESULTS:
+        _run(adb, ["-s", serial, "shell", "rm", "-f", path], timeout=15)
 
     code, _, err = _run(
         adb, ["-s", serial, "push", local_civ, REMOTE_CIV_TMP], timeout=180,
     )
     if code != 0:
         raise IOError(f"adb push failed: {err or 'unknown error'}")
+
+    _verify_remote_file(adb, serial, local_civ, REMOTE_CIV_TMP)
 
     # Best-effort copy into public Download so it can appear in file managers.
     _run(
@@ -290,8 +338,7 @@ def push_and_import(adb: str, serial: str, local_civ: str) -> AdbSendResult:
         timeout=15,
     )
 
-    with open(local_civ, "rb") as fh:
-        digest = hashlib.sha256(fh.read()).hexdigest()
+    digest = _local_sha256(local_civ)
 
     code, out, err = _run(
         adb,
@@ -306,6 +353,12 @@ def push_and_import(adb: str, serial: str, local_civ: str) -> AdbSendResult:
         raise IOError(f"adb broadcast failed: {err or out or 'unknown error'}")
 
     result_line = _wait_for_result(adb, serial, timeout_sec=45)
+    if not result_line or not _is_final_result(result_line):
+        raise IOError(
+            "Tablet did not report an import result in time. "
+            "The file was pushed but import may not have finished."
+        )
+
     imported = _parse_import_count(result_line)
 
     return AdbSendResult(
@@ -321,11 +374,12 @@ def push_and_import(adb: str, serial: str, local_civ: str) -> AdbSendResult:
 def _wait_for_result(adb: str, serial: str, timeout_sec: int = 45) -> str:
     deadline = time.time() + timeout_sec
     while time.time() < deadline:
-        code, out, _ = _run(
-            adb, ["-s", serial, "shell", "cat", REMOTE_RESULT], timeout=10,
-        )
-        if code == 0 and out.strip():
-            return out.strip()
+        for remote in REMOTE_RESULTS:
+            code, out, _ = _run(
+                adb, ["-s", serial, "shell", "cat", remote], timeout=10,
+            )
+            if code == 0 and out.strip() and _is_final_result(out):
+                return out.strip()
         time.sleep(0.8)
     return ""
 
@@ -350,17 +404,35 @@ def _parse_import_count(line: str) -> Optional[int]:
         return None
 
 
-def write_temp_civ(write_fn, books, source_file: str = "") -> str:
+def write_temp_civ(
+    write_fn,
+    books,
+    source_file: str = "",
+    batch_number: Optional[int] = None,
+) -> str:
     """Write books to a temp .civ file; caller deletes when done."""
     fd, path = tempfile.mkstemp(prefix="catalog-", suffix=".civ")
     os.close(fd)
-    write_fn(path, books, source_file)
+    if batch_number is not None:
+        write_fn(
+            path, books, source_file,
+            batch_number=batch_number, consume_counter=False,
+        )
+    else:
+        write_fn(path, books, source_file)
     return path
 
 
-def send_books(write_fn, books, source_file: str = "") -> AdbSendResult:
+def send_books(
+    write_fn,
+    books,
+    source_file: str = "",
+    batch_number: Optional[int] = None,
+) -> AdbSendResult:
     """High-level: find adb + device, write .civ, push, import, verify."""
-    diag = diagnose()
+    from .export_counter import commit_batch_number, peek_next_batch_number
+
+    diag = diagnose(restart_server=True)
     if not diag.adb_path:
         raise FileNotFoundError(diag.error or "adb not found")
     if not diag.ready:
@@ -373,7 +445,8 @@ def send_books(write_fn, books, source_file: str = "") -> AdbSendResult:
 
     device = diag.ready[0]
     adb = diag.adb_path
-    local = write_temp_civ(write_fn, books, source_file)
+    batch = batch_number if batch_number is not None else peek_next_batch_number()
+    local = write_temp_civ(write_fn, books, source_file, batch_number=batch)
     try:
         result = push_and_import(adb, device.serial, local)
         result.device = device
@@ -382,6 +455,7 @@ def send_books(write_fn, books, source_file: str = "") -> AdbSendResult:
                 f"Tablet rejected the catalog: {result.result_line}. "
                 "The file was pushed but import failed."
             )
+        commit_batch_number(batch)
         return result
     finally:
         try:

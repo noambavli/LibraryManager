@@ -70,7 +70,6 @@
     <string name="back">חזרה</string>
     <string name="cancel">ביטול</string>
     <string name="save">שמירה</string>
-    <string name="save_and_duplicate">שמירה ושכפול</string>
     <string name="delete">מחיקה</string>
     <string name="confirm_delete">למחוק את הספר הזה?</string>
     <string name="confirm_delete_body">פעולה זו לא ניתנת לביטול.</string>
@@ -93,7 +92,7 @@
     <!-- Management dashboard -->
     <string name="management_title">ניהול</string>
     <string name="management_books">ניהול ספרים</string>
-    <string name="management_books_subtitle">חיפוש, עריכה, הוספה ושכפול</string>
+    <string name="management_books_subtitle">חיפוש, עריכה והוספה</string>
     <string name="management_requests">בקשות הציבור</string>
     <string name="management_requests_subtitle">מעקב וטיפול בבקשות</string>
     <string name="management_announcements">ניהול הודעות</string>
@@ -106,41 +105,40 @@
     <string name="management_catalog_transfer_subtitle">סנכרון ממחשב — מוסיף ספרים חדשים בלבד</string>
 
     <!-- Catalog transfer (import .civ from PC) -->
-    <string name="catalog_transfer_title">סנכרון קטלוג מהמחשב</string>
-    <string name="catalog_transfer_badge">פורמט קטלוג v%1$d</string>
-    <string name="catalog_transfer_tablet_title">בטאבלט</string>
-    <string name="catalog_transfer_pc_title">מהמחשב</string>
-    <string name="catalog_transfer_book_count">%1$d ספרים</string>
-    <string name="catalog_transfer_format_label">פורמט v%1$d</string>
-    <string name="catalog_transfer_never_synced">עדיין לא סונכרן</string>
-    <string name="catalog_transfer_last_sync_added">+%1$d בסנכרון אחרון</string>
-    <string name="catalog_transfer_last_sync_none">אין היסטוריית סנכרון</string>
-    <string name="catalog_transfer_last_sync_detail">%1$s · %2$s</string>
-    <string name="catalog_transfer_merge_title">הוספה בלבד — לא מחליף</string>
-    <string name="catalog_transfer_merge_body">ספרים שכבר קיימים בטאבלט נשארים. רק שורות חדשות מהמחשב מתווספות. ספר עם אותו מזהה פנימי (book-000123) לא יוכנס שוב.</string>
-    <string name="catalog_transfer_filename_title">שמות קבצים</string>
-    <string name="catalog_transfer_filename_body">LibraryTool במחשב שומר קבצים בשם מסודר. בטאבלט אפשר לבחור כל קובץ ‎.civ תקין.</string>
-    <string name="catalog_transfer_filename_example">catalog-v%1$d-pc-catalog-20260609-1430.civ</string>
-    <string name="catalog_transfer_how_title">תהליך מומלץ</string>
-    <string name="catalog_transfer_step1">חברו USB‑C למחשב Windows.</string>
-    <string name="catalog_transfer_step2">ב‑LibraryTool: ייבוא אקסל → \"שליחה לטאבלט (אוטומטי)\".</string>
-    <string name="catalog_transfer_step3">או: בחרו קובץ ‎.civ ידנית מכאן (אחרי שליחה אוטומטית הקובץ מופיע ב‑Download).</string>
-    <string name="catalog_transfer_pick_file">בחירת קובץ ‎.civ מהמחשב</string>
+    <string name="catalog_transfer_title">סנכרון מהמחשב</string>
+    <string name="catalog_transfer_book_count">%1$d ספרים בקטלוג</string>
+    <string name="catalog_transfer_no_sync_yet">עדיין לא סונכרן מהמחשב</string>
+    <string name="catalog_transfer_last_file">בסנכרון האחרון נוספו %1$d ספרים</string>
+    <string name="catalog_transfer_merge_short">מוסיף ספרים חדשים בלבד — לא מוחק קיימים.</string>
+    <string name="catalog_transfer_pick_file">בחר קובץ (1.civ, 2.civ…)</string>
+    <string name="catalog_transfer_view_summary">צפייה בסיכום הייבוא האחרון</string>
+    <string name="catalog_transfer_chosen_file">בחרתם: קובץ %1$s</string>
     <string name="catalog_transfer_undo">שחזור לפני הסנכרון האחרון</string>
     <string name="catalog_transfer_undo_body">השחזור יחזיר את הקטלוג כפי שהיה לפני הסנכרון האחרון. להמשיך?</string>
     <string name="catalog_transfer_undo_confirm">שחזר</string>
     <string name="catalog_transfer_working">מעבד… אנא המתינו.</string>
-    <string name="catalog_transfer_done_title">הסנכרון הסתיים</string>
-    <string name="catalog_transfer_done_body">נוספו %1$d ספרים · %2$d כבר היו בטאבלט · סה״כ %3$d ספרים.</string>
-    <string name="catalog_transfer_restored_title">שוחזר</string>
-    <string name="catalog_transfer_restored_body">הוחזרו %1$d ספרים.</string>
     <string name="catalog_transfer_error_title">לא ניתן לסנכרן</string>
     <string name="catalog_transfer_dismiss">סגור</string>
+    <string name="catalog_transfer_imported_ok">הוספו %1$d ספרים · %2$d כבר היו בקטלוג</string>
+    <string name="catalog_transfer_imported_none">אין ספרים חדשים — %1$d כבר היו בקטלוג</string>
+    <string name="catalog_transfer_restored_ok">הקטלוג שוחזר — %1$d ספרים</string>
     <string name="catalog_transfer_confirm_title">לאשר הוספה?</string>
-    <string name="catalog_transfer_confirm_preview">יתווספו %1$d ספרים חדשים · %2$d כבר קיימים · מ‑%3$d ל‑%4$d סה״כ.</string>
-    <string name="catalog_transfer_file_meta">קובץ מהמחשב: %1$s</string>
-    <string name="catalog_transfer_confirm_safety">לפני השינוי נשמר גיבוי — אפשר לשחזר בלחיצה אחת.</string>
-    <string name="catalog_transfer_confirm_ok">הוסף לקטלוג</string>
+    <string name="catalog_transfer_confirm_preview">יתווספו %1$d חדשים · %2$d כבר קיימים · מ‑%3$d ל‑%4$d סה״כ.</string>
+    <string name="catalog_transfer_confirm_safety">נשמר גיבוי — אפשר לשחזר בלחיצה אחת.</string>
+    <string name="catalog_transfer_confirm_ok">הוסף</string>
+
+    <!-- Import summary screen -->
+    <string name="import_summary_title">סיכום ייבוא</string>
+    <string name="import_summary_empty">אין עדיין סיכום ייבוא.</string>
+    <string name="import_summary_back_sync">חזרה לסנכרון</string>
+    <string name="import_summary_file_chosen">בחרתם: קובץ %1$s</string>
+    <string name="import_summary_excel_source">מקור באקסל: %1$s</string>
+    <string name="import_summary_counts">נוספו %1$d · %2$d כבר היו · סה״כ %3$d ספרים</string>
+    <string name="import_summary_when">בוצע ב‑%1$s</string>
+    <string name="import_summary_books_title">ספרים שנוספו</string>
+    <string name="import_summary_more_books">… ועוד %1$d ספרים</string>
+    <string name="import_summary_none_added">לא נוספו ספרים חדשים — הכל כבר היה בקטלוג.</string>
+    <string name="import_summary_done">סיום</string>
 
     <!-- Technical support management -->
     <string name="tech_support_management_title">בקשות תמיכה טכנית</string>
@@ -204,7 +202,6 @@
     <string name="books_management_title">ניהול ספרים</string>
     <string name="add_book">הוספת ספר</string>
     <string name="edit_book">עריכת ספר</string>
-    <string name="duplicate_book">שכפול</string>
 
     <!-- History -->
     <string name="management_history">היסטוריית שינויים</string>

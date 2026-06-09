@@ -44,6 +44,7 @@ class LibraryToolApp:
         self.abort = AbortFlag()
         self._events: "queue.Queue" = queue.Queue()
         self._busy = False
+        self._tablet_ready = False
 
         root.title(f"LibraryTool {__version__} — Catalog ↔ Tablet")
         root.geometry("960x680")
@@ -57,6 +58,7 @@ class LibraryToolApp:
         self._build_footer()
 
         self._refresh_status()
+        self._poll_tablet_connection()
         self.root.after(80, self._drain_events)
 
     # ------------------------------------------------------------------ UI
@@ -84,9 +86,35 @@ class LibraryToolApp:
             style="Sub.TLabel",
         ).pack(anchor="w")
 
+        self.chosen_var = tk.StringVar(value="No Excel file chosen yet — click step 1.")
+        ttk.Label(top, textvariable=self.chosen_var, style="Sub.TLabel").pack(anchor="w", pady=(6, 0))
+
         self.status_var = tk.StringVar()
         status = ttk.Label(top, textvariable=self.status_var, style="Status.TLabel")
-        status.pack(anchor="w", pady=(8, 0))
+        status.pack(anchor="w", pady=(4, 0))
+
+        tablet_row = ttk.Frame(top)
+        tablet_row.pack(anchor="w", pady=(6, 0))
+        ttk.Label(tablet_row, text="Tablet USB:", style="Sub.TLabel").pack(side="left")
+        self.tablet_status_var = tk.StringVar(value="Checking connection…")
+        self.tablet_status_label = tk.Label(
+            tablet_row,
+            textvariable=self.tablet_status_var,
+            font=("Segoe UI", 10, "bold"),
+            fg="#666666",
+        )
+        self.tablet_status_label.pack(side="left", padx=(6, 0))
+
+        self.tablet_pick_var = tk.StringVar(value=self.session.tablet_pick_hint())
+        self.tablet_pick_label = tk.Label(
+            top,
+            textvariable=self.tablet_pick_var,
+            font=("Segoe UI", 11, "bold"),
+            fg="#1a4a8a",
+            wraplength=900,
+            justify="left",
+        )
+        self.tablet_pick_label.pack(anchor="w", pady=(8, 0))
 
     def _build_actions(self) -> None:
         frame = ttk.LabelFrame(self.root, text="Steps", padding=12, style="Step.TLabelframe")
@@ -188,12 +216,18 @@ class LibraryToolApp:
     def _refresh_status(self) -> None:
         s = self.session
         n = len(s.books)
-        src = os.path.basename(s.source_path) if s.source_path else "—"
+        if s.source_path:
+            src = os.path.basename(s.source_path)
+            self.chosen_var.set(f"Chosen: {src}  —  {n} books ready to send")
+        else:
+            self.chosen_var.set("No Excel file chosen yet — click step 1.")
         dirty = " · unsaved changes" if s.dirty else ""
-        self.status_var.set(f"Catalog: {n} books   ·   source: {src}{dirty}")
+        self.status_var.set(f"Working catalog: {n} books{dirty}")
+        self.tablet_pick_var.set(s.tablet_pick_hint())
 
         has_books = n > 0 and not self._busy
-        self.btn_export.config(state="normal" if has_books else "disabled")
+        can_send = has_books and self._tablet_ready
+        self.btn_export.config(state="normal" if can_send else "disabled")
         self.btn_save.config(state="normal" if has_books else "disabled")
         self.btn_delete_all.config(state="normal" if has_books else "disabled")
         self.btn_restore_import.config(
@@ -287,9 +321,48 @@ class LibraryToolApp:
                     else:
                         self.footer_var.set("Error.")
                         messagebox.showerror("Error", str(exc))
+                elif kind == "tablet_status":
+                    self._apply_tablet_status(payload)
         except queue.Empty:
             pass
         self.root.after(80, self._drain_events)
+
+    def _poll_tablet_connection(self) -> None:
+        if self._busy:
+            self.root.after(3000, self._poll_tablet_connection)
+            return
+
+        def worker() -> None:
+            try:
+                diag = adb_transfer.diagnose(restart_server=False)
+                self._events.put(("tablet_status", diag))
+            except Exception:
+                pass
+
+        threading.Thread(target=worker, daemon=True).start()
+        self.root.after(3000, self._poll_tablet_connection)
+
+    def _apply_tablet_status(self, diag: adb_transfer.AdbDiagnosis) -> None:
+        self._tablet_ready = bool(diag.ready)
+        if not diag.adb_path:
+            text = "adb not found — keep adb\\ folder next to LibraryTool.exe"
+            color = "#b00020"
+        elif diag.ready:
+            d = diag.ready[0]
+            text = f"Connected & authorized — {d.model}"
+            color = "#1b7a3d"
+        elif any(d.state == "unauthorized" for d in diag.devices):
+            text = "Tablet found but NOT authorized — run authorize_tablet.bat once"
+            color = "#9a6700"
+        elif diag.devices:
+            text = "Tablet detected but not ready — replug USB cable"
+            color = "#9a6700"
+        else:
+            text = "No tablet — plug in USB-C cable"
+            color = "#b00020"
+        self.tablet_status_var.set(text)
+        self.tablet_status_label.config(fg=color)
+        self._refresh_status()
 
     # ----------------------------------------------------------- actions
 
@@ -332,9 +405,9 @@ class LibraryToolApp:
         def done(outcome):
             self._show_report(outcome.report)
             rep = outcome.report
+            src = os.path.basename(path)
             self.footer_var.set(
-                f"Imported {outcome.convert.imported} books "
-                f"({outcome.convert.skipped} blank rows skipped)."
+                f"Chosen: {src} — {outcome.convert.imported} books loaded."
             )
             if rep.has_errors:
                 messagebox.showwarning(
@@ -377,8 +450,14 @@ class LibraryToolApp:
         except Exception as exc:
             messagebox.showerror("Save failed", str(exc))
             return
-        self.footer_var.set(f"Saved {len(self.session.books)} books → {path}")
-        messagebox.showinfo("Saved", f"Saved {len(self.session.books)} books to:\n{path}")
+        fname = os.path.basename(path)
+        self.footer_var.set(f"Saved {len(self.session.books)} books → {fname}")
+        messagebox.showinfo(
+            "Saved",
+            f"Saved {len(self.session.books)} books to:\n{path}\n\n"
+            f"Copy {fname} to the tablet Download folder.\n"
+            f"On the tablet: Management → Sync → choose {fname}",
+        )
 
     def on_send_to_tablet(self) -> None:
         report = self.session.validate_current()
@@ -393,11 +472,16 @@ class LibraryToolApp:
                 return
 
         n = len(self.session.books)
+        batch = self.session.next_send_batch()
+        src = os.path.basename(self.session.source_path or "") or "catalog"
         if not messagebox.askyesno(
             "Send to tablet",
             f"Connect the tablet with USB-C, then click Yes.\n\n"
-            f"This will automatically send {n} books to the tablet and "
-            "import them — no dragging files, no menus on the tablet.\n\n"
+            f"You chose: {src}\n"
+            f"This send creates file: {batch}.civ\n"
+            f"Books to send: {n}\n\n"
+            f"Automatic: the tablet imports by itself.\n"
+            f"Manual on tablet: open Download → choose {batch}.civ\n\n"
             "Continue?",
         ):
             return
@@ -406,25 +490,27 @@ class LibraryToolApp:
             return self.session.send_to_tablet(progress, abort)
 
         def done(result):
+            batch = self.session.last_sent_batch or self.session.next_send_batch() - 1
             count = result.imported_count
             if count is not None:
                 msg = (
-                    f"Done. {count} new books were merged onto the tablet "
+                    f"Done. Sent {batch}.civ — {count} new books merged "
                     "(existing books were kept)."
                 )
             else:
-                msg = (
-                    "Catalog sent and merge import triggered.\n"
-                    "If the tablet app is up to date, new books are added."
-                )
+                msg = f"Sent {batch}.civ and triggered import on the tablet."
             self.footer_var.set(msg)
+            self._refresh_status()
+            src = os.path.basename(self.session.source_path or "") or "catalog"
             messagebox.showinfo(
                 "Tablet updated",
                 f"{msg}\n\n"
-                f"Device: {result.device.model} ({result.device.serial})\n"
-                f"File: {civ.export_filename(self.session.source_path or '')}\n"
-                f"SHA-256: {result.sha256[:16]}…\n\n"
-                "You can unplug the USB cable.",
+                f"You chose on PC: {src}\n"
+                f"File on tablet Download: {batch}.civ\n"
+                f"Device: {result.device.model} ({result.device.serial})\n\n"
+                f"If importing manually on the tablet:\n"
+                f"  Management → Sync → pick file {batch}.civ from Download\n\n"
+                "Automatic send already imported — check import summary on tablet.",
             )
 
         def error(exc):

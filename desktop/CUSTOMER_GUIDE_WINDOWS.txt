@@ -33,10 +33,15 @@ DAILY USE (3 clicks)
 
   3. Click "2 · Send to tablet (automatic)…" → Yes
      → Wait until "Tablet updated" appears.
+     → The screen shows which file was sent (e.g. 3.civ).
      → Unplug. Done.
 
 The program sends the books and loads them on the tablet by itself.
-Staff do NOT drag files and do NOT open menus on the tablet.
+Staff do NOT need to open files on the tablet for normal use.
+
+IF importing manually on the tablet instead:
+  The PC screen tells you the file number (e.g. "choose 3.civ").
+  On the tablet: Management → Sync → pick that file from Download.
 
 ------------------------------------------------------------
 IF IT SAYS "No tablet detected"

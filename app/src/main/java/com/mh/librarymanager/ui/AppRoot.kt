@@ -23,6 +23,7 @@ import com.mh.librarymanager.ui.management.AnnouncementsManagementScreen
 import com.mh.librarymanager.ui.management.AnnouncementsManagementViewModel
 import com.mh.librarymanager.ui.management.CatalogTransferScreen
 import com.mh.librarymanager.ui.management.CatalogTransferViewModel
+import com.mh.librarymanager.ui.management.ImportSummaryScreen
 import com.mh.librarymanager.ui.management.ManagementDashboardScreen
 import com.mh.librarymanager.ui.management.ManagementSession
 import com.mh.librarymanager.ui.management.PasswordScreen
@@ -179,6 +180,18 @@ fun AppRoot(
                         session.logout()
                         nav.resetTo(AppScreen.Home)
                     },
+                    onOpenSummary = { nav.push(AppScreen.ManagementImportSummary) },
+                )
+            }
+
+            AppScreen.ManagementImportSummary -> ManagementGuard(session = session, nav = nav) {
+                ImportSummaryScreen(
+                    viewModel = catalogTransferVm,
+                    onBack = { nav.pop() },
+                    onLogout = {
+                        session.logout()
+                        nav.resetTo(AppScreen.Home)
+                    },
                 )
             }
 
@@ -269,9 +282,6 @@ fun AppRoot(
                     onLogout = {
                         session.logout()
                         nav.resetTo(AppScreen.Home)
-                    },
-                    onReplaceWith = { newId ->
-                        nav.replaceTop(AppScreen.BookEditor(newId))
                     },
                 )
             }
