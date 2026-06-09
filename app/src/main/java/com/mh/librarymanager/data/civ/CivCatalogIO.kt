@@ -200,6 +200,16 @@ class CivCatalogIO(
      */
     suspend fun stageIncomingFile(): ImportResult = mutex.withLock {
         withContext(Dispatchers.IO) {
+            // Already staged and awaiting the user? Don't re-stage — just return the
+            // existing preview so a concurrent trigger can't loop the dialog.
+            if (hasPendingImport()) {
+                when (val existing = readPendingPreviewLocked()) {
+                    is PreviewOutcome.Ready ->
+                        return@withContext ImportResult.AwaitingConfirmation(existing.preview)
+                    is PreviewOutcome.Failed ->
+                        try { pendingFile.delete() } catch (_: Exception) {}
+                }
+            }
             val file = INCOMING_PATHS.map { File(it) }.firstOrNull { it.isFile && it.canRead() }
                 ?: return@withContext ImportResult.Invalid(
                     "No catalog.civ found. Expected one of: ${INCOMING_PATHS.joinToString()}",
@@ -218,24 +228,25 @@ class CivCatalogIO(
 
     /** Rebuild preview from a previously staged PC import (e.g. after app restart). */
     suspend fun loadPendingPreview(): PreviewOutcome = mutex.withLock {
-        withContext(Dispatchers.IO) {
-            if (!hasPendingImport()) {
-                return@withContext PreviewOutcome.Failed(
-                    ImportResult.Invalid("No pending import."),
-                )
-            }
-            val text = try {
-                pendingFile.readText(Charsets.UTF_8)
-            } catch (e: Exception) {
-                return@withContext PreviewOutcome.Failed(
-                    ImportResult.Invalid(e.message ?: "Could not read pending import"),
-                )
-            }
-            when (val parsed = parseText(text.trim())) {
-                is ParseOutcome.Failure -> PreviewOutcome.Failed(parsed.result)
-                is ParseOutcome.Success ->
-                    PreviewOutcome.Ready(buildPreview(parsed.books, parsed.meta))
-            }
+        withContext(Dispatchers.IO) { readPendingPreviewLocked() }
+    }
+
+    /** Pending-preview read with no locking — callers must already hold [mutex]. */
+    private suspend fun readPendingPreviewLocked(): PreviewOutcome {
+        if (!hasPendingImport()) {
+            return PreviewOutcome.Failed(ImportResult.Invalid("No pending import."))
+        }
+        val text = try {
+            pendingFile.readText(Charsets.UTF_8)
+        } catch (e: Exception) {
+            return PreviewOutcome.Failed(
+                ImportResult.Invalid(e.message ?: "Could not read pending import"),
+            )
+        }
+        return when (val parsed = parseText(text.trim())) {
+            is ParseOutcome.Failure -> PreviewOutcome.Failed(parsed.result)
+            is ParseOutcome.Success ->
+                PreviewOutcome.Ready(buildPreview(parsed.books, parsed.meta))
         }
     }
 
@@ -256,6 +267,7 @@ class CivCatalogIO(
                 pendingFile.delete()
             } catch (_: Exception) {
             }
+            deleteIncomingFiles()
             val result = importFromTextLocked(text.trim())
             if (result is ImportResult.Ok) {
                 publishToDownloads(text.trim(), result.meta)
@@ -270,7 +282,19 @@ class CivCatalogIO(
             if (pendingFile.exists()) pendingFile.delete()
         } catch (_: Exception) {
         }
+        deleteIncomingFiles()
         writeResultLine("ERR:cancelled")
+    }
+
+    /** Best-effort removal of the raw pushed file so it can't be re-staged. */
+    private fun deleteIncomingFiles() {
+        for (path in INCOMING_PATHS) {
+            try {
+                val f = File(path)
+                if (f.exists()) f.delete()
+            } catch (_: Exception) {
+            }
+        }
     }
 
     private suspend fun stageText(text: String): ImportResult {

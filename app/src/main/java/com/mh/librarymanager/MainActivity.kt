@@ -137,7 +137,13 @@ class MainActivity : ComponentActivity() {
         intent.action = null
         lifecycleScope.launch {
             try {
-                CatalogImportRunner.run(this@MainActivity)
+                // The receiver may have already staged this push. Re-running here
+                // would re-stage and re-wake, looping the dialog — so only stage
+                // when nothing is pending; otherwise just surface the dialog.
+                val io = LibraryApp.from(this@MainActivity).civCatalogIo
+                if (!io.hasPendingImport()) {
+                    CatalogImportRunner.run(this@MainActivity)
+                }
                 catalogTransferViewModel.onAdbImportStaged()
             } catch (_: Exception) {
                 // CatalogImportRunner logs; receiver path still available as fallback.

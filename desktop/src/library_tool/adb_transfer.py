@@ -325,6 +325,14 @@ def _import_timeout_sec(local_civ: str) -> int:
     return min(300, 90 + (size // 102_400) * 10)
 
 
+def _quiet_remove(path: str) -> None:
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except OSError:
+        pass
+
+
 def _read_result_file(adb: str, serial: str, remote: str) -> str:
     code, out, _ = _run(adb, ["-s", serial, "shell", "cat", remote], timeout=10)
     if code == 0 and out.strip():
@@ -610,11 +618,9 @@ def send_books(
     adb = diag.adb_path
     batch = batch_number if batch_number is not None else peek_next_batch_number()
     archive_path = path_for_batch(batch)
-    if os.path.exists(archive_path):
-        raise IOError(
-            f"Archive {civ_mod.export_filename(batch)} already exists on this PC. "
-            "The batch counter may be out of sync — check .librarytool/export_counter.txt."
-        )
+    # The counter only advances on a confirmed send, so any file already sitting
+    # at this (un-committed) batch number is a leftover from an earlier attempt
+    # that was cancelled/timed out — safe to overwrite, never a committed batch.
     write_fn(
         archive_path,
         books,
@@ -627,10 +633,22 @@ def send_books(
         adb, device.serial, archive_path, download_name=download_name,
     )
     result.device = device
-    if result.result_line.startswith("ERR:"):
-        raise IOError(
-            f"Tablet rejected the catalog: {result.result_line}. "
-            "The file was pushed but import failed."
-        )
-    commit_batch_number(batch)
-    return result
+
+    line = result.result_line or ""
+    if line.startswith("OK:"):
+        commit_batch_number(batch)
+        return result
+    if line.startswith("ERR:cancelled"):
+        # User declined on the tablet — drop the un-confirmed archive so the
+        # next send cleanly reuses this number.
+        _quiet_remove(archive_path)
+        return result
+    if line.startswith("ERR:confirm_timeout"):
+        # Tablet may still confirm later; keep the archive but don't advance.
+        return result
+    # Hard rejection (wrong version / invalid / etc.) — discard and surface it.
+    _quiet_remove(archive_path)
+    raise IOError(
+        f"Tablet rejected the catalog: {line}. "
+        "The file was pushed but import failed."
+    )
