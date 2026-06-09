@@ -173,6 +173,7 @@ fun AppRoot(
             AppScreen.ManagementCatalogTransfer -> ManagementGuard(session = session, nav = nav) {
                 CatalogTransferScreen(
                     viewModel = catalogTransferVm,
+                    session = session,
                     onBack = { nav.pop() },
                     onLogout = {
                         session.logout()

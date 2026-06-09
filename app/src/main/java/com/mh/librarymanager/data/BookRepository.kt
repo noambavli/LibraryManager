@@ -61,6 +61,53 @@ class BookRepository(
         )
     }
 
+    data class MergeImportResult(
+        val added: Int,
+        val skipped: Int,
+        val totalAfter: Int,
+    )
+
+    /**
+     * Add books from a PC export without removing existing rows.
+     * A row is skipped when its [Book.id] already exists on the tablet.
+     */
+    suspend fun mergeImport(incoming: List<Book>): MergeImportResult {
+        store.loadFromDisk()
+        val existing = store.books.value
+        val existingIds = existing.map { it.id }.toSet()
+        val toAdd = incoming.filter { it.id !in existingIds }
+        if (toAdd.isEmpty()) {
+            return MergeImportResult(added = 0, skipped = incoming.size, totalAfter = existing.size)
+        }
+        val merged = existing + toAdd
+        store.replaceAll(merged)
+        auditStore.append(
+            AuditEvent.Imported(
+                id = UUID.randomUUID().toString(),
+                timestamp = System.currentTimeMillis(),
+                importedCount = toAdd.size,
+            )
+        )
+        return MergeImportResult(
+            added = toAdd.size,
+            skipped = incoming.size - toAdd.size,
+            totalAfter = merged.size,
+        )
+    }
+
+    /** Count how many incoming rows would be added vs skipped (no writes). */
+    suspend fun previewMerge(incoming: List<Book>): MergeImportResult {
+        store.loadFromDisk()
+        val existingIds = store.books.value.map { it.id }.toSet()
+        val toAdd = incoming.count { it.id !in existingIds }
+        val total = store.books.value.size
+        return MergeImportResult(
+            added = toAdd,
+            skipped = incoming.size - toAdd,
+            totalAfter = total + toAdd,
+        )
+    }
+
     /**
      * Insert or update a book and audit the change. When [recordAudit] is
      * false the caller is responsible for emitting the right event (e.g.

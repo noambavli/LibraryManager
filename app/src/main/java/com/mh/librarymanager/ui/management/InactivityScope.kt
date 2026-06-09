@@ -62,6 +62,7 @@ fun InactivityScope(
             nowTick = SystemClock.elapsedRealtime()
             val started = session.warningStartedAt
             if (started == null) {
+                if (session.isExternalTaskActive()) continue
                 val idleFor = SystemClock.elapsedRealtime() - session.lastInteractionAt()
                 if (idleFor >= ManagementSession.IDLE_BEFORE_WARNING_MS) {
                     session.showWarningNow()
@@ -80,7 +81,12 @@ fun InactivityScope(
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, session) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP && session.isAuthenticated) {
+            // Opening the system file picker (or another overlay activity) fires
+            // ON_STOP — that must not kick the user out of management.
+            if (event == Lifecycle.Event.ON_STOP &&
+                session.isAuthenticated &&
+                !session.isExternalTaskActive()
+            ) {
                 session.logout()
                 onAutoLogout()
             }

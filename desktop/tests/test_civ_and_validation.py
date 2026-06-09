@@ -21,6 +21,17 @@ def _book(i, name="n", writer="w", display="", **kw):
     return Book(**base)
 
 
+def test_export_filename_includes_version_and_source():
+    name = civ.export_filename(
+        "My Catalog.xlsx",
+        when=__import__("datetime").datetime(2026, 6, 9, 14, 30),
+    )
+    assert name.startswith(f"catalog-v{CATALOG_FORMAT_VERSION}-pc-")
+    assert name.endswith(".civ")
+    assert "My-Catalog" in name
+    assert "20260609-1430" in name
+
+
 def test_civ_roundtrip_preserves_books(tmp_path):
     books = [_book(1, "בראשית", "רש\"י", "12"), _book(2, "שמות", "ראב\"ע", "13")]
     path = os.path.join(tmp_path, "catalog.civ")
@@ -33,10 +44,12 @@ def test_civ_roundtrip_preserves_books(tmp_path):
 
 def test_civ_matches_tablet_json_shape(tmp_path):
     path = os.path.join(tmp_path, "catalog.civ")
-    civ.write_file(path, [_book(1)])
+    civ.write_file(path, [_book(1)], source_file="catalog.xlsx")
     with open(path, encoding="utf-8") as fh:
         root = json.load(fh)
     assert root["version"] == CATALOG_FORMAT_VERSION
+    assert root["meta"]["exportKind"] == "merge"
+    assert root["meta"]["sourceFile"] == "catalog.xlsx"
     keys = set(root["books"][0].keys())
     expected = {
         "id", "logicalBookId", "version", "isLatest", "name", "topics", "writer",

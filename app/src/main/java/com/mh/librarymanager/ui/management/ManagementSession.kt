@@ -35,6 +35,21 @@ class ManagementSession : ViewModel() {
 
     private var lastInteractionAt by mutableLongStateOf(SystemClock.elapsedRealtime())
 
+    /** While > 0, idle auto-logout is paused (e.g. system file picker is open). */
+    private var externalTaskDepth = 0
+
+    fun beginExternalTask() {
+        externalTaskDepth++
+        recordInteraction()
+    }
+
+    fun endExternalTask() {
+        externalTaskDepth = (externalTaskDepth - 1).coerceAtLeast(0)
+        recordInteraction()
+    }
+
+    fun isExternalTaskActive(): Boolean = externalTaskDepth > 0
+
     fun tryUnlock(code: String): Boolean {
         if (code == PASSWORD) {
             isAuthenticated = true

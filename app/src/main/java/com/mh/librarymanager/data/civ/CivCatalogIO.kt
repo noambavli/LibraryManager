@@ -17,13 +17,13 @@ import java.io.File
 import java.io.InputStream
 
 /**
- * Reads `.civ` catalogs produced by the desktop LibraryTool and replaces the
- * in-app catalog with their contents.
+ * Reads `.civ` catalogs produced by the desktop LibraryTool and **merges** new
+ * books into the in-app catalog (existing rows are kept; matching IDs are skipped).
  *
  * A `.civ` document is intentionally **byte-for-byte the same JSON shape** as
  * the tablet's own [CatalogStore] writes to `filesDir/catalog.json` — so the
  * desktop side never needs to know about anything beyond a single, stable
- * format, and the import here is a small JSON parse + a `replaceAll`.
+ * format, and the import here is a small JSON parse + a merge.
  *
  * Safety guarantees:
  *   * The current catalog is snapshotted to `filesDir/catalog-import-backup.civ`
@@ -58,13 +58,38 @@ class CivCatalogIO(
 
         /** Written after an adb-triggered import so the PC can read the outcome. */
         const val RESULT_PATH = "/sdcard/Download/catalog-import-result.txt"
+
+        private const val PREF_LAST_AT = "last_at"
+        private const val PREF_LAST_ADDED = "last_added"
+        private const val PREF_LAST_SKIPPED = "last_skipped"
+        private const val PREF_LAST_TOTAL = "last_total"
+        private const val PREF_LAST_TOOL = "last_tool"
+        private const val PREF_LAST_TOOL_VER = "last_tool_ver"
+        private const val PREF_LAST_SOURCE = "last_source"
     }
+
+    sealed interface PreviewOutcome {
+        data class Ready(val preview: ImportPreview) : PreviewOutcome
+        data class Failed(val result: ImportResult) : PreviewOutcome
+    }
+
+    data class ImportPreview(
+        val incomingCount: Int,
+        val addedCount: Int,
+        val skippedCount: Int,
+        val totalAfter: Int,
+        val currentCount: Int,
+        val meta: CivExportMeta?,
+    )
 
     sealed interface ImportResult {
         data class Ok(
-            val importedCount: Int,
+            val addedCount: Int,
+            val skippedCount: Int,
+            val totalAfter: Int,
             val previousCount: Int,
             val backupAvailable: Boolean,
+            val meta: CivExportMeta?,
         ) : ImportResult
 
         data class WrongVersion(val found: Int, val expected: Int) : ImportResult
@@ -76,7 +101,32 @@ class CivCatalogIO(
     }
 
     private val backupFile: File by lazy { File(context.filesDir, BACKUP_FILE_NAME) }
+    private val prefs by lazy {
+        context.getSharedPreferences("civ_import_history", Context.MODE_PRIVATE)
+    }
     private val mutex = Mutex()
+
+    fun lastImportSummary(): LastImportSummary = LastImportSummary(
+        at = prefs.getLong(PREF_LAST_AT, 0L),
+        added = prefs.getInt(PREF_LAST_ADDED, 0),
+        skipped = prefs.getInt(PREF_LAST_SKIPPED, 0),
+        totalAfter = prefs.getInt(PREF_LAST_TOTAL, 0),
+        tool = prefs.getString(PREF_LAST_TOOL, "").orEmpty(),
+        toolVersion = prefs.getString(PREF_LAST_TOOL_VER, "").orEmpty(),
+        sourceFile = prefs.getString(PREF_LAST_SOURCE, "").orEmpty(),
+    )
+
+    data class LastImportSummary(
+        val at: Long,
+        val added: Int,
+        val skipped: Int,
+        val totalAfter: Int,
+        val tool: String,
+        val toolVersion: String,
+        val sourceFile: String,
+    ) {
+        val hasData: Boolean get() = at > 0L
+    }
 
     /** Import from a path the PC pushed via adb (no SAF picker). */
     suspend fun importFromIncomingFile(): ImportResult = withContext(Dispatchers.IO) {
@@ -94,7 +144,8 @@ class CivCatalogIO(
 
     fun writeImportResult(result: ImportResult) {
         val line = when (result) {
-            is ImportResult.Ok -> "OK:${result.importedCount}"
+            is ImportResult.Ok ->
+                "OK:added=${result.addedCount}:skipped=${result.skippedCount}:total=${result.totalAfter}"
             is ImportResult.Empty -> "ERR:empty"
             is ImportResult.WrongVersion -> "ERR:version_old:${result.found}"
             is ImportResult.NewerVersion -> "ERR:version_new:${result.found}"
@@ -133,53 +184,124 @@ class CivCatalogIO(
         importFromText(text)
     }
 
+    suspend fun previewFromUri(uri: Uri): PreviewOutcome = withContext(Dispatchers.IO) {
+        when (val parsed = readAndParseUri(uri)) {
+            is ParseOutcome.Failure -> PreviewOutcome.Failed(parsed.result)
+            is ParseOutcome.Success ->
+                PreviewOutcome.Ready(buildPreview(parsed.books, parsed.meta))
+        }
+    }
+
     suspend fun importFromText(text: String): ImportResult = mutex.withLock {
         withContext(Dispatchers.IO) {
             val trimmed = text.trim()
             if (trimmed.isEmpty()) return@withContext ImportResult.Empty
 
-            val root = try {
-                JSONObject(trimmed)
-            } catch (_: Exception) {
-                return@withContext ImportResult.Invalid("Not a valid .civ file (JSON parse failed).")
-            }
-
-            val version = root.optInt("version", 0)
-            when {
-                version < CatalogStore.CATALOG_FORMAT_VERSION ->
-                    return@withContext ImportResult.WrongVersion(
-                        version, CatalogStore.CATALOG_FORMAT_VERSION,
-                    )
-                version > CatalogStore.CATALOG_FORMAT_VERSION ->
-                    return@withContext ImportResult.NewerVersion(
-                        version, CatalogStore.CATALOG_FORMAT_VERSION,
-                    )
-            }
-
-            val arr = root.optJSONArray("books")
-                ?: return@withContext ImportResult.Invalid("Missing 'books' array.")
-
-            val books = ArrayList<Book>(arr.length())
-            for (i in 0 until arr.length()) {
-                val o = arr.optJSONObject(i) ?: continue
-                o.toBook()?.let { books += it }
-            }
-
-            // Destructive section — any failure here MUST surface as a typed
-            // result so the UI never gets stuck on "Importing…".
-            try {
-                val previous = repository.snapshotForBackup()
-                writeBackup(previous)
-                repository.replaceAll(books)
-                ImportResult.Ok(
-                    importedCount = books.size,
-                    previousCount = previous.size,
-                    backupAvailable = true,
-                )
-            } catch (e: Exception) {
-                ImportResult.IoFailure(e.message ?: "Storage error while importing.")
+            when (val parsed = parseText(trimmed)) {
+                is ParseOutcome.Failure -> return@withContext parsed.result
+                is ParseOutcome.Success -> commitMerge(parsed.books, parsed.meta)
             }
         }
+    }
+
+    private sealed interface ParseOutcome {
+        data class Success(val books: List<Book>, val meta: CivExportMeta?) : ParseOutcome
+        data class Failure(val result: ImportResult) : ParseOutcome
+    }
+
+    private suspend fun readAndParseUri(uri: Uri): ParseOutcome = withContext(Dispatchers.IO) {
+        val resolver = context.contentResolver
+        val size = try {
+            resolver.openAssetFileDescriptor(uri, "r")?.use { it.length } ?: -1L
+        } catch (_: Exception) { -1L }
+        when {
+            size == 0L -> return@withContext ParseOutcome.Failure(ImportResult.Empty)
+            size > MAX_BYTES -> return@withContext ParseOutcome.Failure(ImportResult.TooLarge(size))
+        }
+        val text = try {
+            resolver.openInputStream(uri)?.use { readBoundedText(it) }
+        } catch (e: Exception) {
+            return@withContext ParseOutcome.Failure(
+                ImportResult.Invalid(e.message ?: "Could not open file"),
+            )
+        } ?: return@withContext ParseOutcome.Failure(ImportResult.Invalid("File could not be opened."))
+        parseText(text)
+    }
+
+    private fun parseText(text: String): ParseOutcome {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return ParseOutcome.Failure(ImportResult.Empty)
+        val root = try {
+            JSONObject(trimmed)
+        } catch (_: Exception) {
+            return ParseOutcome.Failure(ImportResult.Invalid("Not a valid .civ file (JSON parse failed)."))
+        }
+        val version = root.optInt("version", 0)
+        when {
+            version < CatalogStore.CATALOG_FORMAT_VERSION ->
+                return ParseOutcome.Failure(
+                    ImportResult.WrongVersion(version, CatalogStore.CATALOG_FORMAT_VERSION),
+                )
+            version > CatalogStore.CATALOG_FORMAT_VERSION ->
+                return ParseOutcome.Failure(
+                    ImportResult.NewerVersion(version, CatalogStore.CATALOG_FORMAT_VERSION),
+                )
+        }
+        val arr = root.optJSONArray("books")
+            ?: return ParseOutcome.Failure(ImportResult.Invalid("Missing 'books' array."))
+        val books = ArrayList<Book>(arr.length())
+        for (i in 0 until arr.length()) {
+            arr.optJSONObject(i)?.toBook()?.let { books += it }
+        }
+        val meta = CivExportMeta.fromJson(root.optJSONObject("meta"))
+        return ParseOutcome.Success(books, meta)
+    }
+
+    private suspend fun buildPreview(books: List<Book>, meta: CivExportMeta?): ImportPreview {
+        val merge = repository.previewMerge(books)
+        val current = merge.totalAfter - merge.added
+        return ImportPreview(
+            incomingCount = books.size,
+            addedCount = merge.added,
+            skippedCount = merge.skipped,
+            totalAfter = merge.totalAfter,
+            currentCount = current,
+            meta = meta,
+        )
+    }
+
+    private suspend fun commitMerge(books: List<Book>, meta: CivExportMeta?): ImportResult {
+        return try {
+            val previous = repository.snapshotForBackup()
+            writeBackup(previous)
+            val merge = repository.mergeImport(books)
+            recordImportHistory(merge, meta)
+            ImportResult.Ok(
+                addedCount = merge.added,
+                skippedCount = merge.skipped,
+                totalAfter = merge.totalAfter,
+                previousCount = previous.size,
+                backupAvailable = true,
+                meta = meta,
+            )
+        } catch (e: Exception) {
+            ImportResult.IoFailure(e.message ?: "Storage error while importing.")
+        }
+    }
+
+    private fun recordImportHistory(
+        merge: BookRepository.MergeImportResult,
+        meta: CivExportMeta?,
+    ) {
+        prefs.edit()
+            .putLong(PREF_LAST_AT, System.currentTimeMillis())
+            .putInt(PREF_LAST_ADDED, merge.added)
+            .putInt(PREF_LAST_SKIPPED, merge.skipped)
+            .putInt(PREF_LAST_TOTAL, merge.totalAfter)
+            .putString(PREF_LAST_TOOL, meta?.tool.orEmpty())
+            .putString(PREF_LAST_TOOL_VER, meta?.toolVersion.orEmpty())
+            .putString(PREF_LAST_SOURCE, meta?.sourceFile.orEmpty())
+            .apply()
     }
 
     /** True iff a one-tap undo of the most recent import is available. */

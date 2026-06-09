@@ -314,23 +314,34 @@ def _wait_for_result(adb: str, serial: str, timeout_sec: int = 45) -> str:
 
 
 def _parse_import_count(line: str) -> Optional[int]:
-    if line.startswith("OK:"):
-        try:
-            return int(line[3:])
-        except ValueError:
-            return None
-    return None
+    if not line.startswith("OK:"):
+        return None
+    body = line[3:]
+    # New: OK:added=5:skipped=2:total=120
+    if "added=" in body:
+        for part in body.split(":"):
+            if part.startswith("added="):
+                try:
+                    return int(part[6:])
+                except ValueError:
+                    return None
+        return None
+    # Legacy: OK:123
+    try:
+        return int(body)
+    except ValueError:
+        return None
 
 
-def write_temp_civ(serialize_fn, books) -> str:
+def write_temp_civ(write_fn, books, source_file: str = "") -> str:
     """Write books to a temp .civ file; caller deletes when done."""
     fd, path = tempfile.mkstemp(prefix="catalog-", suffix=".civ")
     os.close(fd)
-    serialize_fn(path, books)
+    write_fn(path, books, source_file)
     return path
 
 
-def send_books(serialize_fn, books) -> AdbSendResult:
+def send_books(write_fn, books, source_file: str = "") -> AdbSendResult:
     """High-level: find adb + device, write .civ, push, import, verify."""
     diag = diagnose()
     if not diag.adb_path:
@@ -345,7 +356,7 @@ def send_books(serialize_fn, books) -> AdbSendResult:
 
     device = diag.ready[0]
     adb = diag.adb_path
-    local = write_temp_civ(serialize_fn, books)
+    local = write_temp_civ(write_fn, books, source_file)
     try:
         result = push_and_import(adb, device.serial, local)
         result.device = device

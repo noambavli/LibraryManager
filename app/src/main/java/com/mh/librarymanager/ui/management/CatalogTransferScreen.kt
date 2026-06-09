@@ -1,5 +1,6 @@
 package com.mh.librarymanager.ui.management
 
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -36,47 +37,45 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
+import com.mh.librarymanager.data.civ.CivCatalogIO
+import com.mh.librarymanager.data.civ.CivExportMeta
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-/**
- * Management → "Import catalog from PC".
- *
- * The whole flow is intentionally minimal so it's hard to misuse:
- *   1. Big primary button → opens Android's Storage Access Framework picker
- *      filtered to .civ files (also visible if user goes broader).
- *   2. Confirm dialog states the current count and what the import will do.
- *   3. Progress + result shown inline. A backup is always taken first, so an
- *      "Undo last import" button restores the previous catalog with one tap.
- */
 @Composable
 fun CatalogTransferScreen(
     viewModel: CatalogTransferViewModel,
+    session: ManagementSession,
     onBack: () -> Unit,
     onLogout: () -> Unit,
 ) {
     val status by viewModel.status.collectAsStateWithLifecycle()
-    val hasBackup by viewModel.hasBackup.collectAsStateWithLifecycle()
-    val bookCount by viewModel.bookCount.collectAsStateWithLifecycle()
+    val dashboard by viewModel.dashboard.collectAsStateWithLifecycle()
+    val preview by viewModel.preview.collectAsStateWithLifecycle()
 
-    var pendingUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var pendingUri by remember { mutableStateOf<Uri?>(null) }
     var showUndoConfirm by remember { mutableStateOf(false) }
 
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
-    ) { uri: android.net.Uri? ->
-        if (uri != null) pendingUri = uri
+    ) { uri: Uri? ->
+        session.endExternalTask()
+        if (uri != null) {
+            pendingUri = uri
+            viewModel.loadPreview(uri)
+        }
     }
 
-    // We accept "any file" so the SAF picker always shows .civ files (which
-    // lack a registered MIME type). The actual format is validated as soon as
-    // we read it, so picking the wrong file just produces a clear error.
     val pickerMimes = remember { arrayOf("*/*") }
-
     val cs = MaterialTheme.colorScheme
-    val isImporting = status is CatalogTransferViewModel.Status.Importing
+    val isWorking = status is CatalogTransferViewModel.Status.Working
 
     Box(modifier = Modifier.fillMaxSize().background(cs.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -92,17 +91,63 @@ fun CatalogTransferScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 28.dp, vertical = 22.dp),
             ) {
-                StatusCard(bookCount = bookCount)
+                VersionBadge(formatVersion = viewModel.formatVersion)
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    InfoTile(
+                        modifier = Modifier.weight(1f),
+                        title = stringResource(R.string.catalog_transfer_tablet_title),
+                        value = stringResource(
+                            R.string.catalog_transfer_book_count,
+                            dashboard.bookCount,
+                        ),
+                        subtitle = stringResource(
+                            R.string.catalog_transfer_format_label,
+                            viewModel.formatVersion,
+                        ),
+                        accent = cs.primary,
+                    )
+                    InfoTile(
+                        modifier = Modifier.weight(1f),
+                        title = stringResource(R.string.catalog_transfer_pc_title),
+                        value = if (dashboard.lastImport.hasData) {
+                            stringResource(
+                                R.string.catalog_transfer_last_sync_added,
+                                dashboard.lastImport.added,
+                            )
+                        } else {
+                            stringResource(R.string.catalog_transfer_never_synced)
+                        },
+                        subtitle = lastSyncSubtitle(dashboard.lastImport),
+                        accent = cs.tertiary,
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                InstructionCard()
+                MergeExplainCard()
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                FileNamingCard(formatVersion = viewModel.formatVersion)
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                FlowStepsCard()
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
-                    enabled = !isImporting,
-                    onClick = { picker.launch(pickerMimes) },
+                    enabled = !isWorking,
+                    onClick = {
+                        session.beginExternalTask()
+                        picker.launch(pickerMimes)
+                    },
                     modifier = Modifier.fillMaxWidth().height(72.dp),
                 ) {
                     Text(
@@ -112,11 +157,10 @@ fun CatalogTransferScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                if (hasBackup) {
+                if (dashboard.hasBackup) {
+                    Spacer(modifier = Modifier.height(12.dp))
                     OutlinedButton(
-                        enabled = !isImporting,
+                        enabled = !isWorking,
                         onClick = { showUndoConfirm = true },
                         modifier = Modifier.fillMaxWidth().height(60.dp),
                     ) {
@@ -134,16 +178,22 @@ fun CatalogTransferScreen(
         }
     }
 
-    if (pendingUri != null && !isImporting) {
-        ImportConfirmDialog(
-            currentCount = bookCount,
-            onCancel = { pendingUri = null },
-            onConfirm = {
-                val uri = pendingUri
-                pendingUri = null
-                if (uri != null) viewModel.importFromUri(uri)
-            },
-        )
+    preview?.let { p ->
+        if (pendingUri != null && !isWorking) {
+            ImportConfirmDialog(
+                preview = p,
+                onCancel = {
+                    pendingUri = null
+                    viewModel.clearPreview()
+                },
+                onConfirm = {
+                    val uri = pendingUri
+                    pendingUri = null
+                    viewModel.clearPreview()
+                    if (uri != null) viewModel.importFromUri(uri)
+                },
+            )
+        }
     }
 
     if (showUndoConfirm) {
@@ -167,40 +217,110 @@ fun CatalogTransferScreen(
 }
 
 @Composable
-private fun StatusCard(bookCount: Int) {
+private fun VersionBadge(formatVersion: Int) {
     val cs = MaterialTheme.colorScheme
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        color = cs.secondaryContainer,
+        shape = RoundedCornerShape(999.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.catalog_transfer_badge, formatVersion),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = cs.onSecondaryContainer,
+        )
+    }
+}
+
+@Composable
+private fun InfoTile(
+    title: String,
+    value: String,
+    subtitle: String,
+    accent: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier,
+) {
+    val cs = MaterialTheme.colorScheme
+    Surface(
+        modifier = modifier,
         color = cs.surface,
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, cs.outlineVariant),
         shadowElevation = 2.dp,
     ) {
-        Row(
-            modifier = Modifier.padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(cs.primary.copy(alpha = 0.14f)),
-                contentAlignment = Alignment.Center,
+        Column(modifier = Modifier.padding(18.dp)) {
+            Text(title, style = MaterialTheme.typography.labelLarge, color = accent)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                value,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = cs.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MergeExplainCard() {
+    val cs = MaterialTheme.colorScheme
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = cs.primaryContainer.copy(alpha = 0.45f),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                text = stringResource(R.string.catalog_transfer_merge_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.catalog_transfer_merge_body),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
+    }
+}
+
+@Composable
+private fun FileNamingCard(formatVersion: Int) {
+    val cs = MaterialTheme.colorScheme
+    val example = stringResource(R.string.catalog_transfer_filename_example, formatVersion)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = cs.surfaceVariant,
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                text = stringResource(R.string.catalog_transfer_filename_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.catalog_transfer_filename_body),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Surface(
+                color = cs.surface,
+                shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(1.dp, cs.outlineVariant),
             ) {
-                Text("\u05E1\u05E4\u05E8", color = cs.primary, fontWeight = FontWeight.Bold)
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(R.string.catalog_transfer_current_status),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = cs.onSurfaceVariant,
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = stringResource(R.string.catalog_transfer_book_count, bookCount),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
+                    text = example,
+                    modifier = Modifier.padding(12.dp),
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 13.sp,
                 )
             }
         }
@@ -208,12 +328,13 @@ private fun StatusCard(bookCount: Int) {
 }
 
 @Composable
-private fun InstructionCard() {
+private fun FlowStepsCard() {
     val cs = MaterialTheme.colorScheme
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = cs.surfaceVariant,
+        color = cs.surface,
         shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, cs.outlineVariant),
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text(
@@ -259,7 +380,7 @@ private fun StatusBanner(
     val cs = MaterialTheme.colorScheme
     when (status) {
         CatalogTransferViewModel.Status.Idle -> Unit
-        CatalogTransferViewModel.Status.Importing -> {
+        CatalogTransferViewModel.Status.Working -> {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
@@ -281,8 +402,9 @@ private fun StatusBanner(
                 title = stringResource(R.string.catalog_transfer_done_title),
                 body = stringResource(
                     R.string.catalog_transfer_done_body,
-                    status.count,
-                    status.previousCount,
+                    status.added,
+                    status.skipped,
+                    status.totalAfter,
                 ),
                 onDismiss = onDismiss,
             )
@@ -338,7 +460,7 @@ private fun ResultBanner(
 
 @Composable
 private fun ImportConfirmDialog(
-    currentCount: Int,
+    preview: CivCatalogIO.ImportPreview,
     onCancel: () -> Unit,
     onConfirm: () -> Unit,
 ) {
@@ -346,8 +468,17 @@ private fun ImportConfirmDialog(
         onDismissRequest = onCancel,
         title = { Text(stringResource(R.string.catalog_transfer_confirm_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.catalog_transfer_confirm_body, currentCount))
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    stringResource(
+                        R.string.catalog_transfer_confirm_preview,
+                        preview.addedCount,
+                        preview.skippedCount,
+                        preview.currentCount,
+                        preview.totalAfter,
+                    ),
+                )
+                preview.meta?.let { MetaLine(it) }
                 Text(
                     text = stringResource(R.string.catalog_transfer_confirm_safety),
                     style = MaterialTheme.typography.bodyMedium,
@@ -363,4 +494,39 @@ private fun ImportConfirmDialog(
             TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
         },
     )
+}
+
+@Composable
+private fun MetaLine(meta: CivExportMeta) {
+    val cs = MaterialTheme.colorScheme
+    Surface(
+        color = cs.surfaceVariant,
+        shape = RoundedCornerShape(8.dp),
+    ) {
+        Text(
+            text = stringResource(
+                R.string.catalog_transfer_file_meta,
+                meta.displayLabel(),
+            ),
+            modifier = Modifier.padding(10.dp),
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+}
+
+@Composable
+private fun lastSyncSubtitle(last: CivCatalogIO.LastImportSummary): String {
+    if (!last.hasData) return stringResource(R.string.catalog_transfer_last_sync_none)
+    val whenText = formatWhen(last.at)
+    val source = last.sourceFile.takeIf { it.isNotBlank() }
+    return if (source != null) {
+        stringResource(R.string.catalog_transfer_last_sync_detail, whenText, source)
+    } else {
+        whenText
+    }
+}
+
+private fun formatWhen(ms: Long): String {
+    if (ms <= 0L) return ""
+    return SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date(ms))
 }

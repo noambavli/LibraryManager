@@ -25,7 +25,7 @@ from tkinter import filedialog, messagebox, ttk
 from typing import Callable, Optional
 
 from . import __version__, backups, transfer
-from . import adb_transfer
+from . import adb_transfer, civ
 from .session import AbortError, AbortFlag, Session
 from .validation import ERROR, INFO, WARNING
 
@@ -367,7 +367,7 @@ class LibraryToolApp:
         path = filedialog.asksaveasfilename(
             title="Save tablet catalog",
             defaultextension=".civ",
-            initialfile="catalog.civ",
+            initialfile=self.session.suggested_export_filename(),
             filetypes=[("Tablet catalog", "*.civ")],
         )
         if not path:
@@ -408,17 +408,21 @@ class LibraryToolApp:
         def done(result):
             count = result.imported_count
             if count is not None:
-                msg = f"Done. {count} books are now on the tablet."
+                msg = (
+                    f"Done. {count} new books were merged onto the tablet "
+                    "(existing books were kept)."
+                )
             else:
                 msg = (
-                    "Catalog sent and import triggered.\n"
-                    "If the tablet app is up to date, the books are loaded."
+                    "Catalog sent and merge import triggered.\n"
+                    "If the tablet app is up to date, new books are added."
                 )
             self.footer_var.set(msg)
             messagebox.showinfo(
                 "Tablet updated",
                 f"{msg}\n\n"
                 f"Device: {result.device.model} ({result.device.serial})\n"
+                f"File: {civ.export_filename(self.session.source_path or '')}\n"
                 f"SHA-256: {result.sha256[:16]}…\n\n"
                 "You can unplug the USB cable.",
             )

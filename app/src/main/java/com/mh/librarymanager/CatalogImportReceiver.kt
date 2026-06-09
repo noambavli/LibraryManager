@@ -32,7 +32,11 @@ class CatalogImportReceiver : BroadcastReceiver() {
                 io.writeImportResult(result)
                 when (result) {
                     is com.mh.librarymanager.data.civ.CivCatalogIO.ImportResult.Ok ->
-                        Log.i(TAG, "Imported ${result.importedCount} books")
+                        Log.i(
+                            TAG,
+                            "Merged catalog: +${result.addedCount} added, " +
+                                "${result.skippedCount} skipped, total ${result.totalAfter}",
+                        )
                     else ->
                         Log.e(TAG, "Import failed: $result")
                 }

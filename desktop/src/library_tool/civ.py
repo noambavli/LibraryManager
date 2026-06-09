@@ -16,14 +16,19 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import tempfile
+import time
 from dataclasses import dataclass
-from typing import List
+from datetime import datetime
+from typing import List, Optional
 
-from . import CATALOG_FORMAT_VERSION
+from . import APP_NAME, CATALOG_FORMAT_VERSION, __version__
 from .model import Book
 
 CIV_EXTENSION = ".civ"
+EXPORT_KIND_MERGE = "merge"
+ORIGIN_PC = "pc"
 
 
 @dataclass
@@ -36,11 +41,37 @@ class CivDocument:
         return len(self.books)
 
 
-def serialize(books: List[Book]) -> str:
+def build_meta(source_file: str = "") -> dict:
+    """Metadata the tablet shows in its sync dashboard."""
+    return {
+        "tool": APP_NAME,
+        "toolVersion": __version__,
+        "exportedAt": int(time.time() * 1000),
+        "sourceFile": os.path.basename(source_file) if source_file else "",
+        "exportKind": EXPORT_KIND_MERGE,
+        "origin": ORIGIN_PC,
+    }
+
+
+def export_filename(source_path: str = "", when: Optional[datetime] = None) -> str:
+    """Versioned, human-readable filename for saved .civ exports."""
+    when = when or datetime.now()
+    ts = when.strftime("%Y%m%d-%H%M")
+    stem = ""
+    if source_path:
+        raw = os.path.splitext(os.path.basename(source_path))[0]
+        stem = re.sub(r"[^\w\-]+", "-", raw).strip("-")[:24]
+    if stem:
+        return f"catalog-v{CATALOG_FORMAT_VERSION}-pc-{stem}-{ts}{CIV_EXTENSION}"
+    return f"catalog-v{CATALOG_FORMAT_VERSION}-pc-{ts}{CIV_EXTENSION}"
+
+
+def serialize(books: List[Book], source_file: str = "") -> str:
     """Produce the JSON text the tablet expects. ``ensure_ascii=False`` keeps
     Hebrew readable on disk; the tablet reads UTF-8."""
     root = {
         "version": CATALOG_FORMAT_VERSION,
+        "meta": build_meta(source_file),
         "books": [b.to_json() for b in books],
     }
     return json.dumps(root, ensure_ascii=False, separators=(",", ":"))
@@ -74,7 +105,7 @@ def read_file(path: str) -> CivDocument:
         return parse(fh.read())
 
 
-def write_file(path: str, books: List[Book]) -> str:
+def write_file(path: str, books: List[Book], source_file: str = "") -> str:
     """Write ``books`` to ``path`` and return the SHA-256 of the bytes written.
 
     Preferred path is atomic: write to a temp file in the same directory, fsync,
@@ -84,7 +115,7 @@ def write_file(path: str, books: List[Book]) -> str:
     caller (export/backup) verifies the result by reading it back and comparing
     this hash, so a truncated or interrupted write is always detected.
     """
-    text = serialize(books)
+    text = serialize(books, source_file=source_file)
     data = text.encode("utf-8")
     directory = os.path.dirname(os.path.abspath(path)) or "."
     os.makedirs(directory, exist_ok=True)

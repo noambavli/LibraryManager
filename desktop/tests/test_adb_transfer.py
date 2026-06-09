@@ -22,6 +22,13 @@ def test_parse_devices_output_unauthorized():
     assert "authorize_tablet.bat" in msg
 
 
+def test_parse_import_count_merge_format():
+    from library_tool.adb_transfer import _parse_import_count
+
+    assert _parse_import_count("OK:added=5:skipped=2:total=120") == 5
+    assert _parse_import_count("OK:42") == 42
+
+
 def test_parse_devices_output_empty():
     out = "List of devices attached\n"
     parsed = parse_devices_output(out)

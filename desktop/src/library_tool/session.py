@@ -194,7 +194,10 @@ class Session:
 
     def save_civ(self, path: str) -> str:
         """Save the working catalog to a local .civ file (no transfer)."""
-        return civ.write_file(path, self.books)
+        return civ.write_file(path, self.books, source_file=self.source_path or "")
+
+    def suggested_export_filename(self) -> str:
+        return civ.export_filename(self.source_path or "")
 
     def send_to_tablet(
         self,
@@ -206,7 +209,11 @@ class Session:
         progress("Looking for tablet (adb)…", 0.1)
         abort.check()
         progress("Sending catalog to tablet…", 0.45)
-        result = adb_transfer.send_books(civ.write_file, self.books)
+        result = adb_transfer.send_books(
+            civ.write_file,
+            self.books,
+            source_file=self.source_path or "",
+        )
         abort.check()
         progress("Tablet import complete.", 1.0)
         return result
