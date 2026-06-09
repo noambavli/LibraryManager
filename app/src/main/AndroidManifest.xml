@@ -70,6 +70,15 @@
             </intent-filter>
         </receiver>
 
+        <!-- PC LibraryTool: adb push catalog.civ + broadcast to import silently. -->
+        <receiver
+            android:name=".CatalogImportReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.mh.librarymanager.IMPORT_CATALOG" />
+            </intent-filter>
+        </receiver>
+
         <receiver
             android:name=".InstallResultReceiver"
             android:exported="false" />

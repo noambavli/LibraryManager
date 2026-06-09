@@ -110,9 +110,9 @@
     <string name="catalog_transfer_current_status">סטטוס נוכחי</string>
     <string name="catalog_transfer_book_count">%1$d ספרים בקטלוג</string>
     <string name="catalog_transfer_how_title">איך מייבאים?</string>
-    <string name="catalog_transfer_step1">חברו את הטאבלט למחשב בכבל USB‑C ובחרו בטאבלט את האפשרות \"העברת קבצים\".</string>
-    <string name="catalog_transfer_step2">במחשב, פיתחו את LibraryTool וייצאו את הקובץ ‎catalog.civ אל תיקיית ההורדות (Download) של הטאבלט.</string>
-    <string name="catalog_transfer_step3">חזרו לכאן ולחצו על \"בחירת קובץ ‎.civ\", נווטו ל‑Download ובחרו את הקובץ.</string>
+    <string name="catalog_transfer_step1">חברו את הטאבלט למחשב בכבל USB‑C.</string>
+    <string name="catalog_transfer_step2">במחשב, פתחו את LibraryTool, ייבאו את קובץ האקסל, ולחצו \"שליחה לטאבלט (אוטומטי)\".</string>
+    <string name="catalog_transfer_step3">הטאבלט יטען את הספרים לבד. אם צריך — אפשר גם לייבא ידנית מכאן מקובץ ‎.civ.</string>
     <string name="catalog_transfer_pick_file">בחירת קובץ ‎.civ</string>
     <string name="catalog_transfer_undo">שחזור הקטלוג הקודם</string>
     <string name="catalog_transfer_undo_body">השחזור יחזיר את הקטלוג שהיה לפני הייבוא האחרון. להמשיך?</string>

@@ -35,22 +35,35 @@ jobs:
       - name: Build LibraryTool.exe
         run: pyinstaller --noconfirm librarytool.spec
 
+      - name: Download Android platform-tools (adb)
+        shell: pwsh
+        run: |
+          $url = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
+          Invoke-WebRequest -Uri $url -OutFile platform-tools.zip
+          Expand-Archive -Path platform-tools.zip -DestinationPath .
+          New-Item -ItemType Directory -Force -Path package | Out-Null
+          Copy-Item dist/LibraryTool.exe package/
+          New-Item -ItemType Directory -Force -Path package/adb | Out-Null
+          Copy-Item platform-tools/adb.exe package/adb/
+          Copy-Item platform-tools/AdbWinApi.dll package/adb/
+          Copy-Item platform-tools/AdbWinUsbApi.dll package/adb/
+          Copy-Item CUSTOMER_GUIDE_WINDOWS.txt package/
+          Copy-Item README.md package/
+          Write-Host "Package contents:"
+          Get-ChildItem -Recurse package/
+
       - name: Verify build output
         shell: pwsh
         run: |
-          Write-Host "Contents of dist/:"
-          Get-ChildItem -Recurse dist/
-          if (-not (Test-Path "dist/LibraryTool.exe")) {
-            Write-Error "dist/LibraryTool.exe was not created"
-            exit 1
-          }
-          $size = (Get-Item "dist/LibraryTool.exe").Length
+          if (-not (Test-Path "package/LibraryTool.exe")) { throw "Missing LibraryTool.exe" }
+          if (-not (Test-Path "package/adb/adb.exe")) { throw "Missing adb.exe" }
+          $size = (Get-Item "package/LibraryTool.exe").Length
           Write-Host "LibraryTool.exe size: $size bytes"
 
-      - name: Upload executable
+      - name: Upload package
         uses: actions/upload-artifact@v4
         with:
           name: LibraryTool-windows
-          path: desktop/dist/LibraryTool.exe
+          path: desktop/package/
           retention-days: 90
           if-no-files-found: error

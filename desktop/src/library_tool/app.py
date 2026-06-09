@@ -105,8 +105,8 @@ class LibraryToolApp:
         self.btn_load_civ.pack(side="left", padx=(8, 0))
 
         self.btn_export = ttk.Button(
-            row1, text="2 · Export to tablet (USB-C)…", style="Accent.TButton",
-            command=self.on_export, state="disabled",
+            row1, text="2 · Send to tablet (automatic)…", style="Accent.TButton",
+            command=self.on_send_to_tablet, state="disabled",
         )
         self.btn_export.pack(side="right")
 
@@ -379,64 +379,60 @@ class LibraryToolApp:
         self.footer_var.set(f"Saved {len(self.session.books)} books → {path}")
         messagebox.showinfo("Saved", f"Saved {len(self.session.books)} books to:\n{path}")
 
-    def on_export(self) -> None:
+    def on_send_to_tablet(self) -> None:
         report = self.session.validate_current()
         self._show_report(report)
         if report.has_errors:
             if not messagebox.askyesno(
-                "Errors present — export anyway?",
+                "Errors present — send anyway?",
                 f"There are {len(report.errors)} ERROR-level problems "
-                "(see the review table). Exporting them to the tablet may cause "
-                "wrong behaviour.\n\nExport anyway?",
+                "(see the review table). Sending them to the tablet may cause "
+                "wrong behaviour.\n\nSend anyway?",
             ):
                 return
 
-        dest = self._choose_destination()
-        if not dest:
-            return
-
         n = len(self.session.books)
-        target_path = os.path.join(dest, "catalog.civ")
         if not messagebox.askyesno(
-            "Confirm export",
-            f"Write {n} books to the tablet as:\n{target_path}\n\n"
-            "A backup is taken first and the written file is verified. Continue?",
+            "Send to tablet",
+            f"Connect the tablet with USB-C, then click Yes.\n\n"
+            f"This will automatically send {n} books to the tablet and "
+            "import them — no dragging files, no menus on the tablet.\n\n"
+            "Continue?",
         ):
             return
 
         def work(progress, abort):
-            return self.session.export(dest, "catalog.civ", progress, abort)
+            return self.session.send_to_tablet(progress, abort)
 
-        def done(result: transfer.ExportResult):
-            self.footer_var.set(f"Exported & verified {result.book_count} books → {result.path}")
-            # Open the containing folder so the user can drag the file straight
-            # into the tablet's Download folder in the file manager (the reliable
-            # way to reach an MTP device on Windows).
-            self._open_in_file_manager(os.path.dirname(result.path))
+        def done(result):
+            count = result.imported_count
+            if count is not None:
+                msg = f"Done. {count} books are now on the tablet."
+            else:
+                msg = (
+                    "Catalog sent and import triggered.\n"
+                    "If the tablet app is up to date, the books are loaded."
+                )
+            self.footer_var.set(msg)
             messagebox.showinfo(
-                "Catalog file ready — 2 steps left",
-                f"Saved & verified {result.book_count} books:\n"
-                f"   {result.path}\n\n"
-                "STEP 1 — copy it onto the tablet:\n"
-                "  • A folder just opened showing catalog.civ.\n"
-                "  • Open the tablet in File Explorer (This PC → your tablet →\n"
-                "    Internal storage → Download).\n"
-                "  • Drag catalog.civ into that Download folder.\n\n"
-                "STEP 2 — import it on the tablet:\n"
-                "  • Open the LibraryManager app\n"
-                "  • Management (ניהול) → enter password\n"
-                "  • “ייבוא קטלוג מהמחשב” → pick catalog.civ from Download\n"
-                "  • Confirm (a backup is taken first, so undo is one tap).",
+                "Tablet updated",
+                f"{msg}\n\n"
+                f"Device: {result.device.model} ({result.device.serial})\n"
+                f"SHA-256: {result.sha256[:16]}…\n\n"
+                "You can unplug the USB cable.",
             )
 
         def error(exc):
             messagebox.showerror(
-                "Export failed",
-                f"{exc}\n\nThe tablet did NOT receive a valid catalog. "
-                "Check the USB-C connection and try again.",
+                "Could not send to tablet",
+                f"{exc}\n\n"
+                "Checklist:\n"
+                "  • Tablet plugged in with USB-C\n"
+                "  • Tablet was set up as device owner (kiosk)\n"
+                "  • The download zip includes an adb\\ folder next to LibraryTool.exe",
             )
 
-        self._run_worker(work, done, on_error=error, progress_label="Exporting…")
+        self._run_worker(work, done, on_error=error, progress_label="Sending to tablet…")
 
     def _choose_destination(self) -> Optional[str]:
         dests = transfer.detect_destinations()

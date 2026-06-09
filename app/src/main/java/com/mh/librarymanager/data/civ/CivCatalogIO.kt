@@ -49,6 +49,15 @@ class CivCatalogIO(
         const val MAX_BYTES: Long = 64L * 1024L * 1024L
 
         const val BACKUP_FILE_NAME = "catalog-import-backup.civ"
+
+        /** Where the PC tool (adb push) drops the catalog. First readable wins. */
+        val INCOMING_PATHS = listOf(
+            "/sdcard/Download/catalog.civ",
+            "/data/local/tmp/catalog.civ",
+        )
+
+        /** Written after an adb-triggered import so the PC can read the outcome. */
+        const val RESULT_PATH = "/sdcard/Download/catalog-import-result.txt"
     }
 
     sealed interface ImportResult {
@@ -68,6 +77,37 @@ class CivCatalogIO(
 
     private val backupFile: File by lazy { File(context.filesDir, BACKUP_FILE_NAME) }
     private val mutex = Mutex()
+
+    /** Import from a path the PC pushed via adb (no SAF picker). */
+    suspend fun importFromIncomingFile(): ImportResult = withContext(Dispatchers.IO) {
+        val file = INCOMING_PATHS.map { File(it) }.firstOrNull { it.isFile && it.canRead() }
+            ?: return@withContext ImportResult.Invalid(
+                "No catalog.civ found. Expected one of: ${INCOMING_PATHS.joinToString()}",
+            )
+        val text = try {
+            file.readText(Charsets.UTF_8)
+        } catch (e: Exception) {
+            return@withContext ImportResult.Invalid(e.message ?: "Could not read file")
+        }
+        importFromText(text)
+    }
+
+    fun writeImportResult(result: ImportResult) {
+        val line = when (result) {
+            is ImportResult.Ok -> "OK:${result.importedCount}"
+            is ImportResult.Empty -> "ERR:empty"
+            is ImportResult.WrongVersion -> "ERR:version_old:${result.found}"
+            is ImportResult.NewerVersion -> "ERR:version_new:${result.found}"
+            is ImportResult.Invalid -> "ERR:${result.reason}"
+            is ImportResult.TooLarge -> "ERR:too_large"
+            is ImportResult.IoFailure -> "ERR:${result.reason}"
+        }
+        try {
+            File(RESULT_PATH).writeText(line, Charsets.UTF_8)
+        } catch (_: Exception) {
+            // Best effort — the PC can still assume success if push succeeded.
+        }
+    }
 
     suspend fun importFromUri(uri: Uri): ImportResult = withContext(Dispatchers.IO) {
         val resolver = context.contentResolver

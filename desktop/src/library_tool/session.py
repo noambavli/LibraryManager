@@ -21,7 +21,7 @@ import threading
 from dataclasses import dataclass, field
 from typing import Callable, List, Optional
 
-from . import backups, civ, transfer, validation
+from . import adb_transfer, backups, civ, transfer, validation
 from .converter import ConvertResult, convert_rows
 from .model import Book
 from .xlsx_reader import read_first_sheet
@@ -195,3 +195,18 @@ class Session:
     def save_civ(self, path: str) -> str:
         """Save the working catalog to a local .civ file (no transfer)."""
         return civ.write_file(path, self.books)
+
+    def send_to_tablet(
+        self,
+        progress: ProgressFn = _noop_progress,
+        abort: Optional[AbortFlag] = None,
+    ) -> adb_transfer.AdbSendResult:
+        """Push catalog.civ to the tablet via adb and trigger silent import."""
+        abort = abort or AbortFlag()
+        progress("Looking for tablet (adb)…", 0.1)
+        abort.check()
+        progress("Sending catalog to tablet…", 0.45)
+        result = adb_transfer.send_books(civ.write_file, self.books)
+        abort.check()
+        progress("Tablet import complete.", 1.0)
+        return result

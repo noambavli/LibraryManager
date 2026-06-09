@@ -1,68 +1,48 @@
 ============================================================
-  LibraryTool — How to update the tablet's book catalog
-  (Windows)
+  LibraryTool — Update the tablet catalog (Windows)
+  AUTOMATIC — plug in USB, click one button
 ============================================================
 
-WHAT YOU NEED
-  • The Windows computer
-  • The tablet + its USB-C cable
-  • The LibraryTool program (LibraryTool.exe) from the USB stick
-  • Your book list in Excel (.xlsx)
+WHAT'S ON THE USB STICK
+  LibraryTool.exe          the program
+  adb\adb.exe              talks to the tablet (do not delete)
+  CUSTOMER_GUIDE_WINDOWS.txt   this file
+
+ONE-TIME SETUP (your technician — not the daily user)
+  Each tablet must be provisioned as "device owner" once:
+    adb shell dpm set-device-owner com.mh.librarymanager/.KioskDeviceAdminReceiver
+  After that, USB debugging stays on automatically.
 
 ------------------------------------------------------------
-ONE-TIME: copy the program off the USB stick
+DAILY USE (3 clicks)
 ------------------------------------------------------------
-  1. Plug in the USB stick.
-  2. Copy "LibraryTool.exe" to the Desktop (optional, but tidy).
-  3. Double-click LibraryTool.exe to open it.
-     (If Windows shows a blue "Windows protected your PC" box,
-      click "More info" -> "Run anyway". This is normal for new
-      programs that aren't from the Microsoft Store.)
+  1. Plug tablet into PC with USB-C cable.
+     (No menu to pick on the tablet — ignore "charge only" if it appears.)
+
+  2. Double-click LibraryTool.exe
+     → "1 · Import catalog (.xlsx)…"  → pick your Excel file
+     → check the Review list (fix Excel if there are red errors)
+
+  3. Click "2 · Send to tablet (automatic)…" → Yes
+     → Wait until "Tablet updated" appears.
+     → Unplug. Done.
+
+The program sends the books and loads them on the tablet by itself.
+Staff do NOT drag files and do NOT open menus on the tablet.
 
 ------------------------------------------------------------
-STEP 1 — Load your Excel file
+IF IT SAYS "No tablet detected"
 ------------------------------------------------------------
-  1. In LibraryTool, click "1 - Import catalog (.xlsx)...".
-  2. Choose your Excel file.
-  3. Look at the "Review" list:
-        • RED  = errors to fix in Excel (then import again)
-        • ORANGE = warnings (duplicates etc.) - check them
-  4. When it looks right, continue.
+  • Unplug and replug the USB cable
+  • Try another USB port on the PC
+  • Make sure adb\adb.exe is in the same folder as LibraryTool.exe
+  • Ask your technician to re-run device-owner setup on the tablet
 
 ------------------------------------------------------------
-STEP 2 — Save the tablet file
+EXCEL FORMAT
 ------------------------------------------------------------
-  1. Click "2 - Export to tablet (USB-C)...".
-  2. Click "Save to Desktop".
-  3. LibraryTool writes "catalog.civ" and CHECKS it is correct,
-     then opens the folder so you can see it.
+  First row = headers: שם הספר, המחבר, מספר, אות, צבע, קטגוריה,
+  תת קטגוריה, ענינים, הערות
+  (English names like name, author, number also work.)
 
-------------------------------------------------------------
-STEP 3 — Copy the file onto the tablet
-------------------------------------------------------------
-  1. Connect the tablet to the computer with the USB-C cable.
-  2. On the TABLET, when it asks about USB, choose
-     "File transfer" (also called "Transferring files" / MTP).
-        (Swipe down from the top of the tablet to find this if
-         you don't see it.)
-  3. On the computer, open File Explorer -> "This PC".
-     The tablet appears there (e.g. "SM-T380").
-  4. Open:  tablet -> Internal storage -> Download
-  5. Drag "catalog.civ" from the Desktop into that Download folder.
-
-------------------------------------------------------------
-STEP 4 — Import on the tablet
-------------------------------------------------------------
-  1. On the tablet, open the library app.
-  2. Tap "ניהול" (Management) and enter the password.
-  3. Tap "ייבוא קטלוג מהמחשב" (Import catalog from PC).
-  4. Tap "בחירת קובץ .civ", then choose:
-        Download -> catalog.civ
-  5. Confirm. You will see how many books were loaded.
-
-  Made a mistake? Tap "שחזור הקטלוג הקודם" (Restore previous
-  catalog) to undo instantly.
-
-------------------------------------------------------------
-That's it. You can now unplug the tablet.
 ============================================================

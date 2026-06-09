@@ -84,6 +84,8 @@ object KioskPolicyManager {
                 )
             }
 
+            UsbMaintenance.applyUsbDefaults(context)
+
             Log.i(TAG, "Kiosk policies applied")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to apply kiosk policies", e)
