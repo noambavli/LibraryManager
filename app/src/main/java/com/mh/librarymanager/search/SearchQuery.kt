@@ -15,6 +15,8 @@ data class SearchQuery(
     val color: String = "",
     val category: String = "",
     val subcategory: String = "",
+    val displayNumber: String = "",
+    val bookNumber: String = "",
     val notes: String = "",
 ) {
     val isEmpty: Boolean
@@ -26,5 +28,7 @@ data class SearchQuery(
             color.isBlank() &&
             category.isBlank() &&
             subcategory.isBlank() &&
+            displayNumber.isBlank() &&
+            bookNumber.isBlank() &&
             notes.isBlank()
 }

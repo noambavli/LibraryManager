@@ -30,7 +30,8 @@ object HebrewText {
             val c = raw.lowercaseChar()
             val code = c.code
 
-            if (code in 0x0591..0x05C7) continue
+            // U+05BE (maqaf ־) lives inside the nikud block but is word punctuation.
+            if (code in 0x0591..0x05C7 && code != 0x05BE) continue
             if (code in 0x200E..0x200F) continue
             if (code == 0x05F3 || code == 0x05F4) continue
             if (c == '\'' || c == '"' || c == '’' || c == '‘' || c == '“' || c == '”') continue
@@ -44,7 +45,7 @@ object HebrewText {
             if (isHebrew || isDigit || isAsciiLetter) {
                 out.append(folded)
                 lastWasSpace = false
-            } else if (folded.isWhitespace() || folded == '-' || folded == '.' || folded == ',' ||
+            } else if (folded.isWhitespace() || folded == '-' || code == 0x05BE || folded == '.' || folded == ',' ||
                 folded == '(' || folded == ')' || folded == '[' || folded == ']' ||
                 folded == '/' || folded == '\\' || folded == ':' || folded == ';' ||
                 folded == '!' || folded == '?'
@@ -64,5 +65,25 @@ object HebrewText {
         val n = normalize(input)
         if (n.isEmpty()) return emptyList()
         return n.split(' ').filter { it.isNotEmpty() }
+    }
+
+    /**
+     * Canonical form for shelf/system numbers. Pure digits strip leading zeros
+     * (`05` → `5`); everything else goes through [normalize].
+     */
+    fun normalizeNumberKey(value: String?): String {
+        val trimmed = value?.trim().orEmpty()
+        if (trimmed.isEmpty()) return ""
+        if (trimmed.all { it.isDigit() }) {
+            val stripped = trimmed.trimStart('0')
+            return stripped.ifEmpty { "0" }
+        }
+        return normalize(trimmed)
+    }
+
+    /** Single token for a dedicated number search field. */
+    fun numberTokens(input: String?): List<String> {
+        val key = normalizeNumberKey(input)
+        return if (key.isEmpty()) emptyList() else listOf(key)
     }
 }

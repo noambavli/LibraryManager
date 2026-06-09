@@ -52,6 +52,14 @@ def test_convert_skips_blank_rows():
     assert result.skipped == 2
 
 
+def test_convert_maqaf_in_subcategory_header():
+    header = ["שם הספר", "תת־קטגוריה"]
+    rows = [header, ["ספר", "חומש"]]
+    result = convert_rows(rows, now_ms=1)
+    assert result.imported == 1
+    assert result.books[0].subcategories == ["חומש"]
+
+
 def test_convert_nikud_and_final_letters_in_header():
     # Header with nikud and a final letter variant should still match aliases.
     header = ["שֵׁם הספר", "עניינים"]

@@ -113,37 +113,52 @@ class CatalogStore(private val context: Context) {
     private fun readBooks(file: File): List<Book> {
         val text = file.readText(Charsets.UTF_8)
         if (text.isBlank()) return emptyList()
-        val root = JSONObject(text)
-        if (root.optInt("version", 0) < CATALOG_FORMAT_VERSION) return emptyList()
+        val root = try {
+            JSONObject(text)
+        } catch (_: Exception) {
+            return emptyList()
+        }
+        val version = root.optInt("version", 0)
+        if (version != CATALOG_FORMAT_VERSION) return emptyList()
         val arr = root.optJSONArray("books") ?: return emptyList()
         val result = ArrayList<Book>(arr.length())
         for (i in 0 until arr.length()) {
-            val o = arr.getJSONObject(i)
-            result += Book(
-                id = o.getString("id"),
-                logicalBookId = o.optString("logicalBookId", o.getString("id")),
-                version = o.optInt("version", 1),
-                isLatest = o.optBoolean("isLatest", true),
-                name = o.optString("name"),
-                topics = o.optString("topics"),
-                writer = o.optString("writer"),
-                bookNumber = o.optString("bookNumber"),
-                displayNumber = o.optString("displayNumber"),
-                letter = o.optString("letter"),
-                color = o.optString("color"),
-                category = o.optString("category"),
-                subcategories = o.optJSONArray("subcategories")?.toStringList().orEmpty(),
-                notes = o.optString("notes"),
-                place = BookPlace.fromStored(o.optString("place")),
-                state = BookState.fromStored(o.optString("state")),
-                parentBookId = o.optString("parentBookId").takeIf { it.isNotBlank() },
-                relations = o.optJSONArray("relations")?.toStringList().orEmpty(),
-                createdAt = o.optLong("createdAt"),
-                updatedAt = o.optLong("updatedAt"),
-            )
+            val o = arr.optJSONObject(i) ?: continue
+            val book = o.toBook() ?: continue
+            result += book
         }
         return result
     }
+
+    private fun JSONObject.toBook(): Book? {
+        val id = safeString("id").takeIf { it.isNotBlank() } ?: return null
+        val parent = safeString("parentBookId").takeIf { it.isNotBlank() }
+        return Book(
+            id = id,
+            logicalBookId = safeString("logicalBookId").ifBlank { id },
+            version = optInt("version", 1),
+            isLatest = optBoolean("isLatest", true),
+            name = safeString("name"),
+            topics = safeString("topics"),
+            writer = safeString("writer"),
+            bookNumber = safeString("bookNumber"),
+            displayNumber = safeString("displayNumber"),
+            letter = safeString("letter"),
+            color = safeString("color"),
+            category = safeString("category"),
+            subcategories = optJSONArray("subcategories").toStringList(),
+            notes = safeString("notes"),
+            place = BookPlace.fromStored(safeString("place")),
+            state = BookState.fromStored(safeString("state")),
+            parentBookId = parent,
+            relations = optJSONArray("relations").toStringList(),
+            createdAt = optLong("createdAt"),
+            updatedAt = optLong("updatedAt"),
+        )
+    }
+
+    private fun JSONObject.safeString(key: String): String =
+        if (isNull(key)) "" else optString(key, "")
 
     private fun writeBooks(target: File, books: List<Book>) {
         val arr = JSONArray()
@@ -172,7 +187,7 @@ class CatalogStore(private val context: Context) {
             arr.put(o)
         }
         val root = JSONObject().put("version", CATALOG_FORMAT_VERSION).put("books", arr)
-        atomicWrite(target, root.toString())
+        atomicWriteText(target, root.toString())
     }
 
     private fun readPalette(file: File): List<CustomColor> {
@@ -203,19 +218,15 @@ class CatalogStore(private val context: Context) {
             arr.put(o)
         }
         val root = JSONObject().put("version", PALETTE_FORMAT_VERSION).put("colors", arr)
-        atomicWrite(target, root.toString())
+        atomicWriteText(target, root.toString())
     }
 
-    private fun atomicWrite(target: File, content: String) {
-        val tmp = File(target.parentFile, target.name + ".tmp")
-        tmp.writeText(content, Charsets.UTF_8)
-        if (target.exists()) target.delete()
-        tmp.renameTo(target)
-    }
-
-    private fun JSONArray.toStringList(): List<String> {
+    private fun JSONArray?.toStringList(): List<String> {
+        if (this == null) return emptyList()
         val out = ArrayList<String>(length())
-        for (i in 0 until length()) out += getString(i)
+        for (i in 0 until length()) {
+            if (!isNull(i)) out += optString(i, "")
+        }
         return out
     }
 }

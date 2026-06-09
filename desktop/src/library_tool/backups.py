@@ -87,7 +87,7 @@ def create_backup(books: List, kind: str, source: str = "") -> BackupEntry:
         target = os.path.join(backups_dir(), f"{stamp}-{kind}-{n}{civ.CIV_EXTENSION}")
         n += 1
 
-    civ.write_file(target, books)
+    civ.write_file(target, books, consume_counter=False)
     meta = {
         "timestamp": ts,
         "kind": kind,
