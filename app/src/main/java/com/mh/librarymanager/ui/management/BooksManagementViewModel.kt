@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mh.librarymanager.LibraryApp
 import com.mh.librarymanager.domain.Book
+import com.mh.librarymanager.domain.BookOrderIssue
 import com.mh.librarymanager.domain.BookOrderIssues
 import com.mh.librarymanager.domain.CustomColor
 import com.mh.librarymanager.domain.OutOfOrderBook
@@ -75,6 +76,9 @@ class BooksManagementViewModel(app: Application) : AndroidViewModel(app) {
     private val _outOfOrderFilter = MutableStateFlow(OutOfOrderFilter.ALL)
     val outOfOrderFilter: StateFlow<OutOfOrderFilter> = _outOfOrderFilter.asStateFlow()
 
+    private val _outOfOrderIssueFilter = MutableStateFlow<BookOrderIssue?>(null)
+    val outOfOrderIssueFilter: StateFlow<BookOrderIssue?> = _outOfOrderIssueFilter.asStateFlow()
+
     val outOfOrderBooks: StateFlow<List<OutOfOrderBook>> = catalog
         .map { books -> BookOrderIssues.findOutOfOrder(books) }
         .flowOn(Dispatchers.Default)
@@ -87,16 +91,26 @@ class BooksManagementViewModel(app: Application) : AndroidViewModel(app) {
     val filteredOutOfOrderBooks: StateFlow<List<OutOfOrderBook>> = combine(
         outOfOrderBooks,
         _outOfOrderFilter,
-    ) { entries, filter ->
-        BookOrderIssues.filterEntries(entries, filter)
+        _outOfOrderIssueFilter,
+    ) { entries, filter, issueFilter ->
+        BookOrderIssues.filterEntries(entries, filter, issueFilter)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val outOfOrderFilterCounts: StateFlow<Map<OutOfOrderFilter, Int>> = outOfOrderBooks
         .map { BookOrderIssues.countByFilter(it) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
+    val outOfOrderIssueCounts: StateFlow<Map<BookOrderIssue, Int>> = outOfOrderBooks
+        .map { BookOrderIssues.countByIssue(it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
     fun setOutOfOrderFilter(filter: OutOfOrderFilter) {
         _outOfOrderFilter.value = filter
+        _outOfOrderIssueFilter.value = null
+    }
+
+    fun setOutOfOrderIssueFilter(issue: BookOrderIssue?) {
+        _outOfOrderIssueFilter.value = issue
     }
 
     val results: StateFlow<List<Book>> = combine(

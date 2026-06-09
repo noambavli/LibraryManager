@@ -36,6 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
 import com.mh.librarymanager.domain.Book
 import com.mh.librarymanager.domain.BookOrderIssue
+import com.mh.librarymanager.domain.BookOrderIssues
 import com.mh.librarymanager.domain.CustomColor
 import com.mh.librarymanager.domain.OutOfOrderBook
 import com.mh.librarymanager.domain.OutOfOrderFilter
@@ -52,7 +53,9 @@ fun OutOfOrderBooksScreen(
     val allEntries by viewModel.outOfOrderBooks.collectAsStateWithLifecycle()
     val entries by viewModel.filteredOutOfOrderBooks.collectAsStateWithLifecycle()
     val activeFilter by viewModel.outOfOrderFilter.collectAsStateWithLifecycle()
+    val activeIssueFilter by viewModel.outOfOrderIssueFilter.collectAsStateWithLifecycle()
     val filterCounts by viewModel.outOfOrderFilterCounts.collectAsStateWithLifecycle()
+    val issueCounts by viewModel.outOfOrderIssueCounts.collectAsStateWithLifecycle()
     val customColors by viewModel.customColors.collectAsStateWithLifecycle()
     val parentNameLookup by viewModel.parentNameLookup.collectAsStateWithLifecycle()
     val cs = MaterialTheme.colorScheme
@@ -76,12 +79,19 @@ fun OutOfOrderBooksScreen(
                 counts = filterCounts,
                 onSelect = viewModel::setOutOfOrderFilter,
             )
+            IssueFilterRow(
+                groupFilter = activeFilter,
+                groupCount = filterCounts[activeFilter] ?: allEntries.size,
+                activeIssue = activeIssueFilter,
+                counts = issueCounts,
+                onSelect = viewModel::setOutOfOrderIssueFilter,
+            )
             HorizontalDivider(color = cs.outlineVariant)
         }
 
         when {
             allEntries.isEmpty() -> EmptyAllGood()
-            entries.isEmpty() -> EmptyFilter(activeFilter)
+            entries.isEmpty() -> EmptyFilter(activeFilter, activeIssueFilter)
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
@@ -163,6 +173,81 @@ private fun FilterRow(
 }
 
 @Composable
+private fun IssueFilterRow(
+    groupFilter: OutOfOrderFilter,
+    groupCount: Int,
+    activeIssue: BookOrderIssue?,
+    counts: Map<BookOrderIssue, Int>,
+    onSelect: (BookOrderIssue?) -> Unit,
+) {
+    val issues = BookOrderIssues.issuesForGroup(groupFilter)
+        .filter { (counts[it] ?: 0) > 0 }
+    if (issues.isEmpty()) return
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.out_of_order_issue_filter_label),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 6.dp),
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IssueFilterChip(
+                label = stringResource(R.string.out_of_order_issue_filter_all),
+                count = groupCount,
+                selected = activeIssue == null,
+                colors = filterGroupChipColors(groupFilter),
+                onClick = { onSelect(null) },
+            )
+            issues.forEach { issue ->
+                IssueFilterChip(
+                    label = issueLabel(issue),
+                    count = counts[issue] ?: 0,
+                    selected = activeIssue == issue,
+                    colors = filterGroupChipColors(issue.filterGroup),
+                    onClick = { onSelect(issue) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun IssueFilterChip(
+    label: String,
+    count: Int,
+    selected: Boolean,
+    colors: Triple<Color, Color, Color>,
+    onClick: () -> Unit,
+) {
+    val (bg, fg, border) = colors
+    Surface(
+        color = if (selected) bg else MaterialTheme.colorScheme.surface,
+        contentColor = if (selected) fg else MaterialTheme.colorScheme.onSurface,
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, if (selected) border else MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.clickable(onClick = onClick),
+    ) {
+        Text(
+            text = "$label ($count)",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+        )
+    }
+}
+
+@Composable
 private fun FilterChip(
     label: String,
     count: Int,
@@ -214,8 +299,9 @@ private fun EmptyAllGood() {
 }
 
 @Composable
-private fun EmptyFilter(filter: OutOfOrderFilter) {
+private fun EmptyFilter(filter: OutOfOrderFilter, issueFilter: BookOrderIssue?) {
     val cs = MaterialTheme.colorScheme
+    val label = if (issueFilter != null) issueLabel(issueFilter) else filterLabel(filter)
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
@@ -225,7 +311,7 @@ private fun EmptyFilter(filter: OutOfOrderFilter) {
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = stringResource(R.string.out_of_order_filter_empty_body, filterLabel(filter)),
+                text = stringResource(R.string.out_of_order_filter_empty_body, label),
                 style = MaterialTheme.typography.bodyLarge,
                 color = cs.onSurfaceVariant,
             )
@@ -264,7 +350,7 @@ private fun OutOfOrderRow(
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 entry.issues.forEach { issue ->
-                    val colors = issueChipColors(issue)
+                    val colors = filterGroupChipColors(issue.filterGroup)
                     ChipPill(
                         label = issueLabel(issue),
                         containerColor = colors.first,
@@ -324,7 +410,7 @@ private fun SnapshotLine(label: String, value: String, missing: Boolean) {
     )
 }
 
-private fun issueChipColors(issue: BookOrderIssue): Triple<Color, Color, Color> = when (issue.filterGroup) {
+private fun filterGroupChipColors(group: OutOfOrderFilter): Triple<Color, Color, Color> = when (group) {
     OutOfOrderFilter.MISSING -> Triple(Color(0xFFFFEBEE), Color(0xFFC62828), Color(0xFFFFCDD2))
     OutOfOrderFilter.SWAPPED -> Triple(Color(0xFFFFF3E0), Color(0xFFE65100), Color(0xFFFFCC80))
     OutOfOrderFilter.DUPLICATE -> Triple(Color(0xFFF3E5F5), Color(0xFF6A1B9A), Color(0xFFE1BEE7))

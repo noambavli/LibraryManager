@@ -77,11 +77,16 @@ object BookOrderIssues {
     fun filterEntries(
         entries: List<OutOfOrderBook>,
         filter: OutOfOrderFilter,
-    ): List<OutOfOrderBook> = when (filter) {
-        OutOfOrderFilter.ALL -> entries
-        else -> entries.filter { entry ->
-            entry.issues.any { it.filterGroup == filter }
+        issueFilter: BookOrderIssue? = null,
+    ): List<OutOfOrderBook> {
+        val byGroup = when (filter) {
+            OutOfOrderFilter.ALL -> entries
+            else -> entries.filter { entry ->
+                entry.issues.any { it.filterGroup == filter }
+            }
         }
+        if (issueFilter == null) return byGroup
+        return byGroup.filter { issueFilter in it.issues }
     }
 
     fun countByFilter(entries: List<OutOfOrderBook>): Map<OutOfOrderFilter, Int> =
@@ -92,6 +97,17 @@ object BookOrderIssues {
                 entries.count { e -> e.issues.any { it.filterGroup == filter } }
             }
         }
+
+    fun countByIssue(entries: List<OutOfOrderBook>): Map<BookOrderIssue, Int> =
+        BookOrderIssue.entries.associateWith { issue ->
+            entries.count { issue in it.issues }
+        }
+
+    /** Issue types that belong to [filter]; all types when [OutOfOrderFilter.ALL]. */
+    fun issuesForGroup(filter: OutOfOrderFilter): List<BookOrderIssue> = when (filter) {
+        OutOfOrderFilter.ALL -> BookOrderIssue.entries
+        else -> BookOrderIssue.entries.filter { it.filterGroup == filter }
+    }
 
     fun issuesFor(book: Book, allBooks: List<Book>): List<BookOrderIssue> =
         issuesFor(book, CatalogContext.build(allBooks))

@@ -120,6 +120,8 @@
     <string name="out_of_order_filter_swapped">הוחלף</string>
     <string name="out_of_order_filter_duplicate">כפול</string>
     <string name="out_of_order_filter_other">אחר</string>
+    <string name="out_of_order_issue_filter_all">כל סוגי הבעיה</string>
+    <string name="out_of_order_issue_filter_label">סינון לפי בעיה:</string>
     <string name="out_of_order_filter_empty_title">אין תוצאות לסינון</string>
     <string name="out_of_order_filter_empty_body">אין ספרים בקטגוריה \"%1$s\".</string>
     <string name="out_of_order_empty_title">אין ספרים לא מסודרים</string>

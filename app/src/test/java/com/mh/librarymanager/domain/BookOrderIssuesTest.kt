@@ -1,5 +1,6 @@
 package com.mh.librarymanager.domain
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -36,6 +37,29 @@ class BookOrderIssuesTest {
         )
         val issues = BookOrderIssues.issuesFor(books[0], books)
         assertTrue(issues.isEmpty())
+    }
+
+    @Test
+    fun issueFilter_showsOnlyBooksWithThatMissingField() {
+        val books = listOf(
+            sample(name = "א", writer = "", letter = "א", display = "1", id = "a"),
+            sample(name = "ב", writer = "מחבר", letter = "", display = "2", id = "b"),
+        )
+        val entries = BookOrderIssues.findOutOfOrder(books)
+        val missingWriter = BookOrderIssues.filterEntries(
+            entries,
+            OutOfOrderFilter.MISSING,
+            BookOrderIssue.MISSING_WRITER,
+        )
+        val missingLetter = BookOrderIssues.filterEntries(
+            entries,
+            OutOfOrderFilter.MISSING,
+            BookOrderIssue.MISSING_LETTER,
+        )
+        assertEquals(1, missingWriter.size)
+        assertEquals("א", missingWriter[0].book.name)
+        assertEquals(1, missingLetter.size)
+        assertEquals("ב", missingLetter[0].book.name)
     }
 
     @Test
