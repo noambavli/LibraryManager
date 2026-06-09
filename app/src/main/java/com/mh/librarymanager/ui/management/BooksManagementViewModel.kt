@@ -77,7 +77,8 @@ class BooksManagementViewModel(app: Application) : AndroidViewModel(app) {
 
     val outOfOrderBooks: StateFlow<List<OutOfOrderBook>> = catalog
         .map { books -> BookOrderIssues.findOutOfOrder(books) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val outOfOrderCount: StateFlow<Int> = outOfOrderBooks
         .map { it.size }

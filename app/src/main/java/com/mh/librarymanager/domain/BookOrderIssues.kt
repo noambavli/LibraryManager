@@ -61,16 +61,20 @@ object BookOrderIssues {
 
     private val HEBREW = Regex("""[\u0590-\u05FF\u05F0-\u05F4]""")
 
-    fun findOutOfOrder(books: List<Book>): List<OutOfOrderBook> =
-        books
+    fun findOutOfOrder(books: List<Book>): List<OutOfOrderBook> {
+        // Build the catalog context ONCE — not per book — or this is O(n^2) over
+        // the whole catalog (8k+ books with Hebrew normalization = minutes of CPU).
+        val ctx = CatalogContext.build(books)
+        return books
             .mapNotNull { book ->
-                val issues = issuesFor(book, CatalogContext.build(books))
+                val issues = issuesFor(book, ctx)
                 if (issues.isEmpty()) null else OutOfOrderBook(book, issues)
             }
             .sortedWith(
                 compareBy<OutOfOrderBook> { it.issues.size }.reversed()
                     .thenBy { it.book.name.ifBlank { it.book.bookNumber } },
             )
+    }
 
     fun filterEntries(
         entries: List<OutOfOrderBook>,
