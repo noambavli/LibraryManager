@@ -27,44 +27,25 @@ class BookOrderIssuesTest {
     }
 
     @Test
-    fun sameDisplayDifferentLetter_isNotShelfDuplicate() {
+    fun sameLetterAndDisplay_isAllowed_notFlagged() {
+        // Multiple volumes may share a shelf slot (letter + display number);
+        // that is intentionally not an out-of-order issue.
         val books = listOf(
-            sample(name = "א", letter = "א", display = "5", id = "a"),
-            sample(name = "ב", letter = "ב", display = "5", id = "b"),
+            sample(name = "א", letter = "א", display = "5", system = "0001", id = "a"),
+            sample(name = "ב", letter = "א", display = "5", system = "0002", id = "b"),
         )
         val issues = BookOrderIssues.issuesFor(books[0], books)
-        assertFalse(issues.contains(BookOrderIssue.DUPLICATE_SHELF_POSITION))
+        assertTrue(issues.isEmpty())
     }
 
     @Test
-    fun sameLetterAndDisplay_isShelfDuplicate() {
-        val books = listOf(
-            sample(name = "א", letter = "א", display = "5", id = "a"),
-            sample(name = "ב", letter = "א", display = "5", id = "b"),
-        )
-        val issues = BookOrderIssues.issuesFor(books[0], books)
-        assertTrue(issues.contains(BookOrderIssue.DUPLICATE_SHELF_POSITION))
-    }
-
-    @Test
-    fun missingDisplayNumbers_areNotDuplicateDisplay() {
+    fun missingDisplayNumbers_stillFlagMissingDisplay() {
         val books = listOf(
             sample(name = "א", letter = "א", display = "", id = "a"),
             sample(name = "ב", letter = "ב", display = "", id = "b"),
         )
         val issues = BookOrderIssues.issuesFor(books[0], books)
-        assertFalse(issues.contains(BookOrderIssue.DUPLICATE_SHELF_POSITION))
         assertTrue(issues.contains(BookOrderIssue.MISSING_DISPLAY_NUMBER))
-    }
-
-    @Test
-    fun normalizedDisplayFiveAndZeroFive_matchShelfDuplicate() {
-        val books = listOf(
-            sample(name = "א", letter = "א", display = "05", id = "a"),
-            sample(name = "ב", letter = "א", display = "5", id = "b"),
-        )
-        val issues = BookOrderIssues.issuesFor(books[0], books)
-        assertTrue(issues.contains(BookOrderIssue.DUPLICATE_SHELF_POSITION))
     }
 
     @Test

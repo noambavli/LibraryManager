@@ -151,28 +151,15 @@ def test_validation_same_name_different_writer_not_dup():
     assert not any(f.code == "dup_record" for f in report.warnings)
 
 
-def test_validation_flags_duplicate_shelf_position():
+def test_validation_shared_shelf_position_is_allowed():
+    # Same letter + display number is a legitimate shared shelf slot, not a dup.
     books = [
         _book(1, "ספר א", display="5", letter="א"),
         _book(2, "ספר ב", display="5", letter="א"),
     ]
     report = validate(books)
-    assert any(f.code == "dup_shelf_position" for f in report.warnings)
-
-
-def test_validation_same_display_different_letter_not_shelf_dup():
-    books = [
-        _book(1, "ספר א", display="5", letter="א"),
-        _book(2, "ספר ב", display="5", letter="ב"),
-    ]
-    report = validate(books)
-    assert not any(f.code == "dup_shelf_position" for f in report.warnings)
-
-
-def test_validation_missing_display_not_shelf_dup():
-    books = [_book(1, "ספר א", display=""), _book(2, "ספר ב", display="")]
-    report = validate(books)
-    assert not any(f.code == "dup_shelf_position" for f in report.warnings)
+    all_findings = report.errors + report.warnings + report.infos
+    assert not any(f.code == "dup_shelf_position" for f in all_findings)
 
 
 def test_validation_flags_duplicate_system_number():

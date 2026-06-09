@@ -353,7 +353,6 @@ private fun issueLabel(issue: BookOrderIssue): String = when (issue) {
     BookOrderIssue.LETTER_IN_DISPLAY_NUMBER -> stringResource(R.string.out_of_order_issue_letter_in_display)
     BookOrderIssue.LETTER_IN_SYSTEM_NUMBER -> stringResource(R.string.out_of_order_issue_letter_in_system)
     BookOrderIssue.INVALID_SYSTEM_NUMBER -> stringResource(R.string.out_of_order_issue_invalid_system)
-    BookOrderIssue.DUPLICATE_SHELF_POSITION -> stringResource(R.string.out_of_order_issue_dup_shelf)
     BookOrderIssue.DUPLICATE_SYSTEM_NUMBER -> stringResource(R.string.out_of_order_issue_dup_system)
     BookOrderIssue.DUPLICATE_RECORD -> stringResource(R.string.out_of_order_issue_duplicate_record)
     BookOrderIssue.UNKNOWN_PARENT -> stringResource(R.string.out_of_order_issue_unknown_parent)

@@ -135,7 +135,6 @@
     <string name="out_of_order_issue_missing_writer">חסר מחבר</string>
     <string name="out_of_order_issue_missing_category">חסרה קטגוריה</string>
     <string name="out_of_order_issue_invalid_system">מספר מערכת לא תקין</string>
-    <string name="out_of_order_issue_dup_shelf">אות ומספר תצוגה כפולים</string>
     <string name="out_of_order_issue_dup_system">מספר מערכת כפול</string>
     <string name="out_of_order_issue_duplicate_record">רשומה זהה לחלוטין לספר אחר</string>
     <string name="out_of_order_issue_unknown_parent">ספר אב לא קיים</string>

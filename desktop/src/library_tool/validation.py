@@ -33,7 +33,7 @@ _SEVERITY_ORDER = {ERROR: 0, WARNING: 1, INFO: 2}
 _HEBREW = re.compile(r"[\u0590-\u05FF\u05F0-\u05F4]")
 
 _DUPLICATE_CODES = frozenset({
-    "dup_id", "dup_record", "dup_shelf_position", "dup_system_number",
+    "dup_id", "dup_record", "dup_system_number",
 })
 
 _ISSUE_MESSAGES: Dict[str, str] = {
@@ -48,7 +48,6 @@ _ISSUE_MESSAGES: Dict[str, str] = {
     "letter_in_system_number": "books have a letter in the system-number field",
     "invalid_system_number": "books have a non-numeric system number",
     "dup_record": "books are identical on every field",
-    "dup_shelf_position": "books share a shelf position (letter + display number)",
     "dup_system_number": "books share a system number",
     "unknown_parent": "books reference a parent book that does not exist",
     "self_parent": "books are set as their own parent",
@@ -107,19 +106,14 @@ class ValidationReport:
 @dataclass
 class _CatalogContext:
     known_ids: Set[str]
-    shelf_position_counts: Dict[str, int]
     system_number_counts: Dict[str, int]
     fingerprint_counts: Dict[str, int]
 
     @classmethod
     def build(cls, books: List[Book]) -> "_CatalogContext":
-        shelf_position_counts: Dict[str, int] = {}
         system_number_counts: Dict[str, int] = {}
         fingerprint_counts: Dict[str, int] = {}
         for book in books:
-            key = _shelf_position_key(book)
-            if key:
-                shelf_position_counts[key] = shelf_position_counts.get(key, 0) + 1
             sys_key = _system_number_key(book)
             if sys_key:
                 system_number_counts[sys_key] = system_number_counts.get(sys_key, 0) + 1
@@ -128,7 +122,6 @@ class _CatalogContext:
                 fingerprint_counts[fp] = fingerprint_counts.get(fp, 0) + 1
         return cls(
             known_ids={b.id for b in books},
-            shelf_position_counts=shelf_position_counts,
             system_number_counts=system_number_counts,
             fingerprint_counts=fingerprint_counts,
         )
@@ -162,15 +155,6 @@ def _record_fingerprint(book: Book) -> str | None:
         normalize(book.notes),
     ]
     return "\0".join(parts)
-
-
-def _shelf_position_key(book: Book) -> str | None:
-    """Shelf slot = letter + display number; both required."""
-    letter = normalize(book.letter)
-    display = normalize_number_key(book.displayNumber)
-    if not letter or not display:
-        return None
-    return f"{letter}\0{display}"
 
 
 def _system_number_key(book: Book) -> str | None:
@@ -232,10 +216,8 @@ def _issues_for_book(book: Book, ctx: _CatalogContext) -> Set[str]:
     elif book.bookNumber.strip() and not _looks_like_system_number(book.bookNumber):
         out.add("invalid_system_number")
 
-    shelf_key = _shelf_position_key(book)
-    if shelf_key and ctx.shelf_position_counts.get(shelf_key, 0) > 1:
-        out.add("dup_shelf_position")
-
+    # Shelf-position duplicates (same letter + display number) are allowed:
+    # multiple volumes legitimately share a shelf slot.
     sys_key = _system_number_key(book)
     if sys_key and ctx.system_number_counts.get(sys_key, 0) > 1:
         out.add("dup_system_number")
@@ -271,20 +253,9 @@ def _aggregate_issue_findings(books: List[Book]) -> List[Finding]:
         hint = _ISSUE_MESSAGES.get(code, code)
         examples = _trunc([_book_label(b) for b in group])
         if code.startswith("dup_"):
-            if code == "dup_shelf_position":
+            if code == "dup_system_number":
                 examples = []
                 seen: Set[str] = set()
-                for b in group:
-                    key = _shelf_position_key(b)
-                    if key and key not in seen:
-                        seen.add(key)
-                        letter, display = key.split("\0", 1)
-                        n = ctx.shelf_position_counts[key]
-                        examples.append(f"{letter}/{display} ×{n}")
-                examples = _trunc(examples)
-            elif code == "dup_system_number":
-                examples = []
-                seen = set()
                 for b in group:
                     key = _system_number_key(b)
                     if key and key not in seen:

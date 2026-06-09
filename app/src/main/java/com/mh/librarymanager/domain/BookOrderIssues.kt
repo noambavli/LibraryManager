@@ -17,8 +17,6 @@ enum class BookOrderIssue {
     LETTER_IN_DISPLAY_NUMBER,
     LETTER_IN_SYSTEM_NUMBER,
     INVALID_SYSTEM_NUMBER,
-    /** Same shelf slot: letter + display number (not display alone). */
-    DUPLICATE_SHELF_POSITION,
     DUPLICATE_SYSTEM_NUMBER,
     /** Another row matches on every compared field (any difference = not a duplicate). */
     DUPLICATE_RECORD,
@@ -36,7 +34,7 @@ enum class BookOrderIssue {
             NUMBER_IN_LETTER_FIELD, LETTER_IN_DISPLAY_NUMBER, LETTER_IN_SYSTEM_NUMBER,
             -> OutOfOrderFilter.SWAPPED
 
-            DUPLICATE_SHELF_POSITION, DUPLICATE_SYSTEM_NUMBER, DUPLICATE_RECORD,
+            DUPLICATE_SYSTEM_NUMBER, DUPLICATE_RECORD,
             -> OutOfOrderFilter.DUPLICATE
 
             INVALID_SYSTEM_NUMBER, UNKNOWN_PARENT, SELF_PARENT, PLACE_NOT_SET,
@@ -126,11 +124,8 @@ object BookOrderIssues {
             out += BookOrderIssue.INVALID_SYSTEM_NUMBER
         }
 
-        shelfPositionKey(book)?.let { key ->
-            if ((ctx.shelfPositionCounts[key] ?: 0) > 1) {
-                out += BookOrderIssue.DUPLICATE_SHELF_POSITION
-            }
-        }
+        // Shelf-position duplicates (same letter + display number) are allowed:
+        // multiple volumes legitimately share a shelf slot, so we don't flag them.
         systemNumberKey(book)?.let { key ->
             if ((ctx.systemNumberCounts[key] ?: 0) > 1) {
                 out += BookOrderIssue.DUPLICATE_SYSTEM_NUMBER
@@ -182,14 +177,6 @@ object BookOrderIssues {
         return parts.joinToString("\u0000")
     }
 
-    /** Shelf slot = letter + display number; both required. */
-    internal fun shelfPositionKey(book: Book): String? {
-        val letter = HebrewText.normalize(book.letter)
-        val display = normalizeNumberKey(book.displayNumber)
-        if (letter.isEmpty() || display.isEmpty()) return null
-        return "$letter\u0000$display"
-    }
-
     internal fun systemNumberKey(book: Book): String? {
         val key = normalizeNumberKey(book.bookNumber)
         return key.ifEmpty { null }
@@ -216,19 +203,14 @@ object BookOrderIssues {
 
     private data class CatalogContext(
         val knownIds: Set<String>,
-        val shelfPositionCounts: Map<String, Int>,
         val systemNumberCounts: Map<String, Int>,
         val fingerprintCounts: Map<String, Int>,
     ) {
         companion object {
             fun build(books: List<Book>): CatalogContext {
-                val shelfPositionCounts = mutableMapOf<String, Int>()
                 val systemNumberCounts = mutableMapOf<String, Int>()
                 val fingerprintCounts = mutableMapOf<String, Int>()
                 for (book in books) {
-                    shelfPositionKey(book)?.let { key ->
-                        shelfPositionCounts[key] = (shelfPositionCounts[key] ?: 0) + 1
-                    }
                     systemNumberKey(book)?.let { key ->
                         systemNumberCounts[key] = (systemNumberCounts[key] ?: 0) + 1
                     }
@@ -238,7 +220,6 @@ object BookOrderIssues {
                 }
                 return CatalogContext(
                     knownIds = books.map { it.id }.toSet(),
-                    shelfPositionCounts = shelfPositionCounts,
                     systemNumberCounts = systemNumberCounts,
                     fingerprintCounts = fingerprintCounts,
                 )
