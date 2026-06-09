@@ -1,13 +1,15 @@
 name: Build LibraryTool Windows .exe
 
-# Builds the desktop companion (.exe) on a Windows runner and uploads it as an
-# artifact, so you can get LibraryTool.exe without owning a Windows PC.
 on:
   workflow_dispatch:
   push:
     paths:
       - "desktop/**"
       - ".github/workflows/build-windows-exe.yml"
+
+permissions:
+  contents: read
+  actions: write
 
 jobs:
   build:
@@ -33,9 +35,22 @@ jobs:
       - name: Build LibraryTool.exe
         run: pyinstaller --noconfirm librarytool.spec
 
+      - name: Verify build output
+        shell: pwsh
+        run: |
+          Write-Host "Contents of dist/:"
+          Get-ChildItem -Recurse dist/
+          if (-not (Test-Path "dist/LibraryTool.exe")) {
+            Write-Error "dist/LibraryTool.exe was not created"
+            exit 1
+          }
+          $size = (Get-Item "dist/LibraryTool.exe").Length
+          Write-Host "LibraryTool.exe size: $size bytes"
+
       - name: Upload executable
         uses: actions/upload-artifact@v4
         with:
           name: LibraryTool-windows
           path: desktop/dist/LibraryTool.exe
+          retention-days: 90
           if-no-files-found: error
