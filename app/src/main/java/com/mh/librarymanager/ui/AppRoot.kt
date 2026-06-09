@@ -28,8 +28,12 @@ import com.mh.librarymanager.ui.management.RequestsManagementScreen
 import com.mh.librarymanager.ui.management.RequestsManagementViewModel
 import com.mh.librarymanager.ui.management.ShortcutsManagementScreen
 import com.mh.librarymanager.ui.management.ShortcutsManagementViewModel
+import com.mh.librarymanager.ui.management.TechSupportManagementScreen
+import com.mh.librarymanager.ui.management.TechSupportManagementViewModel
 import com.mh.librarymanager.ui.requests.PublicRequestScreen
 import com.mh.librarymanager.ui.requests.PublicRequestViewModel
+import com.mh.librarymanager.ui.support.TechSupportScreen
+import com.mh.librarymanager.ui.support.TechSupportViewModel
 import com.mh.librarymanager.ui.navigation.AppNavController
 import com.mh.librarymanager.ui.navigation.AppScreen
 import com.mh.librarymanager.ui.navigation.rememberAppNavController
@@ -54,6 +58,8 @@ fun AppRoot(
     announcementsViewModel: AnnouncementsViewModel,
     announcementsManagementViewModel: AnnouncementsManagementViewModel,
     shortcutsManagementViewModel: ShortcutsManagementViewModel,
+    techSupportViewModel: TechSupportViewModel,
+    techSupportManagementViewModel: TechSupportManagementViewModel,
     managementSession: ManagementSession,
     onRegisterBackHandler: (handler: (() -> Boolean)) -> Unit,
 ) {
@@ -66,6 +72,8 @@ fun AppRoot(
     val announcementsVm: AnnouncementsViewModel = announcementsViewModel
     val announcementsManagementVm: AnnouncementsManagementViewModel = announcementsManagementViewModel
     val shortcutsManagementVm: ShortcutsManagementViewModel = shortcutsManagementViewModel
+    val techSupportVm: TechSupportViewModel = techSupportViewModel
+    val techSupportManagementVm: TechSupportManagementViewModel = techSupportManagementViewModel
     val session: ManagementSession = managementSession
 
     SideEffect {
@@ -83,6 +91,7 @@ fun AppRoot(
         val onPublic = nav.current is AppScreen.Home ||
             nav.current is AppScreen.Search ||
             nav.current is AppScreen.PublicRequests ||
+            nav.current is AppScreen.TechSupport ||
             nav.current is AppScreen.AnnouncementDetail ||
             nav.current is AppScreen.AllAnnouncements
         if (onPublic && session.isAuthenticated) {
@@ -104,6 +113,7 @@ fun AppRoot(
                 onOpenSearch = { nav.push(AppScreen.Search) },
                 onOpenManagement = { nav.push(AppScreen.ManagementGate) },
                 onOpenRequests = { nav.push(AppScreen.PublicRequests) },
+                onOpenTechSupport = { nav.push(AppScreen.TechSupport) },
                 onOpenAnnouncement = { id -> nav.push(AppScreen.AnnouncementDetail(id)) },
                 onOpenAllAnnouncements = { nav.push(AppScreen.AllAnnouncements) },
             )
@@ -115,6 +125,11 @@ fun AppRoot(
 
             AppScreen.PublicRequests -> PublicRequestScreen(
                 viewModel = publicRequestVm,
+                onBack = { nav.pop() },
+            )
+
+            AppScreen.TechSupport -> TechSupportScreen(
+                viewModel = techSupportVm,
                 onBack = { nav.pop() },
             )
 
@@ -142,6 +157,7 @@ fun AppRoot(
                     onOpenRequests = { nav.push(AppScreen.ManagementRequests) },
                     onOpenAnnouncements = { nav.push(AppScreen.ManagementAnnouncements) },
                     onOpenShortcuts = { nav.push(AppScreen.ManagementShortcuts) },
+                    onOpenTechSupport = { nav.push(AppScreen.ManagementTechSupport) },
                     onLogout = {
                         session.logout()
                         nav.resetTo(AppScreen.Home)
@@ -186,6 +202,17 @@ fun AppRoot(
             AppScreen.ManagementShortcuts -> ManagementGuard(session = session, nav = nav) {
                 ShortcutsManagementScreen(
                     viewModel = shortcutsManagementVm,
+                    onBack = { nav.pop() },
+                    onLogout = {
+                        session.logout()
+                        nav.resetTo(AppScreen.Home)
+                    },
+                )
+            }
+
+            AppScreen.ManagementTechSupport -> ManagementGuard(session = session, nav = nav) {
+                TechSupportManagementScreen(
+                    viewModel = techSupportManagementVm,
                     onBack = { nav.pop() },
                     onLogout = {
                         session.logout()

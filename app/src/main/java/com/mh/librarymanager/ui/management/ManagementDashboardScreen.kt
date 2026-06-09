@@ -39,6 +39,7 @@ fun ManagementDashboardScreen(
     onOpenRequests: () -> Unit,
     onOpenAnnouncements: () -> Unit,
     onOpenShortcuts: () -> Unit,
+    onOpenTechSupport: () -> Unit,
     onLogout: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -120,7 +121,14 @@ fun ManagementDashboardScreen(
                     iconText = "\u05D4\u05E1\u05D8", // הסט
                     onClick = onOpenHistory,
                 )
-                Spacer(modifier = Modifier.weight(1f))
+                DashboardTile(
+                    modifier = Modifier.weight(1f).height(190.dp),
+                    title = stringResource(R.string.management_tech_support),
+                    subtitle = stringResource(R.string.management_tech_support_subtitle),
+                    accent = cs.secondary,
+                    iconText = "\u05EA\u05DE", // תמ
+                    onClick = onOpenTechSupport,
+                )
             }
         }
     }

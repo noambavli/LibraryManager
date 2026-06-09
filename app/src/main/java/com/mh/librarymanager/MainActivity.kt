@@ -22,7 +22,9 @@ import com.mh.librarymanager.ui.management.HistoryViewModel
 import com.mh.librarymanager.ui.management.ManagementSession
 import com.mh.librarymanager.ui.management.RequestsManagementViewModel
 import com.mh.librarymanager.ui.management.ShortcutsManagementViewModel
+import com.mh.librarymanager.ui.management.TechSupportManagementViewModel
 import com.mh.librarymanager.ui.requests.PublicRequestViewModel
+import com.mh.librarymanager.ui.support.TechSupportViewModel
 import com.mh.librarymanager.ui.search.SearchViewModel
 import com.mh.librarymanager.ui.theme.LibraryManagerTheme
 
@@ -36,6 +38,8 @@ class MainActivity : ComponentActivity() {
     private val announcementsViewModel: AnnouncementsViewModel by viewModels()
     private val announcementsManagementViewModel: AnnouncementsManagementViewModel by viewModels()
     private val shortcutsManagementViewModel: ShortcutsManagementViewModel by viewModels()
+    private val techSupportViewModel: TechSupportViewModel by viewModels()
+    private val techSupportManagementViewModel: TechSupportManagementViewModel by viewModels()
     private val managementSession: ManagementSession by viewModels()
 
     /**
@@ -72,6 +76,8 @@ class MainActivity : ComponentActivity() {
                     announcementsViewModel = announcementsViewModel,
                     announcementsManagementViewModel = announcementsManagementViewModel,
                     shortcutsManagementViewModel = shortcutsManagementViewModel,
+                    techSupportViewModel = techSupportViewModel,
+                    techSupportManagementViewModel = techSupportManagementViewModel,
                     managementSession = managementSession,
                     onRegisterBackHandler = { handler ->
                         composeBackHandler = handler

@@ -54,6 +54,7 @@ fun HomeScreen(
     onOpenSearch: () -> Unit,
     onOpenManagement: () -> Unit,
     onOpenRequests: () -> Unit,
+    onOpenTechSupport: () -> Unit,
     onOpenAnnouncement: (String) -> Unit,
     onOpenAllAnnouncements: () -> Unit,
 ) {
@@ -111,6 +112,7 @@ fun HomeScreen(
             TilesArea(
                 onOpenSearch = onOpenSearch,
                 onOpenRequests = onOpenRequests,
+                onOpenTechSupport = onOpenTechSupport,
                 onOpenManagement = onOpenManagement,
             )
         }
@@ -121,72 +123,88 @@ fun HomeScreen(
 private fun TilesArea(
     onOpenSearch: () -> Unit,
     onOpenRequests: () -> Unit,
+    onOpenTechSupport: () -> Unit,
     onOpenManagement: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val wide = maxWidth > 720.dp
-        val tileHeight = if (wide) 280.dp else 168.dp
+        val tileHeight = if (wide) 240.dp else 168.dp
+        val tiles = listOf(
+            TileSpec(
+                title = stringResource(R.string.home_search),
+                subtitle = stringResource(R.string.home_search_subtitle),
+                iconText = "\u05E1", // ס
+                accent = cs.primary,
+                onClick = onOpenSearch,
+            ),
+            TileSpec(
+                title = stringResource(R.string.home_requests),
+                subtitle = stringResource(R.string.home_requests_subtitle),
+                iconText = "\u05D1", // ב
+                accent = cs.secondary,
+                onClick = onOpenRequests,
+            ),
+            TileSpec(
+                title = stringResource(R.string.home_tech_support),
+                subtitle = stringResource(R.string.home_tech_support_subtitle),
+                iconText = "\u05EA", // ת
+                accent = cs.tertiary,
+                onClick = onOpenTechSupport,
+            ),
+            TileSpec(
+                title = stringResource(R.string.home_management),
+                subtitle = stringResource(R.string.home_management_subtitle),
+                iconText = "\u05E0", // נ
+                accent = cs.primary,
+                onClick = onOpenManagement,
+            ),
+        )
+
         if (wide) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
-            ) {
-                HomeTile(
-                    modifier = Modifier.weight(1f).height(tileHeight),
-                    title = stringResource(R.string.home_search),
-                    subtitle = stringResource(R.string.home_search_subtitle),
-                    iconText = "\u05E1", // ס
-                    accent = cs.primary,
-                    onClick = onOpenSearch,
-                )
-                HomeTile(
-                    modifier = Modifier.weight(1f).height(tileHeight),
-                    title = stringResource(R.string.home_requests),
-                    subtitle = stringResource(R.string.home_requests_subtitle),
-                    iconText = "\u05D1", // ב
-                    accent = cs.secondary,
-                    onClick = onOpenRequests,
-                )
-                HomeTile(
-                    modifier = Modifier.weight(1f).height(tileHeight),
-                    title = stringResource(R.string.home_management),
-                    subtitle = stringResource(R.string.home_management_subtitle),
-                    iconText = "\u05E0", // נ
-                    accent = cs.tertiary,
-                    onClick = onOpenManagement,
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                tiles.chunked(2).forEach { rowTiles ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    ) {
+                        rowTiles.forEach { tile ->
+                            HomeTile(
+                                modifier = Modifier.weight(1f).height(tileHeight),
+                                title = tile.title,
+                                subtitle = tile.subtitle,
+                                iconText = tile.iconText,
+                                accent = tile.accent,
+                                onClick = tile.onClick,
+                            )
+                        }
+                    }
+                }
             }
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                HomeTile(
-                    modifier = Modifier.fillMaxWidth().height(tileHeight),
-                    title = stringResource(R.string.home_search),
-                    subtitle = stringResource(R.string.home_search_subtitle),
-                    iconText = "\u05E1",
-                    accent = cs.primary,
-                    onClick = onOpenSearch,
-                )
-                HomeTile(
-                    modifier = Modifier.fillMaxWidth().height(tileHeight),
-                    title = stringResource(R.string.home_requests),
-                    subtitle = stringResource(R.string.home_requests_subtitle),
-                    iconText = "\u05D1",
-                    accent = cs.secondary,
-                    onClick = onOpenRequests,
-                )
-                HomeTile(
-                    modifier = Modifier.fillMaxWidth().height(tileHeight),
-                    title = stringResource(R.string.home_management),
-                    subtitle = stringResource(R.string.home_management_subtitle),
-                    iconText = "\u05E0",
-                    accent = cs.tertiary,
-                    onClick = onOpenManagement,
-                )
+                tiles.forEach { tile ->
+                    HomeTile(
+                        modifier = Modifier.fillMaxWidth().height(tileHeight),
+                        title = tile.title,
+                        subtitle = tile.subtitle,
+                        iconText = tile.iconText,
+                        accent = tile.accent,
+                        onClick = tile.onClick,
+                    )
+                }
             }
         }
     }
 }
+
+private data class TileSpec(
+    val title: String,
+    val subtitle: String,
+    val iconText: String,
+    val accent: Color,
+    val onClick: () -> Unit,
+)
 
 @Composable
 private fun WhatsNewSection(

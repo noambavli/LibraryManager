@@ -10,6 +10,20 @@
     <string name="home_management_subtitle">עריכת ספרים והגדרות (דרושה סיסמה)</string>
     <string name="home_requests">בקשות הציבור</string>
     <string name="home_requests_subtitle">בקשה לספר חדש או הערה</string>
+    <string name="home_tech_support">תמיכה טכנית</string>
+    <string name="home_tech_support_subtitle">דיווח על בעיה בתוכנה</string>
+
+    <!-- Technical support (public) -->
+    <string name="tech_support_public_title">תמיכה טכנית</string>
+    <string name="tech_support_public_subtitle">תאר/י את הבעיה ונטפל בה בהקדם.</string>
+    <string name="tech_support_field_name">השם שלך</string>
+    <string name="tech_support_field_problem">תיאור הבעיה</string>
+    <string name="tech_support_send">שליחה</string>
+    <string name="tech_support_problem_required">יש לתאר את הבעיה כדי לשלוח.</string>
+    <string name="tech_support_sent_title">הדיווח נשלח!</string>
+    <string name="tech_support_sent_body">תודה רבה. נבדוק את הבעיה בהקדם.</string>
+    <string name="tech_support_send_another">שליחת דיווח נוסף</string>
+    <string name="tech_support_anonymous_label">ללא שם</string>
 
     <!-- Announcements (public) -->
     <string name="announcements_home_title">הודעות המערכת</string>
@@ -86,6 +100,13 @@
     <string name="management_announcements_subtitle">הוספה ומחיקה של הודעות לציבור</string>
     <string name="management_shortcuts">ניהול קיצורי חיפוש</string>
     <string name="management_shortcuts_subtitle">הוספה ומחיקה של תגיות חיפוש מהיר</string>
+    <string name="management_tech_support">בקשות תמיכה טכנית</string>
+    <string name="management_tech_support_subtitle">דיווחי תקלות מהציבור</string>
+
+    <!-- Technical support management -->
+    <string name="tech_support_management_title">בקשות תמיכה טכנית</string>
+    <string name="tech_support_empty">אין דיווחים להצגה.</string>
+    <string name="tech_support_confirm_delete">למחוק את הדיווח?</string>
 
     <!-- Search shortcuts management -->
     <string name="shortcuts_management_title">ניהול קיצורי חיפוש</string>

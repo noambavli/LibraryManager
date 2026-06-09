@@ -12,6 +12,9 @@ sealed interface AppScreen {
     /** Public "request a book" form, reachable from the home page. */
     data object PublicRequests : AppScreen
 
+    /** Public technical-support report form, reachable from the home help button. */
+    data object TechSupport : AppScreen
+
     /** Public full view of a single announcement. */
     data class AnnouncementDetail(val announcementId: String) : AppScreen
 
@@ -27,6 +30,7 @@ sealed interface AppScreen {
     data object ManagementAnnouncements : AppScreen
     data object AnnouncementEditor : AppScreen
     data object ManagementShortcuts : AppScreen
+    data object ManagementTechSupport : AppScreen
 
     /** Book editor — `bookId == null` means "create a brand new book". */
     data class BookEditor(val bookId: String?) : AppScreen
