@@ -23,7 +23,7 @@
     <string name="tech_support_sent_title">הדיווח נשלח!</string>
     <string name="tech_support_sent_body">תודה רבה. נבדוק את הבעיה בהקדם.</string>
     <string name="tech_support_send_another">שליחת דיווח נוסף</string>
-    <string name="tech_support_anonymous_label">ללא שם</string>
+    <string name="tech_support_anonymous_label">אנונימי</string>
 
     <!-- Announcements (public) -->
     <string name="announcements_home_title">הודעות המערכת</string>
@@ -46,6 +46,8 @@
     <string name="search_field_color">צבע</string>
     <string name="search_field_category">קטגוריה</string>
     <string name="search_field_subcategory">תת קטגוריה</string>
+    <string name="search_field_display_number">מספר</string>
+    <string name="search_field_book_number">מספר במערכת</string>
     <string name="search_field_notes">הערות</string>
     <string name="search_shortcuts_label">קיצורי חיפוש</string>
 
@@ -93,6 +95,9 @@
     <string name="management_title">ניהול</string>
     <string name="management_books">ניהול ספרים</string>
     <string name="management_books_subtitle">חיפוש, עריכה והוספה</string>
+    <string name="management_out_of_order">ספרים לא מסודרים</string>
+    <string name="management_out_of_order_subtitle_ok">הכל תקין — אין חריגים</string>
+    <string name="management_out_of_order_subtitle_count">%1$d ספרים דורשים תיקון</string>
     <string name="management_requests">בקשות הציבור</string>
     <string name="management_requests_subtitle">מעקב וטיפול בבקשות</string>
     <string name="management_announcements">ניהול הודעות</string>
@@ -103,6 +108,39 @@
     <string name="management_tech_support_subtitle">דיווחי תקלות מהציבור</string>
     <string name="management_catalog_transfer">ייבוא קטלוג מהמחשב</string>
     <string name="management_catalog_transfer_subtitle">סנכרון ממחשב — מוסיף ספרים חדשים בלבד</string>
+
+    <!-- Out-of-order books (missing / swapped letter &amp; number) -->
+    <string name="out_of_order_title">ספרים לא מסודרים</string>
+    <string name="out_of_order_summary_ok">כל הספרים עם אות, מספר ושדות תקינים.</string>
+    <string name="out_of_order_summary_count">%1$d ספרים עם בעיות בסידור</string>
+    <string name="out_of_order_summary_hint">חסרים, הוחלפו, כפולים או קישורים שבורים — סננו ולחצו לתיקון.</string>
+    <string name="out_of_order_summary_filtered">מציג %1$d מתוך %2$d</string>
+    <string name="out_of_order_filter_all">הכל</string>
+    <string name="out_of_order_filter_missing">חסר</string>
+    <string name="out_of_order_filter_swapped">הוחלף</string>
+    <string name="out_of_order_filter_duplicate">כפול</string>
+    <string name="out_of_order_filter_other">אחר</string>
+    <string name="out_of_order_filter_empty_title">אין תוצאות לסינון</string>
+    <string name="out_of_order_filter_empty_body">אין ספרים בקטגוריה \"%1$s\".</string>
+    <string name="out_of_order_empty_title">אין ספרים לא מסודרים</string>
+    <string name="out_of_order_empty_body">כל הספרים בקטלוג נראים תקינים.</string>
+    <string name="out_of_order_fix">תקן</string>
+    <string name="out_of_order_issue_missing_name">חסר שם</string>
+    <string name="out_of_order_issue_missing_letter">חסרה אות</string>
+    <string name="out_of_order_issue_missing_display">חסר מספר תצוגה</string>
+    <string name="out_of_order_issue_missing_system">חסר מספר במערכת</string>
+    <string name="out_of_order_issue_number_in_letter">מספר בשדה אות</string>
+    <string name="out_of_order_issue_letter_in_display">אות בשדה מספר תצוגה</string>
+    <string name="out_of_order_issue_letter_in_system">אות בשדה מספר מערכת</string>
+    <string name="out_of_order_issue_missing_writer">חסר מחבר</string>
+    <string name="out_of_order_issue_missing_category">חסרה קטגוריה</string>
+    <string name="out_of_order_issue_invalid_system">מספר מערכת לא תקין</string>
+    <string name="out_of_order_issue_dup_shelf">אות ומספר תצוגה כפולים</string>
+    <string name="out_of_order_issue_dup_system">מספר מערכת כפול</string>
+    <string name="out_of_order_issue_duplicate_record">רשומה זהה לחלוטין לספר אחר</string>
+    <string name="out_of_order_issue_unknown_parent">ספר אב לא קיים</string>
+    <string name="out_of_order_issue_self_parent">ספר הוא אב של עצמו</string>
+    <string name="out_of_order_issue_place_unset">מיקום לא הוגדר</string>
 
     <!-- Catalog transfer (import .civ from PC) -->
     <string name="catalog_transfer_title">סנכרון מהמחשב</string>
@@ -128,7 +166,7 @@
     <string name="catalog_transfer_confirm_ok">הוסף</string>
 
     <!-- Import summary screen -->
-    <string name="import_summary_title">סיכום ייבוא</string>
+    <string name="import_summary_title">סיכום סנכרון</string>
     <string name="import_summary_empty">אין עדיין סיכום ייבוא.</string>
     <string name="import_summary_back_sync">חזרה לסנכרון</string>
     <string name="import_summary_file_chosen">בחרתם: קובץ %1$s</string>
@@ -212,6 +250,7 @@
     <string name="history_kind_updated">עודכן</string>
     <string name="history_kind_deleted">נמחק</string>
     <string name="history_kind_imported">ייבוא</string>
+    <string name="history_imported_title">סנכרון מהמחשב (%1$d ספרים)</string>
     <string name="history_restore">שחזור</string>
     <string name="history_undo_update">ביטול שינוי</string>
     <string name="history_show_changes">הצג שינויים</string>
@@ -239,7 +278,7 @@
     <string name="field_letter">אות</string>
     <string name="field_color">צבע</string>
     <string name="field_category">קטגוריה</string>
-    <string name="field_subcategories">תתי קטגוריה</string>
+    <string name="field_subcategories">תת קטגוריה</string>
     <string name="field_state">סטטוס</string>
     <string name="field_parent">ספר אב (אם נמצא בתוך ספר אחר)</string>
     <string name="field_relations">קישורים</string>

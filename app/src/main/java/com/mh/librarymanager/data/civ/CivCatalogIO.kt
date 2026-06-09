@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import com.mh.librarymanager.data.BookRepository
 import com.mh.librarymanager.data.store.CatalogStore
+import com.mh.librarymanager.data.store.atomicWriteText
 import com.mh.librarymanager.domain.Book
 import com.mh.librarymanager.domain.BookPlace
 import com.mh.librarymanager.domain.BookState
@@ -340,13 +341,15 @@ class CivCatalogIO(
             if (merge.added > 0) {
                 writeBackup(outcome.previous)
                 recordImportHistory(merge, meta, merge.addedBooks)
+            } else {
+                clearImportBackup()
             }
             ImportResult.Ok(
                 addedCount = merge.added,
                 skippedCount = merge.skipped,
                 totalAfter = merge.totalAfter,
                 previousCount = outcome.previous.size,
-                backupAvailable = merge.added > 0 || hasBackup(),
+                backupAvailable = merge.added > 0 && hasBackup(),
                 meta = meta,
             )
         } catch (e: Exception) {
@@ -407,6 +410,13 @@ class CivCatalogIO(
 
     /** True iff a one-tap undo of the most recent import is available. */
     fun hasBackup(): Boolean = backupFile.exists() && backupFile.length() > 0
+
+    private fun clearImportBackup() {
+        try {
+            if (backupFile.exists()) backupFile.delete()
+        } catch (_: Exception) {
+        }
+    }
 
     /**
      * Restore the catalog snapshot taken before the most recent import.
@@ -472,15 +482,7 @@ class CivCatalogIO(
         val root = JSONObject()
             .put("version", CatalogStore.CATALOG_FORMAT_VERSION)
             .put("books", arr)
-        val tmp = File(backupFile.parentFile, BACKUP_FILE_NAME + ".tmp")
-        tmp.writeText(root.toString(), Charsets.UTF_8)
-        if (backupFile.exists()) backupFile.delete()
-        if (!tmp.renameTo(backupFile)) {
-            // Fall back to a copy if rename failed (e.g. weird filesystem) so
-            // we never end up with NO backup at all.
-            backupFile.writeText(root.toString(), Charsets.UTF_8)
-            tmp.delete()
-        }
+        atomicWriteText(backupFile, root.toString())
     }
 }
 

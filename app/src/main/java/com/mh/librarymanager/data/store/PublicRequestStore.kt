@@ -112,13 +112,6 @@ class PublicRequestStore(private val context: Context) {
         val root = JSONObject()
             .put("version", REQUESTS_FORMAT_VERSION)
             .put("requests", arr)
-        atomicWrite(target, root.toString())
-    }
-
-    private fun atomicWrite(target: File, content: String) {
-        val tmp = File(target.parentFile, target.name + ".tmp")
-        tmp.writeText(content, Charsets.UTF_8)
-        if (target.exists()) target.delete()
-        tmp.renameTo(target)
+        atomicWriteText(target, root.toString())
     }
 }

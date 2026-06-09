@@ -18,7 +18,7 @@ _FINAL_LETTERS = {
 
 _DROP_QUOTES = {"'", '"', "\u2019", "\u2018", "\u201c", "\u201d"}
 
-_SPACE_PUNCT = set(" \t\n\r-.,()[]/\\:;!?")
+_SPACE_PUNCT = set(" \t\n\r-.,()[]/\\:;!?\u05be")  # include Hebrew maqaf ־
 
 
 def normalize(text: str | None) -> str:
@@ -33,8 +33,8 @@ def normalize(text: str | None) -> str:
         c = raw.lower()
         code = ord(c)
 
-        # Hebrew nikud / cantillation marks.
-        if 0x0591 <= code <= 0x05C7:
+        # Hebrew nikud / cantillation marks (maqaf U+05BE is punctuation, not nikud).
+        if 0x0591 <= code <= 0x05C7 and code != 0x05BE:
             continue
         # LRM / RLM directional marks.
         if 0x200E <= code <= 0x200F:
@@ -63,3 +63,14 @@ def normalize(text: str | None) -> str:
 
     result = "".join(out)
     return result.strip()
+
+
+def normalize_number_key(value: str | None) -> str:
+    """Mirror ``HebrewText.normalizeNumberKey`` on the tablet."""
+    trimmed = (value or "").strip()
+    if not trimmed:
+        return ""
+    if trimmed.isdigit():
+        stripped = trimmed.lstrip("0")
+        return stripped or "0"
+    return normalize(trimmed)

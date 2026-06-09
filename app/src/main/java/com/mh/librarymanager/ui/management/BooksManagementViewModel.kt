@@ -7,7 +7,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mh.librarymanager.LibraryApp
 import com.mh.librarymanager.domain.Book
+import com.mh.librarymanager.domain.BookOrderIssues
 import com.mh.librarymanager.domain.CustomColor
+import com.mh.librarymanager.domain.OutOfOrderBook
+import com.mh.librarymanager.domain.OutOfOrderFilter
 import com.mh.librarymanager.search.SearchEngine
 import com.mh.librarymanager.search.SearchQuery
 import com.mh.librarymanager.ui.search.KeyAction
@@ -68,6 +71,32 @@ class BooksManagementViewModel(app: Application) : AndroidViewModel(app) {
 
     val catalogSize: StateFlow<Int> = engine.map { it.size }
         .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+
+    private val _outOfOrderFilter = MutableStateFlow(OutOfOrderFilter.ALL)
+    val outOfOrderFilter: StateFlow<OutOfOrderFilter> = _outOfOrderFilter.asStateFlow()
+
+    val outOfOrderBooks: StateFlow<List<OutOfOrderBook>> = catalog
+        .map { books -> BookOrderIssues.findOutOfOrder(books) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val outOfOrderCount: StateFlow<Int> = outOfOrderBooks
+        .map { it.size }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+
+    val filteredOutOfOrderBooks: StateFlow<List<OutOfOrderBook>> = combine(
+        outOfOrderBooks,
+        _outOfOrderFilter,
+    ) { entries, filter ->
+        BookOrderIssues.filterEntries(entries, filter)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val outOfOrderFilterCounts: StateFlow<Map<OutOfOrderFilter, Int>> = outOfOrderBooks
+        .map { BookOrderIssues.countByFilter(it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    fun setOutOfOrderFilter(filter: OutOfOrderFilter) {
+        _outOfOrderFilter.value = filter
+    }
 
     val results: StateFlow<List<Book>> = combine(
         engine,
@@ -143,6 +172,8 @@ private fun Map<SearchField, TextFieldValue>.toQuery(): SearchQuery = SearchQuer
     color = this[SearchField.COLOR]?.text.orEmpty(),
     category = this[SearchField.CATEGORY]?.text.orEmpty(),
     subcategory = this[SearchField.SUBCATEGORY]?.text.orEmpty(),
+    displayNumber = this[SearchField.DISPLAY_NUMBER]?.text.orEmpty(),
+    bookNumber = this[SearchField.BOOK_NUMBER]?.text.orEmpty(),
     notes = this[SearchField.NOTES]?.text.orEmpty(),
 )
 

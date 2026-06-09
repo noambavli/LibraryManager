@@ -92,14 +92,7 @@ class AnnouncementStore(private val context: Context) {
         val root = JSONObject()
             .put("version", ANNOUNCEMENTS_FORMAT_VERSION)
             .put("announcements", arr)
-        atomicWrite(target, root.toString())
-    }
-
-    private fun atomicWrite(target: File, content: String) {
-        val tmp = File(target.parentFile, target.name + ".tmp")
-        tmp.writeText(content, Charsets.UTF_8)
-        if (target.exists()) target.delete()
-        tmp.renameTo(target)
+        atomicWriteText(target, root.toString())
     }
 
     private fun JSONArray.toStringList(): List<String> {
