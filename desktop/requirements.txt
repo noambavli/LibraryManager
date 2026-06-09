@@ -1,0 +1,5 @@
+# Runtime: none (stdlib only). The built .exe is fully offline.
+
+# CI / local build only:
+pyinstaller>=6.0
+pytest>=8.0
