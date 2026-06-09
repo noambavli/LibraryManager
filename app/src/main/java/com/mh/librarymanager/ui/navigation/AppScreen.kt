@@ -25,7 +25,6 @@ sealed interface AppScreen {
     data object ManagementGate : AppScreen
     data object ManagementHome : AppScreen
     data object BooksManagement : AppScreen
-    data object OutOfOrderBooks : AppScreen
     data object ManagementHistory : AppScreen
     data object ManagementRequests : AppScreen
     data object ManagementAnnouncements : AppScreen

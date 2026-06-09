@@ -225,10 +225,6 @@ private fun SearchFieldsGrid(
             field(SearchField.LETTER, Modifier.weight(1f))
             field(SearchField.COLOR, Modifier.weight(1f))
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(spacing)) {
-            field(SearchField.DISPLAY_NUMBER, Modifier.weight(1f))
-            field(SearchField.BOOK_NUMBER, Modifier.weight(1f))
-        }
         field(SearchField.NOTES)
     }
 }

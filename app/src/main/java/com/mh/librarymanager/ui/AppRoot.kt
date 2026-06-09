@@ -25,7 +25,6 @@ import com.mh.librarymanager.ui.management.CatalogTransferScreen
 import com.mh.librarymanager.ui.management.CatalogTransferViewModel
 import com.mh.librarymanager.ui.management.ImportSummaryScreen
 import com.mh.librarymanager.ui.management.ManagementDashboardScreen
-import com.mh.librarymanager.ui.management.OutOfOrderBooksScreen
 import com.mh.librarymanager.ui.management.ManagementSession
 import com.mh.librarymanager.ui.management.PasswordScreen
 import com.mh.librarymanager.ui.management.RequestsManagementScreen
@@ -81,7 +80,6 @@ fun AppRoot(
     val techSupportManagementVm: TechSupportManagementViewModel = techSupportManagementViewModel
     val catalogTransferVm: CatalogTransferViewModel = catalogTransferViewModel
     val session: ManagementSession = managementSession
-    val outOfOrderCount by managementVm.outOfOrderCount.collectAsStateWithLifecycle()
 
     SideEffect {
         onRegisterBackHandler {
@@ -159,9 +157,7 @@ fun AppRoot(
 
             AppScreen.ManagementHome -> ManagementGuard(session = session, nav = nav) {
                 ManagementDashboardScreen(
-                    outOfOrderCount = outOfOrderCount,
                     onOpenBooks = { nav.push(AppScreen.BooksManagement) },
-                    onOpenOutOfOrder = { nav.push(AppScreen.OutOfOrderBooks) },
                     onOpenHistory = { nav.push(AppScreen.ManagementHistory) },
                     onOpenRequests = { nav.push(AppScreen.ManagementRequests) },
                     onOpenAnnouncements = { nav.push(AppScreen.ManagementAnnouncements) },
@@ -268,18 +264,6 @@ fun AppRoot(
 
             AppScreen.BooksManagement -> ManagementGuard(session = session, nav = nav) {
                 BooksManagementScreen(
-                    viewModel = managementVm,
-                    onBack = { nav.pop() },
-                    onLogout = {
-                        session.logout()
-                        nav.resetTo(AppScreen.Home)
-                    },
-                    onOpenEditor = { id -> nav.push(AppScreen.BookEditor(id)) },
-                )
-            }
-
-            AppScreen.OutOfOrderBooks -> ManagementGuard(session = session, nav = nav) {
-                OutOfOrderBooksScreen(
                     viewModel = managementVm,
                     onBack = { nav.pop() },
                     onLogout = {

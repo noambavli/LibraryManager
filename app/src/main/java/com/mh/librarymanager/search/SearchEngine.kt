@@ -45,8 +45,6 @@ class SearchEngine(books: List<Book>) {
         val colorTokens = HebrewText.tokens(query.color)
         val categoryTokens = HebrewText.tokens(query.category)
         val subcategoryTokens = HebrewText.tokens(query.subcategory)
-        val displayNumberTokens = HebrewText.numberTokens(query.displayNumber)
-        val bookNumberTokens = HebrewText.numberTokens(query.bookNumber)
         val notesTokens = HebrewText.tokens(query.notes)
 
         data class Scored(val book: Book, val score: Int, val tieName: String)
@@ -61,8 +59,6 @@ class SearchEngine(books: List<Book>) {
             if (!book.matchesField(colorTokens, book.color)) continue
             if (!book.matchesField(categoryTokens, book.category)) continue
             if (!book.matchesField(subcategoryTokens, book.subcategory)) continue
-            if (!book.matchesNumberField(displayNumberTokens, book.displayNumber)) continue
-            if (!book.matchesNumberField(bookNumberTokens, book.bookNumber)) continue
             if (!book.matchesField(notesTokens, book.notes)) continue
 
             if (generalTokens.isNotEmpty() && !book.matchesGeneral(generalTokens)) continue
@@ -74,8 +70,6 @@ class SearchEngine(books: List<Book>) {
                 writerTokens = writerTokens,
                 categoryTokens = categoryTokens,
                 subcategoryTokens = subcategoryTokens,
-                displayNumberTokens = displayNumberTokens,
-                bookNumberTokens = bookNumberTokens,
                 notesTokens = notesTokens,
             )
             results += Scored(book.book, score, book.name)
@@ -99,25 +93,16 @@ class SearchEngine(books: List<Book>) {
         val color: String,
         val category: String,
         val subcategory: String,
-        val displayNumber: String,
-        val bookNumber: String,
         val notes: String,
     ) {
 
         private val searchable: List<String> = listOf(
-            name, topics, writer, letter, color, category, subcategory,
-            displayNumber, bookNumber, notes,
+            name, topics, writer, letter, color, category, subcategory, notes,
         )
 
         fun matchesField(tokens: List<String>, field: String): Boolean {
             if (tokens.isEmpty()) return true
             for (t in tokens) if (!field.contains(t)) return false
-            return true
-        }
-
-        fun matchesNumberField(tokens: List<String>, field: String): Boolean {
-            if (tokens.isEmpty()) return true
-            for (t in tokens) if (field != t) return false
             return true
         }
 
@@ -139,8 +124,6 @@ class SearchEngine(books: List<Book>) {
             writerTokens: List<String>,
             categoryTokens: List<String>,
             subcategoryTokens: List<String>,
-            displayNumberTokens: List<String>,
-            bookNumberTokens: List<String>,
             notesTokens: List<String>,
         ): Int {
             var s = 0
@@ -149,8 +132,6 @@ class SearchEngine(books: List<Book>) {
             s += scoreField(writerTokens, writer, weight = 30)
             s += scoreField(categoryTokens, category, weight = 15)
             s += scoreField(subcategoryTokens, subcategory, weight = 12)
-            s += scoreNumberField(displayNumberTokens, displayNumber, weight = 20)
-            s += scoreNumberField(bookNumberTokens, bookNumber, weight = 18)
             s += scoreField(notesTokens, notes, weight = 8)
 
             for (t in generalTokens) {
@@ -159,8 +140,6 @@ class SearchEngine(books: List<Book>) {
                 s += scoreToken(t, writer, weight = 22)
                 s += scoreToken(t, category, weight = 10)
                 s += scoreToken(t, subcategory, weight = 8)
-                s += scoreToken(t, displayNumber, weight = 12)
-                s += scoreToken(t, bookNumber, weight = 10)
                 s += scoreToken(t, notes, weight = 5)
                 s += scoreToken(t, letter, weight = 3)
                 s += scoreToken(t, color, weight = 3)
@@ -172,13 +151,6 @@ class SearchEngine(books: List<Book>) {
             if (tokens.isEmpty() || field.isEmpty()) return 0
             var s = 0
             for (t in tokens) s += scoreToken(t, field, weight)
-            return s
-        }
-
-        private fun scoreNumberField(tokens: List<String>, field: String, weight: Int): Int {
-            if (tokens.isEmpty() || field.isEmpty()) return 0
-            var s = 0
-            for (t in tokens) if (field == t) s += weight * 4 + (t.length / 2)
             return s
         }
 
@@ -219,8 +191,6 @@ class SearchEngine(books: List<Book>) {
                 color = HebrewText.normalize(book.color),
                 category = HebrewText.normalize(book.category),
                 subcategory = HebrewText.normalize(book.subcategories.joinToString(" ")),
-                displayNumber = HebrewText.normalizeNumberKey(book.displayNumber),
-                bookNumber = HebrewText.normalizeNumberKey(book.bookNumber),
                 notes = HebrewText.normalize(book.notes),
             )
         }

@@ -133,7 +133,7 @@ class AuditStore(private val context: Context) {
             arr.put(o)
         }
         val root = JSONObject().put("version", AUDIT_FORMAT_VERSION).put("events", arr)
-        atomicWriteText(target, root.toString())
+        atomicWrite(target, root.toString())
     }
 
     private fun readBook(o: JSONObject): Book = Book(
@@ -182,6 +182,13 @@ class AuditStore(private val context: Context) {
         o.put("createdAt", b.createdAt)
         o.put("updatedAt", b.updatedAt)
         return o
+    }
+
+    private fun atomicWrite(target: File, content: String) {
+        val tmp = File(target.parentFile, target.name + ".tmp")
+        tmp.writeText(content, Charsets.UTF_8)
+        if (target.exists()) target.delete()
+        tmp.renameTo(target)
     }
 
     private fun JSONArray.toStringList(): List<String> {

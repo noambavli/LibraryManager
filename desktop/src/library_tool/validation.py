@@ -9,51 +9,22 @@ produces human-readable findings so the user can make an informed decision
   * WARNING — likely a mistake worth a second look (e.g. two books with the
               same name + author, or a row missing a name).
   * INFO    — harmless but worth surfacing (e.g. a row that was skipped).
-
-Issue detection mirrors ``BookOrderIssues.kt`` on the tablet so staff see the
-same problems in LibraryTool and in the out-of-order management screen.
 """
 
 from __future__ import annotations
 
-import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, List, Set
+from typing import Dict, List
 
-from .hebrew import normalize, normalize_number_key
-from .model import Book, BookPlace
+from .hebrew import normalize
+from .model import Book
 
 ERROR = "ERROR"
 WARNING = "WARNING"
 INFO = "INFO"
 
 _SEVERITY_ORDER = {ERROR: 0, WARNING: 1, INFO: 2}
-
-_HEBREW = re.compile(r"[\u0590-\u05FF\u05F0-\u05F4]")
-
-_DUPLICATE_CODES = frozenset({
-    "dup_id", "dup_record", "dup_shelf_position", "dup_system_number",
-})
-
-_ISSUE_MESSAGES: Dict[str, str] = {
-    "missing_name": "books have no name — hard to find on the tablet",
-    "missing_writer": "named books are missing an author",
-    "missing_letter": "named books are missing a shelf letter (אות)",
-    "missing_display_number": "named books are missing a display number (מספר)",
-    "missing_system_number": "named books are missing a system number",
-    "missing_category": "named books are missing a category",
-    "number_in_letter_field": "books have digits in the letter field",
-    "letter_in_display_number": "books have a letter in the display-number field",
-    "letter_in_system_number": "books have a letter in the system-number field",
-    "invalid_system_number": "books have a non-numeric system number",
-    "dup_record": "books are identical on every field",
-    "dup_shelf_position": "books share a shelf position (letter + display number)",
-    "dup_system_number": "books share a system number",
-    "unknown_parent": "books reference a parent book that does not exist",
-    "self_parent": "books are set as their own parent",
-    "place_not_set": "named books have no place assigned",
-}
 
 
 @dataclass
@@ -91,7 +62,7 @@ class ValidationReport:
         """Total number of books involved in any duplicate finding."""
         total = 0
         for f in self.findings:
-            if f.code in _DUPLICATE_CODES:
+            if f.code in ("dup_id", "dup_name_author", "dup_display_number"):
                 total += f.count
         return total
 
@@ -104,214 +75,11 @@ class ValidationReport:
         )
 
 
-@dataclass
-class _CatalogContext:
-    known_ids: Set[str]
-    shelf_position_counts: Dict[str, int]
-    system_number_counts: Dict[str, int]
-    fingerprint_counts: Dict[str, int]
-
-    @classmethod
-    def build(cls, books: List[Book]) -> "_CatalogContext":
-        shelf_position_counts: Dict[str, int] = {}
-        system_number_counts: Dict[str, int] = {}
-        fingerprint_counts: Dict[str, int] = {}
-        for book in books:
-            key = _shelf_position_key(book)
-            if key:
-                shelf_position_counts[key] = shelf_position_counts.get(key, 0) + 1
-            sys_key = _system_number_key(book)
-            if sys_key:
-                system_number_counts[sys_key] = system_number_counts.get(sys_key, 0) + 1
-            fp = _record_fingerprint(book)
-            if fp:
-                fingerprint_counts[fp] = fingerprint_counts.get(fp, 0) + 1
-        return cls(
-            known_ids={b.id for b in books},
-            shelf_position_counts=shelf_position_counts,
-            system_number_counts=system_number_counts,
-            fingerprint_counts=fingerprint_counts,
-        )
-
-
 def _trunc(values: List[str], limit: int = 5) -> List[str]:
     shown = [v for v in values[:limit]]
     if len(values) > limit:
         shown.append(f"... (+{len(values) - limit} more)")
     return shown
-
-
-def _record_fingerprint(book: Book) -> str | None:
-    """Full-row fingerprint — any differing field means not a duplicate."""
-    if not book.name.strip():
-        return None
-    parts = [
-        normalize(book.name),
-        normalize(book.writer),
-        normalize(book.letter),
-        normalize_number_key(book.displayNumber),
-        normalize_number_key(book.bookNumber),
-        normalize(book.category),
-        normalize(book.topics),
-        normalize(book.color),
-        book.place,
-        book.state,
-        book.parentBookId or "",
-        "|".join(sorted(normalize(s) for s in book.subcategories)),
-        "|".join(sorted(normalize(r) for r in book.relations)),
-        normalize(book.notes),
-    ]
-    return "\0".join(parts)
-
-
-def _shelf_position_key(book: Book) -> str | None:
-    """Shelf slot = letter + display number; both required."""
-    letter = normalize(book.letter)
-    display = normalize_number_key(book.displayNumber)
-    if not letter or not display:
-        return None
-    return f"{letter}\0{display}"
-
-
-def _system_number_key(book: Book) -> str | None:
-    key = normalize_number_key(book.bookNumber)
-    return key or None
-
-
-def _field_looks_like_letter(value: str) -> bool:
-    trimmed = value.strip()
-    if not trimmed:
-        return False
-    if any(c.isdigit() for c in trimmed):
-        return False
-    return bool(_HEBREW.search(trimmed)) or trimmed.isalpha()
-
-
-def _looks_like_system_number(value: str) -> bool:
-    trimmed = value.strip()
-    if not trimmed:
-        return False
-    if _HEBREW.search(trimmed):
-        return False
-    return trimmed.isdigit()
-
-
-def _book_label(book: Book) -> str:
-    label = book.name.strip() or book.id
-    if book.writer.strip():
-        label += f" — {book.writer.strip()}"
-    return label
-
-
-def _issues_for_book(book: Book, ctx: _CatalogContext) -> Set[str]:
-    """Mirror ``BookOrderIssues.issuesFor`` — same rules, same codes."""
-    out: Set[str] = set()
-    name = book.name.strip()
-
-    if not name:
-        out.add("missing_name")
-
-    if name:
-        if not book.writer.strip():
-            out.add("missing_writer")
-        if not book.letter.strip():
-            out.add("missing_letter")
-        if not book.displayNumber.strip():
-            out.add("missing_display_number")
-        if not book.bookNumber.strip():
-            out.add("missing_system_number")
-        if not book.category.strip():
-            out.add("missing_category")
-        if book.letter.strip() and any(c.isdigit() for c in book.letter):
-            out.add("number_in_letter_field")
-        if _field_looks_like_letter(book.displayNumber):
-            out.add("letter_in_display_number")
-
-    if _field_looks_like_letter(book.bookNumber):
-        out.add("letter_in_system_number")
-    elif book.bookNumber.strip() and not _looks_like_system_number(book.bookNumber):
-        out.add("invalid_system_number")
-
-    shelf_key = _shelf_position_key(book)
-    if shelf_key and ctx.shelf_position_counts.get(shelf_key, 0) > 1:
-        out.add("dup_shelf_position")
-
-    sys_key = _system_number_key(book)
-    if sys_key and ctx.system_number_counts.get(sys_key, 0) > 1:
-        out.add("dup_system_number")
-
-    fp = _record_fingerprint(book)
-    if fp and ctx.fingerprint_counts.get(fp, 0) > 1:
-        out.add("dup_record")
-
-    parent_id = book.parentBookId
-    if parent_id == book.id:
-        out.add("self_parent")
-    elif parent_id and parent_id not in ctx.known_ids:
-        out.add("unknown_parent")
-
-    if book.place == BookPlace.UNSPECIFIED and name:
-        out.add("place_not_set")
-
-    return out
-
-
-def _aggregate_issue_findings(books: List[Book]) -> List[Finding]:
-    ctx = _CatalogContext.build(books)
-    by_code: Dict[str, List[Book]] = defaultdict(list)
-    for book in books:
-        for code in _issues_for_book(book, ctx):
-            by_code[code].append(book)
-
-    findings: List[Finding] = []
-    for code, group in sorted(by_code.items()):
-        if code == "missing_name":
-            continue  # handled separately for clearer messaging
-        count = len(group)
-        hint = _ISSUE_MESSAGES.get(code, code)
-        examples = _trunc([_book_label(b) for b in group])
-        if code.startswith("dup_"):
-            if code == "dup_shelf_position":
-                examples = []
-                seen: Set[str] = set()
-                for b in group:
-                    key = _shelf_position_key(b)
-                    if key and key not in seen:
-                        seen.add(key)
-                        letter, display = key.split("\0", 1)
-                        n = ctx.shelf_position_counts[key]
-                        examples.append(f"{letter}/{display} ×{n}")
-                examples = _trunc(examples)
-            elif code == "dup_system_number":
-                examples = []
-                seen = set()
-                for b in group:
-                    key = _system_number_key(b)
-                    if key and key not in seen:
-                        seen.add(key)
-                        n = ctx.system_number_counts[key]
-                        examples.append(f"#{key} ×{n}")
-                examples = _trunc(examples)
-            elif code == "dup_record":
-                examples = []
-                seen_fp: Set[str] = set()
-                for b in group:
-                    fp = _record_fingerprint(b)
-                    if fp and fp not in seen_fp:
-                        seen_fp.add(fp)
-                        n = ctx.fingerprint_counts[fp]
-                        examples.append(f"{_book_label(b)} ×{n}")
-                examples = _trunc(examples)
-        findings.append(
-            Finding(
-                WARNING,
-                code,
-                f"{count} {hint}.",
-                count=count,
-                examples=examples,
-            )
-        )
-    return findings
 
 
 def validate(books: List[Book], skipped: int = 0) -> ValidationReport:
@@ -334,10 +102,56 @@ def validate(books: List[Book], skipped: int = 0) -> ValidationReport:
             )
         )
 
-    # --- WARNING: per-book quality issues (mirrors tablet BookOrderIssues).
-    findings.extend(_aggregate_issue_findings(books))
+    # --- WARNING: same normalised name + author. Very likely an accidental
+    #     double-entry of the same physical book.
+    by_name_author: Dict[tuple, List[Book]] = defaultdict(list)
+    for b in books:
+        key = (normalize(b.name), normalize(b.writer))
+        if key[0] or key[1]:
+            by_name_author[key].append(b)
+    dup_na = {k: v for k, v in by_name_author.items() if len(v) > 1}
+    if dup_na:
+        involved = sum(len(v) for v in dup_na.values())
+        examples = []
+        for (n, w), group in list(dup_na.items())[:5]:
+            label = group[0].name or "(no name)"
+            if group[0].writer:
+                label += f" — {group[0].writer}"
+            examples.append(f"{label} ×{len(group)}")
+        findings.append(
+            Finding(
+                WARNING,
+                "dup_name_author",
+                f"{involved} books look like duplicates (same name + author "
+                f"across {len(dup_na)} groups). Check whether these are real "
+                "copies or accidental double rows.",
+                count=involved,
+                examples=examples,
+            )
+        )
 
-    # --- WARNING: rows with no name (clearer standalone message).
+    # --- WARNING: duplicate display numbers. Not fatal, but staff use these to
+    #     find books, so collisions cause real-world confusion.
+    display_counts = Counter(
+        b.displayNumber.strip() for b in books if b.displayNumber.strip()
+    )
+    dup_disp = {k: v for k, v in display_counts.items() if v > 1}
+    if dup_disp:
+        involved = sum(dup_disp.values())
+        findings.append(
+            Finding(
+                WARNING,
+                "dup_display_number",
+                f"{involved} books reuse {len(dup_disp)} catalog numbers "
+                "(the 'מספר' column). Staff searching by number will get "
+                "multiple hits.",
+                count=involved,
+                examples=_trunc([f"#{k} ×{v}" for k, v in sorted(dup_disp.items())]),
+            )
+        )
+
+    # --- WARNING: rows with no name at all. The tablet keeps them but they're
+    #     unsearchable by title.
     nameless = [b for b in books if not b.name.strip()]
     if nameless:
         findings.append(
@@ -350,6 +164,27 @@ def validate(books: List[Book], skipped: int = 0) -> ValidationReport:
                 examples=_trunc(
                     [b.displayNumber or b.id for b in nameless]
                 ),
+            )
+        )
+
+    # --- WARNING: rows with only a name and nothing else (likely incomplete).
+    bare = [
+        b
+        for b in books
+        if b.name.strip()
+        and not b.writer.strip()
+        and not b.topics.strip()
+        and not b.category.strip()
+    ]
+    if bare:
+        findings.append(
+            Finding(
+                WARNING,
+                "sparse_row",
+                f"{len(bare)} books have a name but no author, topics, or "
+                "category. They may be incomplete entries.",
+                count=len(bare),
+                examples=_trunc([b.name for b in bare]),
             )
         )
 
@@ -379,23 +214,29 @@ def validate(books: List[Book], skipped: int = 0) -> ValidationReport:
 
 
 def compare_for_duplicates(new_books: List[Book], existing_books: List[Book]) -> Finding | None:
-    """Cross-check a new catalog against what's already on the tablet.
-
-    The tablet merges by stable book ID (existing rows are skipped, new IDs are
-    added), so this reports how many incoming rows would be skipped vs added."""
+    """Cross-check a new catalog against what's already on the tablet, by
+    normalised name+author. Used before an *export* to warn that the export will
+    introduce books that already exist (the tablet import replaces everything, so
+    this is informational, but it surfaces drift between PC and tablet)."""
     if not existing_books:
         return None
-    existing_ids = {b.id for b in existing_books}
-    overlap = [b for b in new_books if b.id in existing_ids]
+    existing_keys = {
+        (normalize(b.name), normalize(b.writer)) for b in existing_books
+    }
+    overlap = [
+        b
+        for b in new_books
+        if (normalize(b.name), normalize(b.writer)) in existing_keys
+    ]
     if not overlap:
         return None
-    new_count = len(new_books) - len(overlap)
     return Finding(
         INFO,
         "overlap_with_tablet",
-        f"{len(overlap)} of the {len(new_books)} incoming books already exist on "
-        f"the tablet (matched by ID) and will be skipped; {new_count} would be "
-        "added as new rows.",
+        f"{len(overlap)} of the {len(new_books)} books already exist on the "
+        f"tablet (matched by name + author). Exporting replaces the entire "
+        "tablet catalog, so nothing is duplicated — but verify the counts look "
+        "right.",
         count=len(overlap),
-        examples=_trunc([b.name or b.id for b in overlap]),
+        examples=_trunc([b.name for b in overlap]),
     )

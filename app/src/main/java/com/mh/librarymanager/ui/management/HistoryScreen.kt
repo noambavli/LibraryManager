@@ -181,7 +181,7 @@ private fun HistoryRowCard(
                 Spacer(modifier = Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = primaryTitleFor(event = row.event),
+                        text = primaryTitleFor(row.event),
                         style = MaterialTheme.typography.titleMedium,
                         color = cs.onSurface,
                         fontWeight = FontWeight.SemiBold,
@@ -400,15 +400,11 @@ private fun Snackbar(message: String, modifier: Modifier = Modifier) {
 
 // --- support: formatting / diff / grouping -----------------------------------
 
-@Composable
 private fun primaryTitleFor(event: AuditEvent): String = when (event) {
     is AuditEvent.Added -> event.bookName.ifBlank { event.snapshot.name.ifBlank { "—" } }
     is AuditEvent.Updated -> event.bookName.ifBlank { event.after.name.ifBlank { "—" } }
     is AuditEvent.Deleted -> event.bookName.ifBlank { event.snapshot.name.ifBlank { "—" } }
-    is AuditEvent.Imported -> stringResource(
-        R.string.history_imported_title,
-        event.importedCount,
-    )
+    is AuditEvent.Imported -> "ייבוא קטלוג (${event.importedCount})"
 }
 
 private data class FieldDiff(val labelRes: Int, val before: String, val after: String)
@@ -458,10 +454,10 @@ private fun diffBooks(before: Book, after: Book): List<FieldDiff> {
 }
 
 private fun placeLabel(place: BookPlace): String = when (place) {
-    BookPlace.OTZAR -> "אוצר הספרים"
+    BookPlace.OTZAR -> "אוצר"
     BookPlace.BEIS_MIDRASH -> "בית מדרש"
     BookPlace.OTHER -> "אחר"
-    BookPlace.UNSPECIFIED -> "לא צוין"
+    BookPlace.UNSPECIFIED -> "—"
 }
 
 private fun stateLabel(state: BookState): String = when (state) {
@@ -486,7 +482,7 @@ private val DAY_FMT: SimpleDateFormat by lazy {
     }
 }
 private val TIME_FMT: SimpleDateFormat by lazy {
-    SimpleDateFormat("HH:mm", Locale.forLanguageTag("he")).apply {
+    SimpleDateFormat("HH:mm", Locale.getDefault()).apply {
         timeZone = TimeZone.getDefault()
     }
 }

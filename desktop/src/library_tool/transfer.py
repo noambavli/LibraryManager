@@ -99,7 +99,7 @@ def export_to(books: List[Book], dest_path: str, filename: str = "catalog.civ") 
         if not target.lower().endswith(civ.CIV_EXTENSION):
             target += civ.CIV_EXTENSION
 
-    intended_hash = civ.write_file(target, books, consume_counter=False)
+    intended_hash = civ.write_file(target, books)
 
     # Read back and verify — this is the whole point of "safe" transfer.
     actual_hash = civ.file_sha256(target)

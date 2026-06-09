@@ -137,67 +137,17 @@ def test_validation_detects_duplicate_ids():
     assert any(f.code == "dup_id" for f in report.errors)
 
 
-def test_validation_flags_identical_rows_as_dup_record():
-    shared = dict(name="בראשית", writer="רש\"י", bookNumber="0042")
-    books = [_book(1, **shared), _book(2, **shared)]
+def test_validation_flags_duplicate_name_author():
+    books = [_book(1, "בראשית", "רש\"י"), _book(2, "בראשית", "רש\"י")]
     report = validate(books)
-    assert any(f.code == "dup_record" for f in report.warnings)
+    assert any(f.code == "dup_name_author" for f in report.warnings)
     assert report.duplicate_count >= 2
 
 
-def test_validation_same_name_different_writer_not_dup():
-    books = [_book(1, "בראשית", "רש\"י"), _book(2, "בראשית", "אחר")]
+def test_validation_flags_duplicate_display_number():
+    books = [_book(1, display="5"), _book(2, display="5")]
     report = validate(books)
-    assert not any(f.code == "dup_record" for f in report.warnings)
-
-
-def test_validation_flags_duplicate_shelf_position():
-    books = [
-        _book(1, "ספר א", display="5", letter="א"),
-        _book(2, "ספר ב", display="5", letter="א"),
-    ]
-    report = validate(books)
-    assert any(f.code == "dup_shelf_position" for f in report.warnings)
-
-
-def test_validation_same_display_different_letter_not_shelf_dup():
-    books = [
-        _book(1, "ספר א", display="5", letter="א"),
-        _book(2, "ספר ב", display="5", letter="ב"),
-    ]
-    report = validate(books)
-    assert not any(f.code == "dup_shelf_position" for f in report.warnings)
-
-
-def test_validation_missing_display_not_shelf_dup():
-    books = [_book(1, "ספר א", display=""), _book(2, "ספר ב", display="")]
-    report = validate(books)
-    assert not any(f.code == "dup_shelf_position" for f in report.warnings)
-
-
-def test_validation_flags_duplicate_system_number():
-    shared = dict(name="ספר א", bookNumber="0042")
-    books = [_book(1, **shared), _book(2, **shared)]
-    report = validate(books)
-    assert any(f.code == "dup_system_number" for f in report.warnings)
-
-
-def test_validation_flags_missing_writer_on_named_book():
-    books = [_book(1, "ספר א", writer="")]
-    report = validate(books)
-    assert any(f.code == "missing_writer" for f in report.warnings)
-
-
-def test_backup_does_not_consume_export_counter(tmp_path, monkeypatch):
-    counter = tmp_path / "export_counter.txt"
-    counter.write_text("3", encoding="utf-8")
-    monkeypatch.setattr("library_tool.export_counter._counter_file", lambda: str(counter))
-    monkeypatch.setattr("library_tool.backups.backups_dir", lambda: str(tmp_path / "backups"))
-
-    from library_tool.backups import create_backup, KIND_MANUAL
-
-    create_backup([_book(1)], KIND_MANUAL)
-    assert counter.read_text(encoding="utf-8").strip() == "3"
+    assert any(f.code == "dup_display_number" for f in report.warnings)
 
 
 def test_validation_empty_is_error():

@@ -12,106 +12,33 @@ import java.util.zip.ZipInputStream
  * Why custom: Apache POI is large (~10MB), pulls reflection-heavy XML stacks
  * that crash on modern Android toolchains, and we only need to read text from
  * the first sheet. An xlsx file is a zip containing XML; the two parts we care
- * about are `xl/sharedStrings.xml` (the de-duplicated string table) and the
- * first worksheet grid. This implementation streams the zip once, then parses
- * both XMLs with the platform XmlPullParser.
- *
- * Sheet resolution mirrors the desktop tool: read the workbook relationships
- * when possible, fall back to `sheet1.xml`.
+ * about are `xl/sharedStrings.xml` (the de-duplicated string table) and
+ * `xl/worksheets/sheet1.xml` (the row/cell grid). This implementation streams
+ * the zip once, then parses both XMLs with the platform XmlPullParser.
  */
 object XlsxReader {
 
-    /** Reads the first worksheet and returns rows of trimmed cell strings. */
+    /** Reads sheet1 and returns rows of trimmed cell strings. */
     fun readFirstSheet(input: InputStream): List<List<String>> {
-        val entries = mutableMapOf<String, ByteArray>()
+        var sharedStringsXml: ByteArray? = null
+        var sheetXml: ByteArray? = null
 
         ZipInputStream(BufferedInputStream(input)).use { zip ->
             while (true) {
                 val entry = zip.nextEntry ?: break
                 val name = entry.name
                 when {
-                    name == "xl/sharedStrings.xml" ||
-                        name == "xl/workbook.xml" ||
-                        name == "xl/_rels/workbook.xml.rels" ||
-                        name.startsWith("xl/worksheets/") && name.endsWith(".xml") ->
-                        entries[name] = zip.readBytes()
+                    name == "xl/sharedStrings.xml" -> sharedStringsXml = zip.readBytes()
+                    name == "xl/worksheets/sheet1.xml" -> sheetXml = zip.readBytes()
                 }
                 zip.closeEntry()
             }
         }
 
-        val sheetName = resolveFirstSheetPath(entries)
-        val sheet = entries[sheetName] ?: error("xlsx is missing worksheet: $sheetName")
-        val sharedStrings = entries["xl/sharedStrings.xml"]?.let { parseSharedStrings(it) } ?: emptyList()
+        val sheet = sheetXml ?: error("xlsx is missing xl/worksheets/sheet1.xml")
+        val sharedStrings = sharedStringsXml?.let { parseSharedStrings(it) } ?: emptyList()
         return parseSheet(sheet, sharedStrings)
     }
-
-    private fun resolveFirstSheetPath(entries: Map<String, ByteArray>): String {
-        val default = "xl/worksheets/sheet1.xml"
-        val workbook = entries["xl/workbook.xml"]
-        val rels = entries["xl/_rels/workbook.xml.rels"]
-        if (workbook != null && rels != null) {
-            resolveViaWorkbook(workbook, rels, entries.keys)?.let { return it }
-        }
-        if (default in entries) return default
-        return entries.keys
-            .filter { it.startsWith("xl/worksheets/") && it.endsWith(".xml") }
-            .sorted()
-            .firstOrNull()
-            ?: error("xlsx has no worksheets")
-    }
-
-    private fun resolveViaWorkbook(
-        workbookXml: ByteArray,
-        relsXml: ByteArray,
-        names: Set<String>,
-    ): String? {
-        return try {
-            val sheetId = parseFirstSheetRelationshipId(workbookXml) ?: return null
-            val target = parseRelationshipTarget(relsXml, sheetId) ?: return null
-            val path = when {
-                target.startsWith("xl/") -> target
-                target.startsWith("/") -> target.removePrefix("/")
-                else -> "xl/$target"
-            }
-            path.takeIf { it in names }
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private fun parseFirstSheetRelationshipId(xml: ByteArray): String? {
-        val parser = XmlPullParserFactory.newInstance().newPullParser()
-        parser.setInput(xml.inputStream(), "UTF-8")
-        while (true) {
-            when (parser.next()) {
-                XmlPullParser.START_TAG -> if (localName(parser) == "sheet") {
-                    return parser.getAttributeValue(null, "id")
-                        ?: parser.getAttributeValue("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id")
-                }
-                XmlPullParser.END_DOCUMENT -> return null
-            }
-        }
-    }
-
-    private fun parseRelationshipTarget(relsXml: ByteArray, relationshipId: String): String? {
-        val parser = XmlPullParserFactory.newInstance().newPullParser()
-        parser.setInput(relsXml.inputStream(), "UTF-8")
-        while (true) {
-            when (parser.next()) {
-                XmlPullParser.START_TAG -> if (localName(parser) == "Relationship") {
-                    val id = parser.getAttributeValue(null, "Id")
-                    if (id == relationshipId) {
-                        return parser.getAttributeValue(null, "Target")
-                    }
-                }
-                XmlPullParser.END_DOCUMENT -> return null
-            }
-        }
-    }
-
-    private fun localName(parser: XmlPullParser): String =
-        parser.name.substringAfterLast(':')
 
     private fun parseSharedStrings(xml: ByteArray): List<String> {
         val parser = XmlPullParserFactory.newInstance().newPullParser()
@@ -124,12 +51,12 @@ object XlsxReader {
         while (true) {
             val event = parser.next()
             when (event) {
-                XmlPullParser.START_TAG -> when (localName(parser)) {
+                XmlPullParser.START_TAG -> when (parser.name) {
                     "si" -> { inSi = true; current.setLength(0) }
                     "t" -> if (inSi) inT = true
                 }
                 XmlPullParser.TEXT -> if (inT) current.append(parser.text)
-                XmlPullParser.END_TAG -> when (localName(parser)) {
+                XmlPullParser.END_TAG -> when (parser.name) {
                     "t" -> inT = false
                     "si" -> { result.add(current.toString()); inSi = false }
                 }
@@ -153,7 +80,7 @@ object XlsxReader {
 
         while (true) {
             when (parser.next()) {
-                XmlPullParser.START_TAG -> when (localName(parser)) {
+                XmlPullParser.START_TAG -> when (parser.name) {
                     "row" -> {
                         currentRow = mutableMapOf()
                         currentRowMaxCol = -1
@@ -167,7 +94,7 @@ object XlsxReader {
                     "t" -> if (cellType == "inlineStr" || cellType == "str") inInlineString = true
                 }
                 XmlPullParser.TEXT -> if (inValue || inInlineString) valueText.append(parser.text)
-                XmlPullParser.END_TAG -> when (localName(parser)) {
+                XmlPullParser.END_TAG -> when (parser.name) {
                     "v" -> inValue = false
                     "t" -> inInlineString = false
                     "c" -> {

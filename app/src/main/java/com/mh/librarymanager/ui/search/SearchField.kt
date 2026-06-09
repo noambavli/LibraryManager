@@ -17,7 +17,5 @@ enum class SearchField(@StringRes val labelRes: Int) {
     COLOR(R.string.search_field_color),
     CATEGORY(R.string.search_field_category),
     SUBCATEGORY(R.string.search_field_subcategory),
-    DISPLAY_NUMBER(R.string.search_field_display_number),
-    BOOK_NUMBER(R.string.search_field_book_number),
     NOTES(R.string.search_field_notes),
 }

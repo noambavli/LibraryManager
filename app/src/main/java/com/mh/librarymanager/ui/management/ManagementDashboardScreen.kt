@@ -34,9 +34,7 @@ import com.mh.librarymanager.R
 
 @Composable
 fun ManagementDashboardScreen(
-    outOfOrderCount: Int,
     onOpenBooks: () -> Unit,
-    onOpenOutOfOrder: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenRequests: () -> Unit,
     onOpenAnnouncements: () -> Unit,
@@ -78,15 +76,11 @@ fun ManagementDashboardScreen(
                 )
                 DashboardTile(
                     modifier = Modifier.weight(1f).height(190.dp),
-                    title = stringResource(R.string.management_out_of_order),
-                    subtitle = if (outOfOrderCount > 0) {
-                        stringResource(R.string.management_out_of_order_subtitle_count, outOfOrderCount)
-                    } else {
-                        stringResource(R.string.management_out_of_order_subtitle_ok)
-                    },
-                    accent = if (outOfOrderCount > 0) Color(0xFFB45309) else cs.tertiary,
-                    iconText = "\u05EA\u05D9\u05E7", // תיק
-                    onClick = onOpenOutOfOrder,
+                    title = stringResource(R.string.management_requests),
+                    subtitle = stringResource(R.string.management_requests_subtitle),
+                    accent = cs.secondary,
+                    iconText = "\u05D1\u05E7\u05E9", // בקש
+                    onClick = onOpenRequests,
                 )
             }
 
@@ -96,14 +90,6 @@ fun ManagementDashboardScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                DashboardTile(
-                    modifier = Modifier.weight(1f).height(190.dp),
-                    title = stringResource(R.string.management_requests),
-                    subtitle = stringResource(R.string.management_requests_subtitle),
-                    accent = cs.secondary,
-                    iconText = "\u05D1\u05E7\u05E9", // בקש
-                    onClick = onOpenRequests,
-                )
                 DashboardTile(
                     modifier = Modifier.weight(1f).height(190.dp),
                     title = stringResource(R.string.management_announcements),
@@ -112,14 +98,6 @@ fun ManagementDashboardScreen(
                     iconText = "\u05D4\u05D5\u05D3", // הוד
                     onClick = onOpenAnnouncements,
                 )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
-            ) {
                 DashboardTile(
                     modifier = Modifier.weight(1f).height(190.dp),
                     title = stringResource(R.string.management_shortcuts),
@@ -128,6 +106,14 @@ fun ManagementDashboardScreen(
                     iconText = "\u05E7\u05D9\u05E6", // קיצ
                     onClick = onOpenShortcuts,
                 )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
                 DashboardTile(
                     modifier = Modifier.weight(1f).height(190.dp),
                     title = stringResource(R.string.management_history),
@@ -135,6 +121,14 @@ fun ManagementDashboardScreen(
                     accent = cs.tertiary,
                     iconText = "\u05D4\u05E1\u05D8", // הסט
                     onClick = onOpenHistory,
+                )
+                DashboardTile(
+                    modifier = Modifier.weight(1f).height(190.dp),
+                    title = stringResource(R.string.management_tech_support),
+                    subtitle = stringResource(R.string.management_tech_support_subtitle),
+                    accent = cs.secondary,
+                    iconText = "\u05EA\u05DE", // תמ
+                    onClick = onOpenTechSupport,
                 )
             }
 
@@ -146,20 +140,13 @@ fun ManagementDashboardScreen(
             ) {
                 DashboardTile(
                     modifier = Modifier.weight(1f).height(190.dp),
-                    title = stringResource(R.string.management_tech_support),
-                    subtitle = stringResource(R.string.management_tech_support_subtitle),
-                    accent = cs.secondary,
-                    iconText = "\u05EA\u05DE", // תמ
-                    onClick = onOpenTechSupport,
-                )
-                DashboardTile(
-                    modifier = Modifier.weight(1f).height(190.dp),
                     title = stringResource(R.string.management_catalog_transfer),
                     subtitle = stringResource(R.string.management_catalog_transfer_subtitle),
                     accent = cs.primary,
                     iconText = "\u05D9\u05D1\u05D0", // יבא
                     onClick = onOpenCatalogTransfer,
                 )
+                Spacer(modifier = Modifier.weight(1f))
             }
         }
     }

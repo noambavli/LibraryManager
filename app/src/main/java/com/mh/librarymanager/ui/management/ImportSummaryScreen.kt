@@ -197,10 +197,5 @@ private fun BookLineCard(index: Int, name: String, writer: String) {
     }
 }
 
-private val WHEN_FMT: SimpleDateFormat by lazy {
-    SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.forLanguageTag("he")).apply {
-        timeZone = java.util.TimeZone.getDefault()
-    }
-}
-
-private fun formatWhen(ms: Long): String = WHEN_FMT.format(Date(ms))
+private fun formatWhen(ms: Long): String =
+    SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date(ms))

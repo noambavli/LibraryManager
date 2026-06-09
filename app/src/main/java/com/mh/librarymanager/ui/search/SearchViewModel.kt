@@ -140,10 +140,19 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Loads the on-device catalog only — production data comes from PC .civ sync. */
     private fun ensureCatalogLoaded() {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { container.repository.count() }
+            val count = withContext(Dispatchers.IO) { container.repository.count() }
+            if (count == 0) {
+                _isImporting.value = true
+                try {
+                    withContext(Dispatchers.IO) {
+                        container.importer.importFromAsset(LibraryApp.BUNDLED_CATALOG_ASSET)
+                    }
+                } finally {
+                    _isImporting.value = false
+                }
+            }
         }
     }
 }
@@ -164,8 +173,6 @@ private fun Map<SearchField, TextFieldValue>.toQuery(): SearchQuery = SearchQuer
     color = this[SearchField.COLOR]?.text.orEmpty(),
     category = this[SearchField.CATEGORY]?.text.orEmpty(),
     subcategory = this[SearchField.SUBCATEGORY]?.text.orEmpty(),
-    displayNumber = this[SearchField.DISPLAY_NUMBER]?.text.orEmpty(),
-    bookNumber = this[SearchField.BOOK_NUMBER]?.text.orEmpty(),
     notes = this[SearchField.NOTES]?.text.orEmpty(),
 )
 
