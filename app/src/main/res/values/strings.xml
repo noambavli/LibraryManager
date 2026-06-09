@@ -102,6 +102,32 @@
     <string name="management_shortcuts_subtitle">הוספה ומחיקה של תגיות חיפוש מהיר</string>
     <string name="management_tech_support">בקשות תמיכה טכנית</string>
     <string name="management_tech_support_subtitle">דיווחי תקלות מהציבור</string>
+    <string name="management_catalog_transfer">ייבוא קטלוג מהמחשב</string>
+    <string name="management_catalog_transfer_subtitle">טעינת קובץ ‎.civ שייצא תוכנת המחשב</string>
+
+    <!-- Catalog transfer (import .civ from PC) -->
+    <string name="catalog_transfer_title">ייבוא קטלוג מהמחשב</string>
+    <string name="catalog_transfer_current_status">סטטוס נוכחי</string>
+    <string name="catalog_transfer_book_count">%1$d ספרים בקטלוג</string>
+    <string name="catalog_transfer_how_title">איך מייבאים?</string>
+    <string name="catalog_transfer_step1">חברו את הטאבלט למחשב בכבל USB‑C ובחרו בטאבלט את האפשרות \"העברת קבצים\".</string>
+    <string name="catalog_transfer_step2">במחשב, פיתחו את LibraryTool וייצאו את הקובץ ‎catalog.civ אל תיקיית ההורדות (Download) של הטאבלט.</string>
+    <string name="catalog_transfer_step3">חזרו לכאן ולחצו על \"בחירת קובץ ‎.civ\", נווטו ל‑Download ובחרו את הקובץ.</string>
+    <string name="catalog_transfer_pick_file">בחירת קובץ ‎.civ</string>
+    <string name="catalog_transfer_undo">שחזור הקטלוג הקודם</string>
+    <string name="catalog_transfer_undo_body">השחזור יחזיר את הקטלוג שהיה לפני הייבוא האחרון. להמשיך?</string>
+    <string name="catalog_transfer_undo_confirm">שחזר</string>
+    <string name="catalog_transfer_working">מייבא… אנא המתינו.</string>
+    <string name="catalog_transfer_done_title">הייבוא הסתיים בהצלחה</string>
+    <string name="catalog_transfer_done_body">נטענו %1$d ספרים (במקום %2$d). ניתן לשחזר את הקודם בלחיצת כפתור.</string>
+    <string name="catalog_transfer_restored_title">שוחזר</string>
+    <string name="catalog_transfer_restored_body">הוחזרו %1$d ספרים.</string>
+    <string name="catalog_transfer_error_title">לא ניתן לייבא</string>
+    <string name="catalog_transfer_dismiss">סגור</string>
+    <string name="catalog_transfer_confirm_title">לאשר ייבוא?</string>
+    <string name="catalog_transfer_confirm_body">הייבוא יחליף את כל %1$d הספרים שבקטלוג בתוכן שבקובץ.</string>
+    <string name="catalog_transfer_confirm_safety">לפני ההחלפה נשמר גיבוי אוטומטי — תוכלו לשחזר את הקטלוג הקודם בלחיצה אחת.</string>
+    <string name="catalog_transfer_confirm_ok">המשך וייבוא</string>
 
     <!-- Technical support management -->
     <string name="tech_support_management_title">בקשות תמיכה טכנית</string>

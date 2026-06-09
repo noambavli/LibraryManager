@@ -32,6 +32,9 @@ sealed interface AppScreen {
     data object ManagementShortcuts : AppScreen
     data object ManagementTechSupport : AppScreen
 
+    /** Catalog import from PC (.civ file via Storage Access Framework). */
+    data object ManagementCatalogTransfer : AppScreen
+
     /** Book editor — `bookId == null` means "create a brand new book". */
     data class BookEditor(val bookId: String?) : AppScreen
 }

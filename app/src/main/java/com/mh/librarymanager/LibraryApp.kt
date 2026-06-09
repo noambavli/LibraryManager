@@ -3,6 +3,7 @@ package com.mh.librarymanager
 import android.app.Application
 import android.content.Context
 import com.mh.librarymanager.data.BookRepository
+import com.mh.librarymanager.data.civ.CivCatalogIO
 import com.mh.librarymanager.data.store.AnnouncementStore
 import com.mh.librarymanager.data.store.AuditStore
 import com.mh.librarymanager.data.store.CatalogStore
@@ -26,6 +27,7 @@ class LibraryApp : Application() {
     val techSupportStore: TechSupportStore by lazy { TechSupportStore(this) }
     val repository: BookRepository by lazy { BookRepository(catalogStore, auditStore) }
     val importer: CatalogImporter by lazy { CatalogImporter(this, repository) }
+    val civCatalogIo: CivCatalogIO by lazy { CivCatalogIO(this, repository) }
 
     companion object {
         const val BUNDLED_CATALOG_ASSET = "catalog.xlsx"

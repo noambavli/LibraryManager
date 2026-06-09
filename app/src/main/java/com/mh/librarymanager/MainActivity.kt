@@ -18,6 +18,7 @@ import com.mh.librarymanager.ui.AppRoot
 import com.mh.librarymanager.ui.announcements.AnnouncementsViewModel
 import com.mh.librarymanager.ui.management.AnnouncementsManagementViewModel
 import com.mh.librarymanager.ui.management.BooksManagementViewModel
+import com.mh.librarymanager.ui.management.CatalogTransferViewModel
 import com.mh.librarymanager.ui.management.HistoryViewModel
 import com.mh.librarymanager.ui.management.ManagementSession
 import com.mh.librarymanager.ui.management.RequestsManagementViewModel
@@ -40,6 +41,7 @@ class MainActivity : ComponentActivity() {
     private val shortcutsManagementViewModel: ShortcutsManagementViewModel by viewModels()
     private val techSupportViewModel: TechSupportViewModel by viewModels()
     private val techSupportManagementViewModel: TechSupportManagementViewModel by viewModels()
+    private val catalogTransferViewModel: CatalogTransferViewModel by viewModels()
     private val managementSession: ManagementSession by viewModels()
 
     /**
@@ -78,6 +80,7 @@ class MainActivity : ComponentActivity() {
                     shortcutsManagementViewModel = shortcutsManagementViewModel,
                     techSupportViewModel = techSupportViewModel,
                     techSupportManagementViewModel = techSupportManagementViewModel,
+                    catalogTransferViewModel = catalogTransferViewModel,
                     managementSession = managementSession,
                     onRegisterBackHandler = { handler ->
                         composeBackHandler = handler

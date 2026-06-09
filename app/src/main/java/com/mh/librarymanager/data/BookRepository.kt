@@ -40,6 +40,16 @@ class BookRepository(
 
     suspend fun count(): Int = store.count()
 
+    /**
+     * In-memory snapshot of the current catalog (all rows, including history).
+     * Used by callers (e.g. .civ import) that need to back up the existing
+     * state synchronously before doing a destructive replace.
+     */
+    suspend fun snapshotForBackup(): List<Book> {
+        store.loadFromDisk()
+        return store.books.value.toList()
+    }
+
     suspend fun replaceAll(books: List<Book>) {
         store.replaceAll(books)
         auditStore.append(

@@ -21,6 +21,8 @@ import com.mh.librarymanager.ui.announcements.AnnouncementsViewModel
 import com.mh.librarymanager.ui.management.AnnouncementEditorScreen
 import com.mh.librarymanager.ui.management.AnnouncementsManagementScreen
 import com.mh.librarymanager.ui.management.AnnouncementsManagementViewModel
+import com.mh.librarymanager.ui.management.CatalogTransferScreen
+import com.mh.librarymanager.ui.management.CatalogTransferViewModel
 import com.mh.librarymanager.ui.management.ManagementDashboardScreen
 import com.mh.librarymanager.ui.management.ManagementSession
 import com.mh.librarymanager.ui.management.PasswordScreen
@@ -60,6 +62,7 @@ fun AppRoot(
     shortcutsManagementViewModel: ShortcutsManagementViewModel,
     techSupportViewModel: TechSupportViewModel,
     techSupportManagementViewModel: TechSupportManagementViewModel,
+    catalogTransferViewModel: CatalogTransferViewModel,
     managementSession: ManagementSession,
     onRegisterBackHandler: (handler: (() -> Boolean)) -> Unit,
 ) {
@@ -74,6 +77,7 @@ fun AppRoot(
     val shortcutsManagementVm: ShortcutsManagementViewModel = shortcutsManagementViewModel
     val techSupportVm: TechSupportViewModel = techSupportViewModel
     val techSupportManagementVm: TechSupportManagementViewModel = techSupportManagementViewModel
+    val catalogTransferVm: CatalogTransferViewModel = catalogTransferViewModel
     val session: ManagementSession = managementSession
 
     SideEffect {
@@ -158,6 +162,18 @@ fun AppRoot(
                     onOpenAnnouncements = { nav.push(AppScreen.ManagementAnnouncements) },
                     onOpenShortcuts = { nav.push(AppScreen.ManagementShortcuts) },
                     onOpenTechSupport = { nav.push(AppScreen.ManagementTechSupport) },
+                    onOpenCatalogTransfer = { nav.push(AppScreen.ManagementCatalogTransfer) },
+                    onLogout = {
+                        session.logout()
+                        nav.resetTo(AppScreen.Home)
+                    },
+                )
+            }
+
+            AppScreen.ManagementCatalogTransfer -> ManagementGuard(session = session, nav = nav) {
+                CatalogTransferScreen(
+                    viewModel = catalogTransferVm,
+                    onBack = { nav.pop() },
                     onLogout = {
                         session.logout()
                         nav.resetTo(AppScreen.Home)

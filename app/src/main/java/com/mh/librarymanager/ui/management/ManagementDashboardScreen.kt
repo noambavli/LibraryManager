@@ -40,6 +40,7 @@ fun ManagementDashboardScreen(
     onOpenAnnouncements: () -> Unit,
     onOpenShortcuts: () -> Unit,
     onOpenTechSupport: () -> Unit,
+    onOpenCatalogTransfer: () -> Unit,
     onLogout: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -129,6 +130,23 @@ fun ManagementDashboardScreen(
                     iconText = "\u05EA\u05DE", // תמ
                     onClick = onOpenTechSupport,
                 )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                DashboardTile(
+                    modifier = Modifier.weight(1f).height(190.dp),
+                    title = stringResource(R.string.management_catalog_transfer),
+                    subtitle = stringResource(R.string.management_catalog_transfer_subtitle),
+                    accent = cs.primary,
+                    iconText = "\u05D9\u05D1\u05D0", // יבא
+                    onClick = onOpenCatalogTransfer,
+                )
+                Spacer(modifier = Modifier.weight(1f))
             }
         }
     }
