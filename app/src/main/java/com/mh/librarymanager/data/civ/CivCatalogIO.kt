@@ -2,6 +2,7 @@ package com.mh.librarymanager.data.civ
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import com.mh.librarymanager.data.BookRepository
 import com.mh.librarymanager.data.store.CatalogStore
 import com.mh.librarymanager.data.store.atomicWriteText
@@ -46,6 +47,8 @@ class CivCatalogIO(
 ) {
 
     companion object {
+        private const val TAG = "CivCatalogIO"
+
         /** Hard cap on .civ size we'll ingest — generous for any real catalog. */
         const val MAX_BYTES: Long = 64L * 1024L * 1024L
 
@@ -63,9 +66,14 @@ class CivCatalogIO(
         const val INCOMING_CANONICAL_NAME = "catalog.civ"
 
         /** Written after an adb-triggered import so the PC can read the outcome. */
-        const val RESULT_PATH = "/sdcard/Download/catalog-import-result.txt"
-        const val RESULT_PATH_TMP = "/data/local/tmp/catalog-import-result.txt"
-        val RESULT_PATHS = listOf(RESULT_PATH_TMP, RESULT_PATH)
+        const val RESULT_FILE_NAME = "catalog-import-result.txt"
+        const val RESULT_PROGRESS = "RUNNING"
+        const val RESULT_PATH = "/sdcard/Download/$RESULT_FILE_NAME"
+        const val RESULT_PATH_TMP = "/data/local/tmp/$RESULT_FILE_NAME"
+        /** Where [writeImportResult] writes first — readable by adb shell on all API levels. */
+        const val RESULT_PATH_APP_FILES =
+            "/sdcard/Android/data/com.mh.librarymanager/files/$RESULT_FILE_NAME"
+        val RESULT_PATHS = listOf(RESULT_PATH_TMP, RESULT_PATH, RESULT_PATH_APP_FILES)
 
         private const val PREF_LAST_AT = "last_at"
         private const val PREF_LAST_ADDED = "last_added"
@@ -204,6 +212,9 @@ class CivCatalogIO(
         CivDownloadPublisher.publish(context, text, CivDownloadPublisher.archiveFilename(meta))
     }
 
+    /** Immediate ack so the PC knows the tablet started importing (not stuck on broadcast). */
+    fun writeImportAck() = writeResultLine(RESULT_PROGRESS)
+
     fun writeImportResult(result: ImportResult) {
         val line = when (result) {
             is ImportResult.Ok ->
@@ -215,12 +226,36 @@ class CivCatalogIO(
             is ImportResult.TooLarge -> "ERR:too_large"
             is ImportResult.IoFailure -> "ERR:${result.reason}"
         }
-        for (path in RESULT_PATHS) {
-            try {
-                File(path).writeText(line, Charsets.UTF_8)
-            } catch (_: Exception) {
-                // Best effort — tmp path is readable by adb on device-owner tablets.
+        writeResultLine(line)
+    }
+
+    private fun writeResultLine(line: String) {
+        var wrote = false
+        runCatching {
+            CivDownloadPublisher.publish(context, line, RESULT_FILE_NAME)
+            wrote = true
+            Log.i(TAG, "Import result published to Downloads: $line")
+        }.onFailure {
+            Log.w(TAG, "Could not publish import result to Downloads", it)
+        }
+        context.getExternalFilesDir(null)?.let { dir ->
+            runCatching {
+                File(dir, RESULT_FILE_NAME).writeText(line, Charsets.UTF_8)
+                wrote = true
+            }.onFailure {
+                Log.w(TAG, "Could not write import result to app files", it)
             }
+        }
+        for (path in listOf(RESULT_PATH, RESULT_PATH_TMP)) {
+            runCatching {
+                File(path).writeText(line, Charsets.UTF_8)
+                wrote = true
+            }.onFailure {
+                Log.w(TAG, "Could not write import result to $path", it)
+            }
+        }
+        if (!wrote) {
+            Log.e(TAG, "Import result not written to any path — PC will use logcat: $line")
         }
     }
 

@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.mh.librarymanager.data.civ.CivCatalogIO
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -25,26 +26,12 @@ class CatalogImportReceiver : BroadcastReceiver() {
         val app = LibraryApp.from(context)
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                KioskPolicyManager.applyPolicies(context)
-                UsbMaintenance.applyUsbDefaults(context)
-                val io = app.civCatalogIo
-                val result = io.importFromIncomingFile()
-                io.writeImportResult(result)
-                when (result) {
-                    is com.mh.librarymanager.data.civ.CivCatalogIO.ImportResult.Ok ->
-                        Log.i(
-                            TAG,
-                            "Merged catalog: +${result.addedCount} added, " +
-                                "${result.skippedCount} skipped, total ${result.totalAfter}",
-                        )
-                    else ->
-                        Log.e(TAG, "Import failed: $result")
-                }
+                CatalogImportRunner.run(context)
             } catch (e: Exception) {
                 Log.e(TAG, "Import crashed", e)
                 try {
                     app.civCatalogIo.writeImportResult(
-                        com.mh.librarymanager.data.civ.CivCatalogIO.ImportResult.IoFailure(
+                        CivCatalogIO.ImportResult.IoFailure(
                             e.message ?: "Import crashed",
                         ),
                     )

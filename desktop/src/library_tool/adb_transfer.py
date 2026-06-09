@@ -5,7 +5,7 @@ Flow (same pattern as the app's APK update):
   2. Best-effort enable USB file-transfer mode on the device
   3. Push catalog.civ to /data/local/tmp/catalog.civ
   4. Broadcast IMPORT_CATALOG to the tablet app
-  5. Read catalog-import-result.txt to confirm the tablet imported it
+  5. Read catalog-import-result.txt (or logcat fallback) to confirm import
 
 Requires USB debugging enabled on the tablet (done automatically for
 device-owner/kiosk tablets). Works even when the tablet does not appear
@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -27,7 +28,12 @@ REMOTE_CIV_TMP = "/data/local/tmp/catalog.civ"
 REMOTE_CIV_DOWNLOAD = "/sdcard/Download/catalog.civ"
 REMOTE_RESULT_TMP = "/data/local/tmp/catalog-import-result.txt"
 REMOTE_RESULT = "/sdcard/Download/catalog-import-result.txt"
-REMOTE_RESULTS = [REMOTE_RESULT_TMP, REMOTE_RESULT]
+REMOTE_RESULT_APP = (
+    "/sdcard/Android/data/com.mh.librarymanager/files/catalog-import-result.txt"
+)
+# Downloads first — that path worked in the original "fix file import" flow.
+REMOTE_RESULTS = [REMOTE_RESULT, REMOTE_RESULT_TMP, REMOTE_RESULT_APP]
+RESULT_PROGRESS = "RUNNING"
 IMPORT_ACTION = "com.mh.librarymanager.IMPORT_CATALOG"
 IMPORT_RECEIVER = "com.mh.librarymanager/.CatalogImportReceiver"
 PACKAGE = "com.mh.librarymanager"
@@ -307,6 +313,118 @@ def _is_final_result(line: str) -> bool:
     return stripped.startswith("OK:") or stripped.startswith("ERR:")
 
 
+def _is_progress_result(line: str) -> bool:
+    return line.strip() == RESULT_PROGRESS
+
+
+def _import_timeout_sec(local_civ: str) -> int:
+    """Scale wait time with catalog size — large merges can take over a minute."""
+    size = os.path.getsize(local_civ)
+    return min(300, 90 + (size // 102_400) * 10)
+
+
+def _read_result_file(adb: str, serial: str, remote: str) -> str:
+    code, out, _ = _run(adb, ["-s", serial, "shell", "cat", remote], timeout=10)
+    if code == 0 and out.strip():
+        return out.strip()
+    return ""
+
+
+_LOGCAT_MERGED = re.compile(
+    r"Merged catalog: \+(\d+) added, (\d+) skipped, total (\d+)"
+)
+
+
+def _parse_logcat_import(logcat: str) -> str:
+    """Build a result line from CatalogImport log output (file write fallback)."""
+    lines = logcat.splitlines()
+    for line in reversed(lines):
+        match = _LOGCAT_MERGED.search(line)
+        if match:
+            added, skipped, total = match.groups()
+            return f"OK:added={added}:skipped={skipped}:total={total}"
+    for line in reversed(lines):
+        if "Import failed:" in line:
+            detail = line.split("Import failed:", 1)[1].strip()
+            return f"ERR:{detail}"
+        if "Import crashed" in line:
+            return "ERR:Import crashed"
+    return ""
+
+
+def _read_result_logcat(adb: str, serial: str, *, since: str = "") -> str:
+    code, out, _ = _run(
+        adb,
+        ["-s", serial, "logcat", "-d", "-s", "CatalogImport:I", "CatalogImport:E"],
+        timeout=15,
+    )
+    if code != 0 or not out.strip():
+        return ""
+    if since:
+        since_lines = set(since.splitlines())
+        fresh = [ln for ln in out.splitlines() if ln not in since_lines]
+        if not fresh:
+            return ""
+        return _parse_logcat_import("\n".join(fresh))
+    return _parse_logcat_import(out)
+
+
+def _read_result_mediastore(adb: str, serial: str) -> str:
+    """Fallback when Downloads was written via MediaStore (Android 10+)."""
+    for where in (
+        "display_name='catalog-import-result.txt'",
+        "_display_name='catalog-import-result.txt'",
+        "title='catalog-import-result.txt'",
+    ):
+        code, out, _ = _run(
+            adb,
+            [
+                "-s", serial, "shell", "content", "query",
+                "--uri", "content://media/external/downloads",
+                "--projection", "_data",
+                "--where", where,
+            ],
+            timeout=15,
+        )
+        if code != 0 or not out.strip():
+            continue
+        for line in out.splitlines():
+            if "_data=" not in line:
+                continue
+            path = line.split("_data=", 1)[1].strip()
+            content = _read_result_file(adb, serial, path)
+            if content:
+                return content
+    return ""
+
+
+def _trigger_import(adb: str, serial: str) -> None:
+    """Broadcast import (proven path) and wake the app on newer builds."""
+    code, out, err = _run(
+        adb,
+        [
+            "-s", serial, "shell", "am", "broadcast",
+            "-a", IMPORT_ACTION,
+            "-n", IMPORT_RECEIVER,
+            "--include-stopped-packages",
+        ],
+        timeout=30,
+    )
+    if code != 0:
+        raise IOError(f"adb broadcast failed: {err or out or 'unknown error'}")
+    # Extra wake-up for newer APKs; harmless no-op on older builds.
+    _run(
+        adb,
+        [
+            "-s", serial, "shell", "am", "start",
+            "-n", f"{PACKAGE}/.MainActivity",
+            "-a", IMPORT_ACTION,
+            "--include-stopped-packages",
+        ],
+        timeout=30,
+    )
+
+
 def push_and_import(adb: str, serial: str, local_civ: str) -> AdbSendResult:
     """Push catalog.civ and trigger silent import on the tablet."""
     prepare_usb(adb, serial)
@@ -340,23 +458,35 @@ def push_and_import(adb: str, serial: str, local_civ: str) -> AdbSendResult:
 
     digest = _local_sha256(local_civ)
 
-    code, out, err = _run(
+    # PC can write to tmp via shell — seed RUNNING so we know adb can read this path.
+    _run(
         adb,
         [
-            "-s", serial, "shell", "am", "broadcast",
-            "-a", IMPORT_ACTION,
-            "-n", IMPORT_RECEIVER,
+            "-s", serial, "shell", "sh", "-c",
+            f"echo {RESULT_PROGRESS} > {REMOTE_RESULT_TMP}",
         ],
-        timeout=30,
+        timeout=10,
     )
-    if code != 0:
-        raise IOError(f"adb broadcast failed: {err or out or 'unknown error'}")
 
-    result_line = _wait_for_result(adb, serial, timeout_sec=45)
+    # Clear log so we only see output from this import attempt.
+    _run(adb, ["-s", serial, "logcat", "-c"], timeout=10)
+    _, logcat_baseline, _ = _run(
+        adb,
+        ["-s", serial, "logcat", "-d", "-s", "CatalogImport:I", "CatalogImport:E"],
+        timeout=15,
+    )
+
+    _trigger_import(adb, serial)
+
+    timeout_sec = _import_timeout_sec(local_civ)
+    result_line = _wait_for_result(
+        adb, serial, timeout_sec=timeout_sec, logcat_baseline=logcat_baseline,
+    )
     if not result_line or not _is_final_result(result_line):
         raise IOError(
             "Tablet did not report an import result in time. "
-            "The file was pushed but import may not have finished."
+            "The file was pushed but import may not have finished. "
+            f"(waited {timeout_sec}s — update the tablet app if this keeps happening)"
         )
 
     imported = _parse_import_count(result_line)
@@ -371,15 +501,36 @@ def push_and_import(adb: str, serial: str, local_civ: str) -> AdbSendResult:
     )
 
 
-def _wait_for_result(adb: str, serial: str, timeout_sec: int = 45) -> str:
+def _wait_for_result(
+    adb: str,
+    serial: str,
+    timeout_sec: int = 120,
+    logcat_baseline: str = "",
+) -> str:
     deadline = time.time() + timeout_sec
+    saw_running = False
     while time.time() < deadline:
         for remote in REMOTE_RESULTS:
-            code, out, _ = _run(
-                adb, ["-s", serial, "shell", "cat", remote], timeout=10,
-            )
-            if code == 0 and out.strip() and _is_final_result(out):
-                return out.strip()
+            line = _read_result_file(adb, serial, remote)
+            if not line:
+                continue
+            if _is_final_result(line):
+                return line
+            if _is_progress_result(line):
+                saw_running = True
+                if deadline - time.time() < 45:
+                    deadline = time.time() + 60
+        line = _read_result_mediastore(adb, serial)
+        if line:
+            if _is_final_result(line):
+                return line
+            if _is_progress_result(line):
+                saw_running = True
+                if deadline - time.time() < 45:
+                    deadline = time.time() + 60
+        line = _read_result_logcat(adb, serial, since=logcat_baseline)
+        if line and _is_final_result(line):
+            return line
         time.sleep(0.8)
     return ""
 
@@ -432,7 +583,9 @@ def send_books(
     """High-level: find adb + device, write .civ, push, import, verify."""
     from .export_counter import commit_batch_number, peek_next_batch_number
 
-    diag = diagnose(restart_server=True)
+    # Avoid kill-server on every send — that was not in the working "fix file import" flow
+    # and can disrupt a stable USB session mid-transfer.
+    diag = diagnose(restart_server=False)
     if not diag.adb_path:
         raise FileNotFoundError(diag.error or "adb not found")
     if not diag.ready:

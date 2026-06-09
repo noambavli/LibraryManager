@@ -37,6 +37,11 @@
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+            <!-- PC LibraryTool: am start -a IMPORT_CATALOG (foreground import). -->
+            <intent-filter>
+                <action android:name="com.mh.librarymanager.IMPORT_CATALOG" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
 
         <receiver

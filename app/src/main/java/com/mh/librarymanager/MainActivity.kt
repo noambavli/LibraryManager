@@ -11,6 +11,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -28,6 +29,7 @@ import com.mh.librarymanager.ui.requests.PublicRequestViewModel
 import com.mh.librarymanager.ui.support.TechSupportViewModel
 import com.mh.librarymanager.ui.search.SearchViewModel
 import com.mh.librarymanager.ui.theme.LibraryManagerTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -54,6 +56,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         handleMaintenanceIntent(intent)
+        handleImportIntent(intent)
         onBackPressedDispatcher.addCallback(
             this,
             object : OnBackPressedCallback(true) {
@@ -103,6 +106,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleMaintenanceIntent(intent)
+        handleImportIntent(intent)
     }
 
     override fun onResume() {
@@ -125,6 +129,18 @@ class MainActivity : ComponentActivity() {
             stopLockTask()
         } catch (_: Exception) {
             // Not in lock task, or maintenance already lifted it.
+        }
+    }
+
+    private fun handleImportIntent(intent: android.content.Intent?) {
+        if (intent?.action != CatalogImportReceiver.ACTION) return
+        intent.action = null
+        lifecycleScope.launch {
+            try {
+                CatalogImportRunner.run(this@MainActivity)
+            } catch (_: Exception) {
+                // CatalogImportRunner logs; receiver path still available as fallback.
+            }
         }
     }
 
