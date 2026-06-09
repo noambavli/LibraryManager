@@ -1,5 +1,6 @@
 package com.mh.librarymanager.ui.management
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -177,6 +178,9 @@ fun BookEditorScreen(
     }
 
     var form by remember(bookId) { mutableStateOf(seed) }
+    // Pristine snapshot used to detect unsaved edits so we can warn before an
+    // accidental back-press / edge-swipe throws away an in-progress book.
+    var baseline by remember(bookId) { mutableStateOf(seed) }
     var focused by remember { mutableStateOf(EditField.NAME) }
     var fieldValues by remember(bookId) {
         mutableStateOf(initialFieldValues(seed))
@@ -193,6 +197,7 @@ fun BookEditorScreen(
             form.notes.isEmpty() && form.color.isEmpty()
         ) {
             form = persisted.toForm()
+            baseline = persisted.toForm()
             fieldValues = initialFieldValues(form)
         }
     }
@@ -203,6 +208,18 @@ fun BookEditorScreen(
     var addingSubcategory by remember { mutableStateOf(false) }
     var addingRelation by remember { mutableStateOf(false) }
     var confirmingDelete by remember { mutableStateOf(false) }
+
+    // Holds the navigation action queued behind the "discard changes?" dialog.
+    var pendingExit by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val isDirty = form != baseline
+
+    fun attemptExit(action: () -> Unit) {
+        if (isDirty) pendingExit = action else action()
+    }
+
+    // Intercept the hardware/edge-swipe back so a stray gesture can't silently
+    // drop an in-progress book. When clean, fall through to normal navigation.
+    BackHandler(enabled = true) { attemptExit(onBack) }
 
     SuppressPlatformKeyboardEffect()
 
@@ -234,11 +251,13 @@ fun BookEditorScreen(
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         EditorHeader(
             isNew = bookId == null,
-            onBack = onBack,
-            onLogout = onLogout,
+            onBack = { attemptExit(onBack) },
+            onLogout = { attemptExit(onLogout) },
             onSave = {
-                viewModel.save(form.toBook())
-                onBack()
+                scope.launch {
+                    viewModel.saveAwait(form.toBook())
+                    onBack()
+                }
             },
             onSaveAndDuplicate = {
                 val original = form.toBook()
@@ -344,6 +363,20 @@ fun BookEditorScreen(
                     form = form.copy(relations = form.relations + entry.trim())
                 }
                 addingRelation = false
+            },
+        )
+    }
+
+    pendingExit?.let { exit ->
+        ConfirmDialog(
+            title = stringResource(R.string.discard_changes_title),
+            body = stringResource(R.string.discard_changes_body),
+            confirmLabel = stringResource(R.string.discard_changes_confirm),
+            destructive = true,
+            onDismiss = { pendingExit = null },
+            onConfirm = {
+                pendingExit = null
+                exit()
             },
         )
     }

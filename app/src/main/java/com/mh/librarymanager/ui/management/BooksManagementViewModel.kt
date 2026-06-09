@@ -108,6 +108,13 @@ class BooksManagementViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Suspends until the book is on disk — use before navigating away. */
+    suspend fun saveAwait(book: Book) {
+        withContext(Dispatchers.IO) {
+            container.repository.upsert(book.copy(updatedAt = System.currentTimeMillis()))
+        }
+    }
+
     /**
      * Inserts both books and suspends until the catalog is on disk. Callers
      * that need the new book to be immediately visible in [catalog] (e.g.

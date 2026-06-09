@@ -316,8 +316,10 @@ private fun ResultsPane(
                                 createdAt = System.currentTimeMillis(),
                                 updatedAt = System.currentTimeMillis(),
                             )
-                            viewModel.save(copy)
-                            onOpenEditor(copy.id)
+                            scope.launch {
+                                viewModel.saveAwait(copy)
+                                onOpenEditor(copy.id)
+                            }
                         },
                         onDelete = { deleteCandidate = book },
                     )

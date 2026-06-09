@@ -15,8 +15,14 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.mh.librarymanager.ui.AppRoot
+import com.mh.librarymanager.ui.announcements.AnnouncementsViewModel
+import com.mh.librarymanager.ui.management.AnnouncementsManagementViewModel
 import com.mh.librarymanager.ui.management.BooksManagementViewModel
+import com.mh.librarymanager.ui.management.HistoryViewModel
 import com.mh.librarymanager.ui.management.ManagementSession
+import com.mh.librarymanager.ui.management.RequestsManagementViewModel
+import com.mh.librarymanager.ui.management.ShortcutsManagementViewModel
+import com.mh.librarymanager.ui.requests.PublicRequestViewModel
 import com.mh.librarymanager.ui.search.SearchViewModel
 import com.mh.librarymanager.ui.theme.LibraryManagerTheme
 
@@ -24,6 +30,12 @@ class MainActivity : ComponentActivity() {
 
     private val searchViewModel: SearchViewModel by viewModels()
     private val managementViewModel: BooksManagementViewModel by viewModels()
+    private val historyViewModel: HistoryViewModel by viewModels()
+    private val publicRequestViewModel: PublicRequestViewModel by viewModels()
+    private val requestsManagementViewModel: RequestsManagementViewModel by viewModels()
+    private val announcementsViewModel: AnnouncementsViewModel by viewModels()
+    private val announcementsManagementViewModel: AnnouncementsManagementViewModel by viewModels()
+    private val shortcutsManagementViewModel: ShortcutsManagementViewModel by viewModels()
     private val managementSession: ManagementSession by viewModels()
 
     /**
@@ -54,6 +66,12 @@ class MainActivity : ComponentActivity() {
                 AppRoot(
                     searchViewModel = searchViewModel,
                     managementViewModel = managementViewModel,
+                    historyViewModel = historyViewModel,
+                    publicRequestViewModel = publicRequestViewModel,
+                    requestsManagementViewModel = requestsManagementViewModel,
+                    announcementsViewModel = announcementsViewModel,
+                    announcementsManagementViewModel = announcementsManagementViewModel,
+                    shortcutsManagementViewModel = shortcutsManagementViewModel,
                     managementSession = managementSession,
                     onRegisterBackHandler = { handler ->
                         composeBackHandler = handler

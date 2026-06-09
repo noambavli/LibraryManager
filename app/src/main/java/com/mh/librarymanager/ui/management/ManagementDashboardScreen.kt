@@ -3,6 +3,8 @@ package com.mh.librarymanager.ui.management
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +35,10 @@ import com.mh.librarymanager.R
 @Composable
 fun ManagementDashboardScreen(
     onOpenBooks: () -> Unit,
+    onOpenHistory: () -> Unit,
+    onOpenRequests: () -> Unit,
+    onOpenAnnouncements: () -> Unit,
+    onOpenShortcuts: () -> Unit,
     onLogout: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -40,6 +46,7 @@ fun ManagementDashboardScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 40.dp, vertical = 28.dp),
         ) {
             TopBar(onLogout = onLogout)
@@ -58,15 +65,62 @@ fun ManagementDashboardScreen(
                 horizontalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 DashboardTile(
-                    modifier = Modifier.weight(1f).height(220.dp),
+                    modifier = Modifier.weight(1f).height(190.dp),
                     title = stringResource(R.string.management_books),
                     subtitle = stringResource(R.string.management_books_subtitle),
                     accent = cs.primary,
                     iconText = "\u05E1\u05E4\u05E8", // ספר
                     onClick = onOpenBooks,
                 )
-                // Reserved slots so it doesn't look lonely — disabled placeholders.
-                PlaceholderTile(modifier = Modifier.weight(1f).height(220.dp))
+                DashboardTile(
+                    modifier = Modifier.weight(1f).height(190.dp),
+                    title = stringResource(R.string.management_requests),
+                    subtitle = stringResource(R.string.management_requests_subtitle),
+                    accent = cs.secondary,
+                    iconText = "\u05D1\u05E7\u05E9", // בקש
+                    onClick = onOpenRequests,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                DashboardTile(
+                    modifier = Modifier.weight(1f).height(190.dp),
+                    title = stringResource(R.string.management_announcements),
+                    subtitle = stringResource(R.string.management_announcements_subtitle),
+                    accent = cs.secondary,
+                    iconText = "\u05D4\u05D5\u05D3", // הוד
+                    onClick = onOpenAnnouncements,
+                )
+                DashboardTile(
+                    modifier = Modifier.weight(1f).height(190.dp),
+                    title = stringResource(R.string.management_shortcuts),
+                    subtitle = stringResource(R.string.management_shortcuts_subtitle),
+                    accent = cs.primary,
+                    iconText = "\u05E7\u05D9\u05E6", // קיצ
+                    onClick = onOpenShortcuts,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                DashboardTile(
+                    modifier = Modifier.weight(1f).height(190.dp),
+                    title = stringResource(R.string.management_history),
+                    subtitle = stringResource(R.string.management_history_subtitle),
+                    accent = cs.tertiary,
+                    iconText = "\u05D4\u05E1\u05D8", // הסט
+                    onClick = onOpenHistory,
+                )
+                Spacer(modifier = Modifier.weight(1f))
             }
         }
     }
@@ -152,14 +206,3 @@ private fun DashboardTile(
     }
 }
 
-@Composable
-private fun PlaceholderTile(modifier: Modifier) {
-    val cs = MaterialTheme.colorScheme
-    Surface(
-        modifier = modifier,
-        color = cs.surface.copy(alpha = 0.4f),
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, cs.outlineVariant.copy(alpha = 0.4f)),
-        shadowElevation = 0.dp,
-    ) { Box(modifier = Modifier.fillMaxSize()) }
-}

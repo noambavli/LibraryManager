@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -31,6 +32,11 @@ import kotlinx.coroutines.withContext
  */
 @OptIn(FlowPreview::class)
 class SearchViewModel(app: Application) : AndroidViewModel(app) {
+
+    companion object {
+        /** 30 days, matching the "What's new" home-screen recency window. */
+        const val RECENT_WINDOW_MS: Long = 30L * 24L * 60L * 60L * 1000L
+    }
 
     private val container = LibraryApp.from(app)
 
@@ -55,9 +61,29 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
     val customColors: StateFlow<List<CustomColor>> = container.repository.observeColors()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    /** Quick search shortcuts shown as tags above the general field. */
+    val shortcuts: StateFlow<List<String>> = container.shortcutStore.shortcuts
+        .onStart { container.shortcutStore.loadFromDisk() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     val parentNameLookup: StateFlow<Map<String, String>> = container.repository.observeAll()
         .map { books -> books.associate { it.id to it.name } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    /**
+     * Up to 3 books added in the last [RECENT_WINDOW_MS]. Empty if nothing
+     * was added in the window — the home screen treats that as "no news"
+     * rather than showing stale entries.
+     */
+    val recentlyAdded: StateFlow<List<Book>> = container.repository.observeAll()
+        .map { books ->
+            val cutoff = System.currentTimeMillis() - RECENT_WINDOW_MS
+            books
+                .filter { it.createdAt >= cutoff }
+                .sortedByDescending { it.createdAt }
+                .take(3)
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val results: StateFlow<List<Book>> = combine(
         engine,
@@ -76,6 +102,12 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setFocused(field: SearchField) {
         _focusedField.value = field
+    }
+
+    /** Fills the general field with a shortcut word and focuses it. */
+    fun applyShortcut(word: String) {
+        setValue(SearchField.GENERAL, TextFieldValue(word, TextRange(word.length)))
+        _focusedField.value = SearchField.GENERAL
     }
 
     /** Keyboard taps modify only the currently focused field. */

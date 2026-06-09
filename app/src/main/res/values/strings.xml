@@ -8,6 +8,19 @@
     <string name="home_search_subtitle">חיפוש מתקדם בקטלוג</string>
     <string name="home_management">ניהול הספריה</string>
     <string name="home_management_subtitle">עריכת ספרים והגדרות (דרושה סיסמה)</string>
+    <string name="home_requests">בקשות הציבור</string>
+    <string name="home_requests_subtitle">בקשה לספר חדש או הערה</string>
+
+    <!-- Announcements (public) -->
+    <string name="announcements_home_title">הודעות המערכת</string>
+    <string name="announcements_see_all">ראה הכל</string>
+    <string name="announcement_full">הודעה מלאה</string>
+    <string name="announcements_all_title">כל הודעות המערכת המלאות</string>
+    <string name="announcements_empty">אין הודעות להצגה.</string>
+    <string name="announcement_missing">ההודעה אינה זמינה עוד.</string>
+    <string name="announcement_expired_notice">הודעה זו אינה מוצגת עוד בדף הבית.</string>
+    <string name="announcement_linked_books">ספרים קשורים</string>
+    <string name="announcement_linked_books_missing">%1$d ספרים מקושרים אינם זמינים עוד בקטלוג.</string>
 
     <!-- Search -->
     <string name="search_title">חיפוש מתקדם</string>
@@ -20,6 +33,7 @@
     <string name="search_field_category">קטגוריה</string>
     <string name="search_field_subcategory">תת קטגוריה</string>
     <string name="search_field_notes">הערות</string>
+    <string name="search_shortcuts_label">קיצורי חיפוש</string>
 
     <string name="results_total">%1$d תוצאות מתוך %2$d ספרים</string>
     <string name="results_empty">לא נמצאו תוצאות</string>
@@ -46,6 +60,9 @@
     <string name="delete">מחיקה</string>
     <string name="confirm_delete">למחוק את הספר הזה?</string>
     <string name="confirm_delete_body">פעולה זו לא ניתנת לביטול.</string>
+    <string name="discard_changes_title">לצאת בלי לשמור?</string>
+    <string name="discard_changes_body">יש שינויים שלא נשמרו. אם תצא/י עכשיו הם יימחקו.</string>
+    <string name="discard_changes_confirm">צא בלי לשמור</string>
     <string name="confirm">אישור</string>
     <string name="add">הוספה</string>
 
@@ -63,12 +80,98 @@
     <string name="management_title">ניהול</string>
     <string name="management_books">ניהול ספרים</string>
     <string name="management_books_subtitle">חיפוש, עריכה, הוספה ושכפול</string>
+    <string name="management_requests">בקשות הציבור</string>
+    <string name="management_requests_subtitle">מעקב וטיפול בבקשות</string>
+    <string name="management_announcements">ניהול הודעות</string>
+    <string name="management_announcements_subtitle">הוספה ומחיקה של הודעות לציבור</string>
+    <string name="management_shortcuts">ניהול קיצורי חיפוש</string>
+    <string name="management_shortcuts_subtitle">הוספה ומחיקה של תגיות חיפוש מהיר</string>
+
+    <!-- Search shortcuts management -->
+    <string name="shortcuts_management_title">ניהול קיצורי חיפוש</string>
+    <string name="shortcuts_management_subtitle">קיצורים אלו יוצגו כתגיות מעל שדה החיפוש הכללי בחיפוש הציבורי.</string>
+    <string name="shortcuts_empty">אין עדיין קיצורים. הוסיפו קיצור ראשון.</string>
+    <string name="shortcut_add">הוספת קיצור</string>
+    <string name="shortcut_field_word">מילת חיפוש</string>
+    <string name="shortcut_count">%1$d מתוך %2$d</string>
+    <string name="shortcut_limit_reached">ניתן להוסיף עד %1$d קיצורים.</string>
+    <string name="shortcut_duplicate">הקיצור כבר קיים.</string>
+    <string name="shortcut_blank">יש להזין מילת חיפוש.</string>
+
+    <!-- Announcements management -->
+    <string name="announcements_management_title">ניהול הודעות</string>
+    <string name="announcement_add">הוספת הודעה</string>
+    <string name="announcement_active">פעילה</string>
+    <string name="announcement_expired">הסתיימה</string>
+    <string name="announcement_field_title">כותרת</string>
+    <string name="announcement_field_description">תוכן ההודעה</string>
+    <string name="announcement_field_days">כמה ימים תוצג</string>
+    <string name="announcement_field_books">ספרים מקושרים (לא חובה)</string>
+    <string name="announcement_days_value">%1$d ימים</string>
+    <string name="announcement_no_books">לא צורפו ספרים</string>
+    <string name="announcement_attach_book">צירוף ספר</string>
+    <string name="announcement_pick_books_title">בחירת ספרים לצירוף</string>
+    <string name="announcement_selected_count">נבחרו %1$d ספרים</string>
+    <string name="announcement_books_count">%1$d ספרים</string>
+    <string name="announcement_meta">פורסם %1$s · עד %2$s</string>
+    <string name="announcement_confirm_delete">למחוק את ההודעה?</string>
+
+    <!-- Public requests -->
+    <string name="requests_public_title">בקשת ספר</string>
+    <string name="requests_public_subtitle">מלאו את הפרטים ונטפל בבקשה בהקדם.</string>
+    <string name="request_field_name">השם שלך</string>
+    <string name="request_field_book">שם הספר</string>
+    <string name="request_field_details">פרטים נוספים</string>
+    <string name="request_anonymous">אנונימי</string>
+    <string name="request_anonymous_label">אנונימי</string>
+    <string name="request_send">שליחה</string>
+    <string name="request_book_required">יש להזין שם ספר כדי לשלוח.</string>
+    <string name="request_sent_title">הבקשה נשלחה!</string>
+    <string name="request_sent_body">תודה רבה. נטפל בבקשה בהקדם.</string>
+    <string name="request_send_another">שליחת בקשה נוספת</string>
+
+    <!-- Requests management -->
+    <string name="requests_management_title">בקשות הציבור</string>
+    <string name="requests_empty">אין בקשות להצגה.</string>
+    <string name="request_filter_all">הכל</string>
+    <string name="request_status_label">סטטוס</string>
+    <string name="request_status_received">נקלט</string>
+    <string name="request_status_in_progress">בתהליך</string>
+    <string name="request_status_completed">הושלם</string>
+    <string name="request_confirm_delete">למחוק את הבקשה?</string>
 
     <!-- Books management -->
     <string name="books_management_title">ניהול ספרים</string>
     <string name="add_book">הוספת ספר</string>
     <string name="edit_book">עריכת ספר</string>
     <string name="duplicate_book">שכפול</string>
+
+    <!-- History -->
+    <string name="management_history">היסטוריית שינויים</string>
+    <string name="management_history_subtitle">תצוגה ושחזור של הוספות, עדכונים ומחיקות</string>
+    <string name="history_title">היסטוריית שינויים</string>
+    <string name="history_empty">אין עדיין שינויים מתועדים.</string>
+    <string name="history_kind_added">נוסף</string>
+    <string name="history_kind_updated">עודכן</string>
+    <string name="history_kind_deleted">נמחק</string>
+    <string name="history_kind_imported">ייבוא</string>
+    <string name="history_restore">שחזור</string>
+    <string name="history_undo_update">ביטול שינוי</string>
+    <string name="history_show_changes">הצג שינויים</string>
+    <string name="history_hide_changes">הסתר שינויים</string>
+    <string name="history_no_field_changes">אין הבדלים בשדות לתצוגה</string>
+    <string name="history_block_id_in_use">לא ניתן לשחזר — קיים כבר ספר עם אותו מזהה.</string>
+    <string name="history_block_missing">לא ניתן לשחזר — הספר אינו קיים כעת.</string>
+    <string name="history_block_changed_since">לא ניתן לשחזר — הספר עודכן מאז.</string>
+    <string name="history_restore_success">השחזור בוצע בהצלחה.</string>
+    <string name="history_restore_conflict">לא ניתן היה להשלים את השחזור.</string>
+
+    <!-- Home: what's new -->
+    <string name="home_whats_new">חדשים בקטלוג</string>
+    <string name="home_whats_new_empty">אין ספרים חדשים בחודש האחרון.</string>
+    <string name="home_added_today">נוסף היום</string>
+    <string name="home_added_yesterday">נוסף אתמול</string>
+    <string name="home_added_days_ago">נוסף לפני %1$d ימים</string>
 
     <!-- Book editor -->
     <string name="field_name">שם הספר</string>

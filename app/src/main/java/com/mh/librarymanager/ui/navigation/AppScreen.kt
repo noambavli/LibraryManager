@@ -9,10 +9,24 @@ sealed interface AppScreen {
     data object Home : AppScreen
     data object Search : AppScreen
 
+    /** Public "request a book" form, reachable from the home page. */
+    data object PublicRequests : AppScreen
+
+    /** Public full view of a single announcement. */
+    data class AnnouncementDetail(val announcementId: String) : AppScreen
+
+    /** Public list of all active announcements, rendered in full. */
+    data object AllAnnouncements : AppScreen
+
     /** Password gate guarding the management section. */
     data object ManagementGate : AppScreen
     data object ManagementHome : AppScreen
     data object BooksManagement : AppScreen
+    data object ManagementHistory : AppScreen
+    data object ManagementRequests : AppScreen
+    data object ManagementAnnouncements : AppScreen
+    data object AnnouncementEditor : AppScreen
+    data object ManagementShortcuts : AppScreen
 
     /** Book editor — `bookId == null` means "create a brand new book". */
     data class BookEditor(val bookId: String?) : AppScreen

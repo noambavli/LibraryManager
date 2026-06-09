@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +19,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -41,10 +43,8 @@ import kotlinx.coroutines.delay
  * Wraps a management screen so any tap/drag resets the idle timer, and the
  * "you're about to be logged out" warning + auto-logout fire on schedule.
  *
- * The pointer listener uses [PointerEventPass.Initial] so we observe input
- * even when the warning sheet is consuming it — we want the warning to stay
- * visible (the user must press "stay logged in" deliberately) but we still
- * want to know they're alive.
+ * While the warning is visible, background taps do **not** reset the timer —
+ * the user must press "הישאר מחובר" explicitly.
  */
 @Composable
 fun InactivityScope(
@@ -77,10 +77,8 @@ fun InactivityScope(
         }
     }
 
-    // If the app goes background while authenticated, force-logout when it
-    // resumes — kiosks shouldn't keep an admin session warm across away time.
     val lifecycleOwner = LocalLifecycleOwner.current
-    LaunchedEffect(lifecycleOwner, session) {
+    DisposableEffect(lifecycleOwner, session) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_STOP && session.isAuthenticated) {
                 session.logout()
@@ -88,12 +86,16 @@ fun InactivityScope(
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .pointerInput(session) {
+            // Only track touches on the content layer — not on the warning
+            // overlay — so idle reset requires an explicit "stay" press.
+            .pointerInput(session.isAuthenticated, warningStartedAt) {
+                if (warningStartedAt != null) return@pointerInput
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Initial)
@@ -163,7 +165,7 @@ private fun IdleWarningOverlay(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(20.dp))
-                androidx.compose.foundation.layout.Row(
+                Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
                 ) {

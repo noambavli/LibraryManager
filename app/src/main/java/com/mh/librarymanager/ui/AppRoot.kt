@@ -5,18 +5,35 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.ui.home.HomeScreen
 import com.mh.librarymanager.ui.management.BookEditorScreen
 import com.mh.librarymanager.ui.management.BooksManagementScreen
 import com.mh.librarymanager.ui.management.BooksManagementViewModel
+import com.mh.librarymanager.ui.management.HistoryScreen
+import com.mh.librarymanager.ui.management.HistoryViewModel
 import com.mh.librarymanager.ui.management.InactivityScope
+import com.mh.librarymanager.ui.announcements.AllAnnouncementsScreen
+import com.mh.librarymanager.ui.announcements.AnnouncementDetailScreen
+import com.mh.librarymanager.ui.announcements.AnnouncementsViewModel
+import com.mh.librarymanager.ui.management.AnnouncementEditorScreen
+import com.mh.librarymanager.ui.management.AnnouncementsManagementScreen
+import com.mh.librarymanager.ui.management.AnnouncementsManagementViewModel
 import com.mh.librarymanager.ui.management.ManagementDashboardScreen
 import com.mh.librarymanager.ui.management.ManagementSession
 import com.mh.librarymanager.ui.management.PasswordScreen
+import com.mh.librarymanager.ui.management.RequestsManagementScreen
+import com.mh.librarymanager.ui.management.RequestsManagementViewModel
+import com.mh.librarymanager.ui.management.ShortcutsManagementScreen
+import com.mh.librarymanager.ui.management.ShortcutsManagementViewModel
+import com.mh.librarymanager.ui.requests.PublicRequestScreen
+import com.mh.librarymanager.ui.requests.PublicRequestViewModel
 import com.mh.librarymanager.ui.navigation.AppNavController
 import com.mh.librarymanager.ui.navigation.AppScreen
 import com.mh.librarymanager.ui.navigation.rememberAppNavController
+import com.mh.librarymanager.ui.search.NoSystemKeyboard
 import com.mh.librarymanager.ui.search.SearchScreen
 import com.mh.librarymanager.ui.search.SearchViewModel
 
@@ -31,12 +48,24 @@ import com.mh.librarymanager.ui.search.SearchViewModel
 fun AppRoot(
     searchViewModel: SearchViewModel,
     managementViewModel: BooksManagementViewModel,
+    historyViewModel: HistoryViewModel,
+    publicRequestViewModel: PublicRequestViewModel,
+    requestsManagementViewModel: RequestsManagementViewModel,
+    announcementsViewModel: AnnouncementsViewModel,
+    announcementsManagementViewModel: AnnouncementsManagementViewModel,
+    shortcutsManagementViewModel: ShortcutsManagementViewModel,
     managementSession: ManagementSession,
     onRegisterBackHandler: (handler: (() -> Boolean)) -> Unit,
 ) {
     val nav: AppNavController = rememberAppNavController(AppScreen.Home)
     val searchVm: SearchViewModel = searchViewModel
     val managementVm: BooksManagementViewModel = managementViewModel
+    val historyVm: HistoryViewModel = historyViewModel
+    val publicRequestVm: PublicRequestViewModel = publicRequestViewModel
+    val requestsManagementVm: RequestsManagementViewModel = requestsManagementViewModel
+    val announcementsVm: AnnouncementsViewModel = announcementsViewModel
+    val announcementsManagementVm: AnnouncementsManagementViewModel = announcementsManagementViewModel
+    val shortcutsManagementVm: ShortcutsManagementViewModel = shortcutsManagementViewModel
     val session: ManagementSession = managementSession
 
     SideEffect {
@@ -51,21 +80,52 @@ fun AppRoot(
     // could be authenticated while the navigator landed on Home — keep them
     // in sync by resetting auth when the user is on a public screen.
     LaunchedEffect(nav.current) {
-        val onPublic = nav.current is AppScreen.Home || nav.current is AppScreen.Search
+        val onPublic = nav.current is AppScreen.Home ||
+            nav.current is AppScreen.Search ||
+            nav.current is AppScreen.PublicRequests ||
+            nav.current is AppScreen.AnnouncementDetail ||
+            nav.current is AppScreen.AllAnnouncements
         if (onPublic && session.isAuthenticated) {
             session.logout()
         }
     }
 
+    val recentlyAdded by searchVm.recentlyAdded.collectAsStateWithLifecycle()
+    val customColors by searchVm.customColors.collectAsStateWithLifecycle()
+    val activeAnnouncements by announcementsVm.active.collectAsStateWithLifecycle()
+
     Surface(modifier = Modifier.fillMaxSize()) {
+        NoSystemKeyboard {
         when (val current = nav.current) {
             AppScreen.Home -> HomeScreen(
+                recentlyAdded = recentlyAdded,
+                customColors = customColors,
+                announcements = activeAnnouncements,
                 onOpenSearch = { nav.push(AppScreen.Search) },
                 onOpenManagement = { nav.push(AppScreen.ManagementGate) },
+                onOpenRequests = { nav.push(AppScreen.PublicRequests) },
+                onOpenAnnouncement = { id -> nav.push(AppScreen.AnnouncementDetail(id)) },
+                onOpenAllAnnouncements = { nav.push(AppScreen.AllAnnouncements) },
             )
 
             AppScreen.Search -> SearchScreen(
                 viewModel = searchVm,
+                onBack = { nav.pop() },
+            )
+
+            AppScreen.PublicRequests -> PublicRequestScreen(
+                viewModel = publicRequestVm,
+                onBack = { nav.pop() },
+            )
+
+            is AppScreen.AnnouncementDetail -> AnnouncementDetailScreen(
+                viewModel = announcementsVm,
+                announcementId = current.announcementId,
+                onBack = { nav.pop() },
+            )
+
+            AppScreen.AllAnnouncements -> AllAnnouncementsScreen(
+                viewModel = announcementsVm,
                 onBack = { nav.pop() },
             )
 
@@ -78,6 +138,66 @@ fun AppRoot(
             AppScreen.ManagementHome -> ManagementGuard(session = session, nav = nav) {
                 ManagementDashboardScreen(
                     onOpenBooks = { nav.push(AppScreen.BooksManagement) },
+                    onOpenHistory = { nav.push(AppScreen.ManagementHistory) },
+                    onOpenRequests = { nav.push(AppScreen.ManagementRequests) },
+                    onOpenAnnouncements = { nav.push(AppScreen.ManagementAnnouncements) },
+                    onOpenShortcuts = { nav.push(AppScreen.ManagementShortcuts) },
+                    onLogout = {
+                        session.logout()
+                        nav.resetTo(AppScreen.Home)
+                    },
+                )
+            }
+
+            AppScreen.ManagementRequests -> ManagementGuard(session = session, nav = nav) {
+                RequestsManagementScreen(
+                    viewModel = requestsManagementVm,
+                    onBack = { nav.pop() },
+                    onLogout = {
+                        session.logout()
+                        nav.resetTo(AppScreen.Home)
+                    },
+                )
+            }
+
+            AppScreen.ManagementAnnouncements -> ManagementGuard(session = session, nav = nav) {
+                AnnouncementsManagementScreen(
+                    viewModel = announcementsManagementVm,
+                    onBack = { nav.pop() },
+                    onLogout = {
+                        session.logout()
+                        nav.resetTo(AppScreen.Home)
+                    },
+                    onAdd = { nav.push(AppScreen.AnnouncementEditor) },
+                )
+            }
+
+            AppScreen.AnnouncementEditor -> ManagementGuard(session = session, nav = nav) {
+                AnnouncementEditorScreen(
+                    viewModel = announcementsManagementVm,
+                    onBack = { nav.pop() },
+                    onLogout = {
+                        session.logout()
+                        nav.resetTo(AppScreen.Home)
+                    },
+                )
+            }
+
+            AppScreen.ManagementShortcuts -> ManagementGuard(session = session, nav = nav) {
+                ShortcutsManagementScreen(
+                    viewModel = shortcutsManagementVm,
+                    onBack = { nav.pop() },
+                    onLogout = {
+                        session.logout()
+                        nav.resetTo(AppScreen.Home)
+                    },
+                )
+            }
+
+            AppScreen.ManagementHistory -> ManagementGuard(session = session, nav = nav) {
+                HistoryScreen(
+                    viewModel = historyVm,
+                    onBack = { nav.pop() },
                     onLogout = {
                         session.logout()
                         nav.resetTo(AppScreen.Home)
@@ -111,6 +231,7 @@ fun AppRoot(
                     },
                 )
             }
+        }
         }
     }
 }

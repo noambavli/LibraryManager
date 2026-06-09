@@ -1,9 +1,12 @@
 package com.mh.librarymanager.ui.search
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,16 +21,19 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +61,7 @@ fun SearchScreen(
     val isImporting by viewModel.isImporting.collectAsStateWithLifecycle()
     val customColors by viewModel.customColors.collectAsStateWithLifecycle()
     val parentNameLookup by viewModel.parentNameLookup.collectAsStateWithLifecycle()
+    val shortcuts by viewModel.shortcuts.collectAsStateWithLifecycle()
 
     SuppressPlatformKeyboardEffect()
 
@@ -73,6 +80,8 @@ fun SearchScreen(
                     .fillMaxHeight(),
                 fieldValues = fieldValues,
                 focusedField = focusedField,
+                shortcuts = shortcuts,
+                onApplyShortcut = viewModel::applyShortcut,
                 onSetValue = viewModel::setValue,
                 onSetFocused = viewModel::setFocused,
                 onKey = viewModel::handleKey,
@@ -118,6 +127,8 @@ private fun SearchPane(
     modifier: Modifier,
     fieldValues: Map<SearchField, androidx.compose.ui.text.input.TextFieldValue>,
     focusedField: SearchField,
+    shortcuts: List<String>,
+    onApplyShortcut: (String) -> Unit,
     onSetValue: (SearchField, androidx.compose.ui.text.input.TextFieldValue) -> Unit,
     onSetFocused: (SearchField) -> Unit,
     onKey: (KeyAction) -> Unit,
@@ -143,6 +154,8 @@ private fun SearchPane(
                     .verticalScroll(rememberScrollState()),
                 fieldValues = fieldValues,
                 focusedField = focusedField,
+                shortcuts = shortcuts,
+                onApplyShortcut = onApplyShortcut,
                 onSetValue = onSetValue,
                 onSetFocused = onSetFocused,
                 compactInput = true,
@@ -166,6 +179,8 @@ private fun SearchFieldsGrid(
     modifier: Modifier,
     fieldValues: Map<SearchField, androidx.compose.ui.text.input.TextFieldValue>,
     focusedField: SearchField,
+    shortcuts: List<String>,
+    onApplyShortcut: (String) -> Unit,
     onSetValue: (SearchField, androidx.compose.ui.text.input.TextFieldValue) -> Unit,
     onSetFocused: (SearchField) -> Unit,
     compactInput: Boolean = false,
@@ -193,6 +208,9 @@ private fun SearchFieldsGrid(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(spacing),
     ) {
+        if (shortcuts.isNotEmpty()) {
+            ShortcutTags(shortcuts = shortcuts, onApply = onApplyShortcut)
+        }
         field(SearchField.GENERAL)
         field(SearchField.NAME)
         Row(horizontalArrangement = Arrangement.spacedBy(spacing)) {
@@ -208,6 +226,45 @@ private fun SearchFieldsGrid(
             field(SearchField.COLOR, Modifier.weight(1f))
         }
         field(SearchField.NOTES)
+    }
+}
+
+@Composable
+private fun ShortcutTags(
+    shortcuts: List<String>,
+    onApply: (String) -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(R.string.search_shortcuts_label),
+            style = MaterialTheme.typography.labelMedium,
+            color = cs.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
+        )
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            shortcuts.forEach { word ->
+                Surface(
+                    color = cs.secondaryContainer,
+                    contentColor = cs.onSecondaryContainer,
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(1.dp, cs.outlineVariant),
+                    modifier = Modifier.clip(RoundedCornerShape(20.dp)).clickable { onApply(word) },
+                ) {
+                    Text(
+                        text = word,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    )
+                }
+            }
+        }
     }
 }
 

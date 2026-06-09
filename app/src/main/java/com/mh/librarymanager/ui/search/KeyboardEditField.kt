@@ -45,7 +45,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.delay
 
 /**
  * A search input field driven entirely by the in-app keyboard.
@@ -88,10 +87,9 @@ fun KeyboardEditField(
     LaunchedEffect(isActive) {
         if (isActive) {
             focusRequester.requestFocus()
-            repeat(8) {
-                keyboardController?.hide()
-                delay(40)
-            }
+            // The platform IME session is already swallowed app-wide by
+            // NoSystemKeyboard; this single hide is a cheap safety net.
+            keyboardController?.hide()
         }
     }
 
