@@ -17,6 +17,7 @@ def test_is_final_result():
 
 def test_is_progress_result():
     assert _is_progress_result(RESULT_PROGRESS)
+    assert _is_progress_result("PENDING:added=3:skipped=1:current=100:total=103")
     assert not _is_progress_result("OK:added=1:skipped=0:total=1")
 
 
@@ -48,3 +49,8 @@ def test_parse_logcat_import_merged():
 def test_parse_logcat_import_failure():
     logcat = "06-09 23:50:19.262 12784 12858 E CatalogImport: Import failed: WrongVersion"
     assert _parse_logcat_import(logcat) == "ERR:WrongVersion"
+
+
+def test_parse_logcat_import_awaiting_confirmation():
+    logcat = "06-09 23:50:19.262 12784 12858 I CatalogImport: Awaiting confirmation: +2 to add, 1 skipped"
+    assert _parse_logcat_import(logcat) == "PENDING:added=2:skipped=1:current=0:total=0"

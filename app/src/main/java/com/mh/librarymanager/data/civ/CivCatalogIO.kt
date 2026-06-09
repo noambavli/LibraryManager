@@ -20,7 +20,7 @@ import java.io.InputStream
 
 /**
  * Reads `.civ` catalogs produced by the desktop LibraryTool and **merges** new
- * books into the in-app catalog (existing rows are kept; matching IDs are skipped).
+ * books into the in-app catalog (existing rows are kept; same content is skipped).
  *
  * A `.civ` document is intentionally **byte-for-byte the same JSON shape** as
  * the tablet's own [CatalogStore] writes to `filesDir/catalog.json` — so the
@@ -53,6 +53,8 @@ class CivCatalogIO(
         const val MAX_BYTES: Long = 64L * 1024L * 1024L
 
         const val BACKUP_FILE_NAME = "catalog-import-backup.civ"
+        const val WIPE_BACKUP_FILE_NAME = "catalog-wipe-backup.civ"
+        const val PENDING_FILE_NAME = "catalog-import-pending.civ"
 
         /**
          * Where the PC tool (adb push) drops the catalog. First readable wins.
@@ -137,9 +139,14 @@ class CivCatalogIO(
         data class Invalid(val reason: String) : ImportResult
         data class TooLarge(val sizeBytes: Long) : ImportResult
         data class IoFailure(val reason: String) : ImportResult
+
+        /** PC pushed a catalog; preview is ready and the user must confirm on the tablet. */
+        data class AwaitingConfirmation(val preview: ImportPreview) : ImportResult
     }
 
     private val backupFile: File by lazy { File(context.filesDir, BACKUP_FILE_NAME) }
+    private val wipeBackupFile: File by lazy { File(context.filesDir, WIPE_BACKUP_FILE_NAME) }
+    private val pendingFile: File by lazy { File(context.filesDir, PENDING_FILE_NAME) }
     private val prefs by lazy {
         context.getSharedPreferences("civ_import_history", Context.MODE_PRIVATE)
     }
@@ -185,30 +192,107 @@ class CivCatalogIO(
         val hasData: Boolean get() = at > 0L
     }
 
-    /** Import from a path the PC pushed via adb (no SAF picker). */
-    suspend fun importFromIncomingFile(): ImportResult = withContext(Dispatchers.IO) {
-        val file = INCOMING_PATHS.map { File(it) }.firstOrNull { it.isFile && it.canRead() }
-            ?: return@withContext ImportResult.Invalid(
-                "No catalog.civ found. Expected one of: ${INCOMING_PATHS.joinToString()}",
-            )
-        val text = try {
-            file.inputStream().use { readBoundedText(it) }
-        } catch (e: Exception) {
-            return@withContext when (e) {
-                is IllegalStateException -> ImportResult.TooLarge(MAX_BYTES)
-                else -> ImportResult.Invalid(e.message ?: "Could not read file")
+    fun hasPendingImport(): Boolean = pendingFile.exists() && pendingFile.length() > 0
+
+    /**
+     * Read a PC-pushed catalog, stage it locally, and return a preview.
+     * Does **not** merge — the user must confirm via [commitPendingImport].
+     */
+    suspend fun stageIncomingFile(): ImportResult = mutex.withLock {
+        withContext(Dispatchers.IO) {
+            val file = INCOMING_PATHS.map { File(it) }.firstOrNull { it.isFile && it.canRead() }
+                ?: return@withContext ImportResult.Invalid(
+                    "No catalog.civ found. Expected one of: ${INCOMING_PATHS.joinToString()}",
+                )
+            val text = try {
+                file.inputStream().use { readBoundedText(it) }
+            } catch (e: Exception) {
+                return@withContext when (e) {
+                    is IllegalStateException -> ImportResult.TooLarge(MAX_BYTES)
+                    else -> ImportResult.Invalid(e.message ?: "Could not read file")
+                }
             }
+            stageText(text.trim())
         }
-        val result = importFromText(text)
-        if (result is ImportResult.Ok) {
-            publishToDownloads(text, result.meta)
-        }
-        result
     }
 
-    /** Make the last received catalog visible under Downloads for manual pick / debugging. */
+    /** Rebuild preview from a previously staged PC import (e.g. after app restart). */
+    suspend fun loadPendingPreview(): PreviewOutcome = mutex.withLock {
+        withContext(Dispatchers.IO) {
+            if (!hasPendingImport()) {
+                return@withContext PreviewOutcome.Failed(
+                    ImportResult.Invalid("No pending import."),
+                )
+            }
+            val text = try {
+                pendingFile.readText(Charsets.UTF_8)
+            } catch (e: Exception) {
+                return@withContext PreviewOutcome.Failed(
+                    ImportResult.Invalid(e.message ?: "Could not read pending import"),
+                )
+            }
+            when (val parsed = parseText(text.trim())) {
+                is ParseOutcome.Failure -> PreviewOutcome.Failed(parsed.result)
+                is ParseOutcome.Success ->
+                    PreviewOutcome.Ready(buildPreview(parsed.books, parsed.meta))
+            }
+        }
+    }
+
+    /** Apply the staged PC import after the user confirms on the tablet. */
+    suspend fun commitPendingImport(): ImportResult = mutex.withLock {
+        withContext(Dispatchers.IO) {
+            if (!hasPendingImport()) {
+                return@withContext ImportResult.Invalid("No pending import to apply.")
+            }
+            val text = try {
+                pendingFile.readText(Charsets.UTF_8)
+            } catch (e: Exception) {
+                return@withContext ImportResult.IoFailure(
+                    e.message ?: "Could not read pending import",
+                )
+            }
+            try {
+                pendingFile.delete()
+            } catch (_: Exception) {
+            }
+            val result = importFromTextLocked(text.trim())
+            if (result is ImportResult.Ok) {
+                publishToDownloads(text.trim(), result.meta)
+            }
+            result
+        }
+    }
+
+    /** Discard a staged PC import when the user cancels on the tablet. */
+    fun discardPendingImport() {
+        try {
+            if (pendingFile.exists()) pendingFile.delete()
+        } catch (_: Exception) {
+        }
+        writeResultLine("ERR:cancelled")
+    }
+
+    private suspend fun stageText(text: String): ImportResult {
+        if (text.isEmpty()) return ImportResult.Empty
+        return when (val parsed = parseText(text)) {
+            is ParseOutcome.Failure -> parsed.result
+            is ParseOutcome.Success -> {
+                try {
+                    atomicWriteText(pendingFile, text)
+                } catch (e: Exception) {
+                    return ImportResult.IoFailure(
+                        e.message ?: "Could not stage import for confirmation",
+                    )
+                }
+                publishToDownloads(text, parsed.meta)
+                ImportResult.AwaitingConfirmation(buildPreview(parsed.books, parsed.meta))
+            }
+        }
+    }
+
+    /** Archive under the batch number (1.civ, 2.civ …) — never overwrites catalog.civ. */
     private fun publishToDownloads(text: String, meta: CivExportMeta?) {
-        CivDownloadPublisher.publish(context, text, INCOMING_CANONICAL_NAME)
         CivDownloadPublisher.publish(context, text, CivDownloadPublisher.archiveFilename(meta))
     }
 
@@ -219,6 +303,11 @@ class CivCatalogIO(
         val line = when (result) {
             is ImportResult.Ok ->
                 "OK:added=${result.addedCount}:skipped=${result.skippedCount}:total=${result.totalAfter}"
+            is ImportResult.AwaitingConfirmation -> {
+                val p = result.preview
+                "PENDING:added=${p.addedCount}:skipped=${p.skippedCount}:" +
+                    "current=${p.currentCount}:total=${p.totalAfter}"
+            }
             is ImportResult.Empty -> "ERR:empty"
             is ImportResult.WrongVersion -> "ERR:version_old:${result.found}"
             is ImportResult.NewerVersion -> "ERR:version_new:${result.found}"
@@ -292,14 +381,16 @@ class CivCatalogIO(
     }
 
     suspend fun importFromText(text: String): ImportResult = mutex.withLock {
-        withContext(Dispatchers.IO) {
-            val trimmed = text.trim()
-            if (trimmed.isEmpty()) return@withContext ImportResult.Empty
+        withContext(Dispatchers.IO) { importFromTextLocked(text) }
+    }
 
-            when (val parsed = parseText(trimmed)) {
-                is ParseOutcome.Failure -> return@withContext parsed.result
-                is ParseOutcome.Success -> commitMerge(parsed.books, parsed.meta)
-            }
+    private suspend fun importFromTextLocked(text: String): ImportResult {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return ImportResult.Empty
+
+        return when (val parsed = parseText(trimmed)) {
+            is ParseOutcome.Failure -> parsed.result
+            is ParseOutcome.Success -> commitMerge(parsed.books, parsed.meta)
         }
     }
 
@@ -446,6 +537,48 @@ class CivCatalogIO(
     /** True iff a one-tap undo of the most recent import is available. */
     fun hasBackup(): Boolean = backupFile.exists() && backupFile.length() > 0
 
+    fun hasWipeBackup(): Boolean = wipeBackupFile.exists() && wipeBackupFile.length() > 0
+
+    /**
+     * Delete every book after snapshotting the catalog for one-tap restore.
+     * Returns the number of books removed, or 0 if the catalog was already empty.
+     */
+    suspend fun wipeAllBooks(): Int = mutex.withLock {
+        withContext(Dispatchers.IO) {
+            val previous = repository.snapshotForBackup()
+            val latestCount = previous.count { it.isLatest }
+            if (latestCount == 0) return@withContext 0
+            writeBackup(previous, wipeBackupFile)
+            repository.clearCatalog()
+            latestCount
+        }
+    }
+
+    /** Restore the snapshot taken before [wipeAllBooks]. Returns book count or -1. */
+    suspend fun restoreAfterWipe(): Int = mutex.withLock {
+        withContext(Dispatchers.IO) {
+            if (!hasWipeBackup()) return@withContext -1
+            val text = try {
+                wipeBackupFile.readText(Charsets.UTF_8)
+            } catch (_: Exception) {
+                return@withContext -1
+            }
+            val root = try { JSONObject(text) } catch (_: Exception) { return@withContext -1 }
+            val arr = root.optJSONArray("books") ?: return@withContext -1
+            val books = ArrayList<Book>(arr.length())
+            for (i in 0 until arr.length()) {
+                arr.optJSONObject(i)?.toBook()?.let { books += it }
+            }
+            try {
+                repository.replaceAll(books)
+            } catch (_: Exception) {
+                return@withContext -1
+            }
+            try { wipeBackupFile.delete() } catch (_: Exception) { }
+            books.count { it.isLatest }
+        }
+    }
+
     private fun clearImportBackup() {
         try {
             if (backupFile.exists()) backupFile.delete()
@@ -511,13 +644,13 @@ class CivCatalogIO(
         return out.toString()
     }
 
-    private fun writeBackup(books: List<Book>) {
+    private fun writeBackup(books: List<Book>, target: File = backupFile) {
         val arr = JSONArray()
         for (b in books) arr.put(b.toJson())
         val root = JSONObject()
             .put("version", CatalogStore.CATALOG_FORMAT_VERSION)
             .put("books", arr)
-        atomicWriteText(backupFile, root.toString())
+        atomicWriteText(target, root.toString())
     }
 }
 

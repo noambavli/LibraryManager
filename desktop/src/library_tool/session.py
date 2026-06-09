@@ -211,31 +211,34 @@ class Session:
         return peek_next_batch_number()
 
     def tablet_pick_hint(self) -> str:
-        """Tell staff which numbered file to open in the tablet Download folder."""
+        """Short reminder of the confirm-on-tablet flow."""
         if self.last_sent_batch is not None:
+            batch = self.last_sent_batch
             return (
-                f"On the tablet: open Download and choose  {self.last_sent_batch}.civ  "
-                f"(already sent from this PC)"
+                f"Last send: {batch}.civ (saved on PC + tablet Download). "
+                f"Confirm on tablet when prompted. "
+                f"Rebuild: import 1.civ, 2.civ … in order via Sync."
             )
         if self.books:
             n = self.next_send_batch()
             return (
-                f"On the tablet: after Send, open Download and choose  {n}.civ  "
-                f"(only if importing manually on the tablet)"
+                f"After Send: file {n}.civ is archived (never overwritten). "
+                f"Confirm on the tablet. USB must stay connected."
             )
-        return "On the tablet: files appear in Download as 1.civ, 2.civ, 3.civ …"
+        return "Step 1: import Excel · Step 2: Send to tablet (USB connected)"
 
     def send_to_tablet(
         self,
         progress: ProgressFn = _noop_progress,
         abort: Optional[AbortFlag] = None,
     ) -> adb_transfer.AdbSendResult:
-        """Push catalog.civ to the tablet via adb and trigger silent import."""
+        """Push catalog.civ to the tablet via adb and wait for on-tablet confirmation."""
         abort = abort or AbortFlag()
         progress("Looking for tablet (adb)…", 0.1)
         abort.check()
         batch = peek_next_batch_number()
-        progress("Sending catalog to tablet…", 0.45)
+        progress("Sending catalog to tablet…", 0.4)
+        progress("Waiting for confirmation on the tablet…", 0.55)
         result = adb_transfer.send_books(
             civ.write_file,
             self.books,
@@ -244,5 +247,13 @@ class Session:
         )
         self.last_sent_batch = batch
         abort.check()
-        progress("Tablet import complete.", 1.0)
+        line = result.result_line or ""
+        if line.startswith("OK:"):
+            progress("Tablet confirmed — books merged.", 1.0)
+        elif line.startswith("ERR:cancelled"):
+            progress("Cancelled on the tablet.", 1.0)
+        elif line.startswith("ERR:confirm_timeout"):
+            progress("Tablet did not confirm in time — approve on tablet or use Sync.", 1.0)
+        else:
+            progress("Send finished.", 1.0)
         return result

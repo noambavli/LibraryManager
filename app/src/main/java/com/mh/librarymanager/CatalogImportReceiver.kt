@@ -12,12 +12,12 @@ import kotlinx.coroutines.launch
 /**
  * Silent catalog import triggered by the PC tool over adb:
  *
- *   adb push catalog.civ /sdcard/Download/catalog.civ
+ *   adb push catalog.civ /data/local/tmp/catalog.civ
  *   adb shell am broadcast -a com.mh.librarymanager.IMPORT_CATALOG \
  *     -n com.mh.librarymanager/.CatalogImportReceiver
  *
- * Reads the pushed file, imports it (with automatic backup), and writes a
- * one-line result to [CivCatalogIO.RESULT_PATH] so the PC can confirm success.
+ * Stages the pushed file for on-tablet confirmation (does not merge until the
+ * user approves) and writes progress to [CivCatalogIO.RESULT_PATH].
  */
 class CatalogImportReceiver : BroadcastReceiver() {
 

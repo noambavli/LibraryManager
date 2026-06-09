@@ -5,8 +5,7 @@ A single window organised as a guided flow:
     1. Import a catalog .xlsx        →  loads + converts + validates
     2. Review warnings / duplicates  →  a findings table with counts
     3. Export to the tablet (USB-C)  →  verified .civ write
-    plus a safety panel: restore last import, restore any backup,
-    and a guarded "delete all books" flow.
+    plus a safety panel: restore last import and restore any backup.
 
 Long operations run on a worker thread; progress and completion are marshalled
 back to the Tk main loop through a queue, so the UI never freezes and an abort
@@ -24,7 +23,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from typing import Callable, Optional
 
-from . import __version__, backups, transfer
+from . import __version__, backups
 from . import adb_transfer, civ
 from .session import AbortError, AbortFlag, Session
 from .validation import ERROR, INFO, WARNING
@@ -74,15 +73,13 @@ class LibraryToolApp:
         style.configure("Status.TLabel", font=("Segoe UI", 11, "bold"))
         style.configure("Step.TLabelframe.Label", font=("Segoe UI", 11, "bold"))
         style.configure("Accent.TButton", font=("Segoe UI", 10, "bold"))
-        style.configure("Danger.TButton", foreground="#b00020")
-
     def _build_header(self) -> None:
         top = ttk.Frame(self.root, padding=(16, 12, 16, 4))
         top.pack(fill="x")
         ttk.Label(top, text="Library Catalog Manager", style="Title.TLabel").pack(anchor="w")
         ttk.Label(
             top,
-            text="Offline · imports .xlsx → writes the tablet's .civ catalog · safe export over USB-C",
+            text="Offline · import Excel → send .civ to tablet over USB-C → confirm on tablet",
             style="Sub.TLabel",
         ).pack(anchor="w")
 
@@ -134,7 +131,7 @@ class LibraryToolApp:
         self.btn_load_civ.pack(side="left", padx=(8, 0))
 
         self.btn_export = ttk.Button(
-            row1, text="2 · Send to tablet (automatic)…", style="Accent.TButton",
+            row1, text="2 · Send to tablet…", style="Accent.TButton",
             command=self.on_send_to_tablet, state="disabled",
         )
         self.btn_export.pack(side="right")
@@ -156,12 +153,6 @@ class LibraryToolApp:
             row2, text="Restore from backup…", command=self.on_restore_backup,
         )
         self.btn_restore_backup.pack(side="left", padx=(8, 0))
-
-        self.btn_delete_all = ttk.Button(
-            row2, text="Delete ALL books…", style="Danger.TButton",
-            command=self.on_delete_all, state="disabled",
-        )
-        self.btn_delete_all.pack(side="right")
 
     def _build_findings(self) -> None:
         frame = ttk.LabelFrame(self.root, text="Review — duplicates & potential problems",
@@ -229,7 +220,6 @@ class LibraryToolApp:
         can_send = has_books and self._tablet_ready
         self.btn_export.config(state="normal" if can_send else "disabled")
         self.btn_save.config(state="normal" if has_books else "disabled")
-        self.btn_delete_all.config(state="normal" if has_books else "disabled")
         self.btn_restore_import.config(
             state="normal" if (s.can_restore_import() and not self._busy) else "disabled"
         )
@@ -455,8 +445,9 @@ class LibraryToolApp:
         messagebox.showinfo(
             "Saved",
             f"Saved {len(self.session.books)} books to:\n{path}\n\n"
-            f"Copy {fname} to the tablet Download folder.\n"
-            f"On the tablet: Management → Sync → choose {fname}",
+            f"Prefer step 2 (Send to tablet) for automatic transfer.\n"
+            f"Manual fallback: copy {fname} to the tablet, then "
+            f"Management → Sync → pick the file.",
         )
 
     def on_send_to_tablet(self) -> None:
@@ -480,8 +471,8 @@ class LibraryToolApp:
             f"You chose: {src}\n"
             f"This send creates file: {batch}.civ\n"
             f"Books to send: {n}\n\n"
-            f"Automatic: the tablet imports by itself.\n"
-            f"Manual on tablet: open Download → choose {batch}.civ\n\n"
+            f"A confirmation dialog will appear on the tablet — approve it to add new books.\n"
+            f"(Only adds new books; existing catalog is kept.)\n\n"
             "Continue?",
         ):
             return
@@ -492,26 +483,40 @@ class LibraryToolApp:
         def done(result):
             batch = self.session.last_sent_batch or self.session.next_send_batch() - 1
             count = result.imported_count
-            if count is not None:
+            line = result.result_line or ""
+            if line.startswith("ERR:cancelled"):
+                msg = f"Send cancelled on the tablet ({batch}.civ was not merged)."
+            elif line.startswith("ERR:confirm_timeout"):
+                msg = (
+                    f"Sent {batch}.civ — tablet did not confirm in time. "
+                    "Open the tablet app and approve the dialog, or use Management → Sync."
+                )
+            elif count is not None:
                 msg = (
                     f"Done. Sent {batch}.civ — {count} new books merged "
                     "(existing books were kept)."
                 )
             else:
-                msg = f"Sent {batch}.civ and triggered import on the tablet."
+                msg = f"Sent {batch}.civ — confirm on the tablet to finish."
             self.footer_var.set(msg)
             self._refresh_status()
             src = os.path.basename(self.session.source_path or "") or "catalog"
-            messagebox.showinfo(
-                "Tablet updated",
-                f"{msg}\n\n"
-                f"You chose on PC: {src}\n"
-                f"File on tablet Download: {batch}.civ\n"
-                f"Device: {result.device.model} ({result.device.serial})\n\n"
-                f"If importing manually on the tablet:\n"
-                f"  Management → Sync → pick file {batch}.civ from Download\n\n"
-                "Automatic send already imported — check import summary on tablet.",
-            )
+            if line.startswith("ERR:"):
+                messagebox.showwarning("Tablet sync", f"{msg}\n\nDevice: {result.device.serial}")
+            else:
+                from .exports import exports_dir
+
+                messagebox.showinfo(
+                    "Tablet sync",
+                    f"{msg}\n\n"
+                    f"Excel on PC: {src}\n"
+                    f"Batch file: {batch}.civ\n"
+                    f"PC archive: {exports_dir()}\n"
+                    f"Device: {result.device.model} ({result.device.serial})\n\n"
+                    f"To rebuild after a wipe: import 1.civ, 2.civ … in order "
+                    f"(Management → Sync), or use the PC archives above.\n"
+                    f"If the dialog was missed: Management → Sync → pick {batch}.civ",
+                )
 
         def error(exc):
             diag = adb_transfer.diagnose()
@@ -524,60 +529,6 @@ class LibraryToolApp:
             )
 
         self._run_worker(work, done, on_error=error, progress_label="Sending to tablet…")
-
-    def _choose_destination(self) -> Optional[str]:
-        dests = transfer.detect_destinations()
-        win = tk.Toplevel(self.root)
-        win.title("Choose export destination")
-        win.geometry("520x360")
-        win.transient(self.root)
-        win.grab_set()
-
-        ttk.Label(win, text="Where should the catalog file be saved?",
-                  style="Status.TLabel", padding=12).pack(anchor="w")
-        ttk.Label(
-            win,
-            text="Tip: the tablet itself usually does NOT appear here — that's "
-                 "normal. Save to the Desktop or a USB drive; the next screen "
-                 "shows how to drag the file onto the tablet. Or pick a USB "
-                 "drive below / Browse to any folder.",
-            style="Sub.TLabel", wraplength=480, justify="left", padding=(12, 0),
-        ).pack(anchor="w")
-
-        lb = tk.Listbox(win, height=8)
-        for d in dests:
-            lb.insert("end", f"{d.label}    [{d.path}]")
-        lb.pack(fill="both", expand=True, padx=12, pady=8)
-
-        chosen = {"path": None}
-
-        def use_selected():
-            sel = lb.curselection()
-            if sel:
-                chosen["path"] = dests[sel[0]].path
-                win.destroy()
-
-        def browse():
-            folder = filedialog.askdirectory(title="Choose destination folder", parent=win)
-            if folder:
-                chosen["path"] = folder
-                win.destroy()
-
-        def use_desktop():
-            desktop = os.path.join(os.path.expanduser("~"), "Desktop")
-            chosen["path"] = desktop if os.path.isdir(desktop) else os.path.expanduser("~")
-            win.destroy()
-
-        btns = ttk.Frame(win, padding=12)
-        btns.pack(fill="x")
-        ttk.Button(btns, text="Save to Desktop", style="Accent.TButton",
-                   command=use_desktop).pack(side="left")
-        ttk.Button(btns, text="Browse folder…", command=browse).pack(side="left", padx=(8, 0))
-        ttk.Button(btns, text="Use selected", command=use_selected).pack(side="right")
-        ttk.Button(btns, text="Cancel", command=win.destroy).pack(side="right", padx=(0, 8))
-
-        self.root.wait_window(win)
-        return chosen["path"]
 
     def on_restore_import(self) -> None:
         if not self.session.can_restore_import():
@@ -632,82 +583,6 @@ class LibraryToolApp:
                    command=do_restore).pack(side="right")
         ttk.Button(btns, text="Cancel", command=win.destroy).pack(side="right", padx=(0, 8))
         self.root.wait_window(win)
-
-    def on_delete_all(self) -> None:
-        n = len(self.session.books)
-        if n == 0:
-            return
-        # Step 1: intent.
-        if not messagebox.askyesno(
-            "Delete ALL books? (1 of 3)",
-            f"This will remove all {n} books from the working catalog.\n\n"
-            "A restorable backup is taken first. Continue?",
-            icon="warning",
-        ):
-            return
-        # Step 2: typed confirmation.
-        confirm = _ask_text(
-            self.root,
-            "Delete ALL books? (2 of 3)",
-            f'Type DELETE (in capitals) to confirm removing all {n} books:',
-        )
-        if confirm != "DELETE":
-            if confirm is not None:
-                messagebox.showinfo("Cancelled", "Text did not match. Nothing was deleted.")
-            return
-        # Step 3: final irreversible-looking confirm (still reversible via backup).
-        if not messagebox.askyesno(
-            "Final confirmation (3 of 3)",
-            f"Last chance. Delete all {n} books now?\n\n"
-            "You can restore them afterwards from 'Restore from backup'.",
-            icon="warning",
-        ):
-            return
-
-        snapshot = self.session.delete_all()
-        self._show_report(self.session.last_report)
-        self._refresh_status()
-        self.footer_var.set(f"Deleted all books. Backup saved ({snapshot.when}).")
-        if messagebox.askyesno(
-            "Deleted — undo now?",
-            "All books were deleted (a backup was saved). Undo immediately?",
-        ):
-            self.session.restore_from_backup(snapshot)
-            self._show_report(self.session.last_report)
-            self._refresh_status()
-            self.footer_var.set("Undo complete — books restored.")
-
-
-def _ask_text(parent: tk.Tk, title: str, prompt: str) -> Optional[str]:
-    """A small modal text-entry dialog (avoids importing simpledialog styling)."""
-    win = tk.Toplevel(parent)
-    win.title(title)
-    win.geometry("440x170")
-    win.transient(parent)
-    win.grab_set()
-    ttk.Label(win, text=prompt, wraplength=400, padding=14, justify="left").pack(anchor="w")
-    var = tk.StringVar()
-    entry = ttk.Entry(win, textvariable=var, width=30)
-    entry.pack(padx=14, pady=4)
-    entry.focus_set()
-    result = {"value": None}
-
-    def ok():
-        result["value"] = var.get()
-        win.destroy()
-
-    def cancel():
-        result["value"] = None
-        win.destroy()
-
-    btns = ttk.Frame(win, padding=12)
-    btns.pack(fill="x")
-    ttk.Button(btns, text="Confirm", command=ok).pack(side="right")
-    ttk.Button(btns, text="Cancel", command=cancel).pack(side="right", padx=(0, 8))
-    entry.bind("<Return>", lambda _e: ok())
-    parent.wait_window(win)
-    return result["value"]
-
 
 def main() -> None:
     root = tk.Tk()

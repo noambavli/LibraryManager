@@ -58,7 +58,6 @@ fun SearchScreen(
     val focusedField by viewModel.focusedField.collectAsStateWithLifecycle()
     val results by viewModel.results.collectAsStateWithLifecycle()
     val catalogSize by viewModel.catalogSize.collectAsStateWithLifecycle()
-    val isImporting by viewModel.isImporting.collectAsStateWithLifecycle()
     val customColors by viewModel.customColors.collectAsStateWithLifecycle()
     val parentNameLookup by viewModel.parentNameLookup.collectAsStateWithLifecycle()
     val shortcuts by viewModel.shortcuts.collectAsStateWithLifecycle()
@@ -96,7 +95,6 @@ fun SearchScreen(
                 results = results,
                 catalogSize = catalogSize,
                 queryIsEmpty = fieldValues.values.all { it.text.isBlank() },
-                isImporting = isImporting,
                 customColors = customColors,
                 parentNameLookup = parentNameLookup,
             )
@@ -299,7 +297,6 @@ private fun ResultsPane(
     results: List<Book>,
     catalogSize: Int,
     queryIsEmpty: Boolean,
-    isImporting: Boolean,
     customColors: List<CustomColor>,
     parentNameLookup: Map<String, String>,
 ) {
@@ -311,18 +308,12 @@ private fun ResultsPane(
             count = results.size,
             catalogSize = catalogSize,
             queryIsEmpty = queryIsEmpty,
-            isImporting = isImporting,
         )
         Spacer(modifier = Modifier.height(10.dp))
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Spacer(modifier = Modifier.height(10.dp))
 
         when {
-            isImporting -> CenteredHint(
-                primary = stringResource(R.string.results_loading),
-                secondary = null,
-                showSpinner = true,
-            )
             catalogSize == 0 -> CenteredHint(
                 primary = stringResource(R.string.results_loading),
                 secondary = null,
@@ -359,10 +350,8 @@ private fun ResultsHeader(
     count: Int,
     catalogSize: Int,
     queryIsEmpty: Boolean,
-    isImporting: Boolean,
 ) {
     val text = when {
-        isImporting -> stringResource(R.string.results_loading)
         catalogSize == 0 -> stringResource(R.string.results_loading)
         queryIsEmpty && count == 0 -> stringResource(R.string.results_idle)
         else -> stringResource(R.string.results_total, count, catalogSize)

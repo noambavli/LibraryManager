@@ -47,9 +47,6 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
     private val _focusedField = MutableStateFlow(SearchField.GENERAL)
     val focusedField: StateFlow<SearchField> = _focusedField.asStateFlow()
 
-    private val _isImporting = MutableStateFlow(false)
-    val isImporting: StateFlow<Boolean> = _isImporting.asStateFlow()
-
     private val engine: StateFlow<SearchEngine> = container.repository.observeAll()
         .map { books -> SearchEngine(books) }
         .flowOn(Dispatchers.Default)
@@ -125,19 +122,6 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
 
     fun clearAll() {
         _fieldValues.value = SearchField.entries.associateWith { TextFieldValue("") }
-    }
-
-    fun reimport() {
-        viewModelScope.launch {
-            _isImporting.value = true
-            try {
-                withContext(Dispatchers.IO) {
-                    container.importer.importFromAsset(LibraryApp.BUNDLED_CATALOG_ASSET)
-                }
-            } finally {
-                _isImporting.value = false
-            }
-        }
     }
 
     /** Loads the on-device catalog only — production data comes from PC .civ sync. */

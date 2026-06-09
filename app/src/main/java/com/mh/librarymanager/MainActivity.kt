@@ -138,6 +138,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             try {
                 CatalogImportRunner.run(this@MainActivity)
+                catalogTransferViewModel.onAdbImportStaged()
             } catch (_: Exception) {
                 // CatalogImportRunner logs; receiver path still available as fallback.
             }

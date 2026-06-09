@@ -52,6 +52,9 @@ fun CatalogTransferScreen(
 
     var pendingUri by remember { mutableStateOf<Uri?>(null) }
     var showUndoConfirm by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showDeleteType by remember { mutableStateOf(false) }
+    var showRestoreWipeConfirm by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.openSummary.collect {
@@ -109,8 +112,16 @@ fun CatalogTransferScreen(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
-                    text = stringResource(R.string.catalog_transfer_merge_short),
+                    text = stringResource(R.string.catalog_transfer_how_it_works),
                     style = MaterialTheme.typography.bodyLarge,
+                    color = cs.onSurfaceVariant,
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = stringResource(R.string.catalog_transfer_manual_fallback),
+                    style = MaterialTheme.typography.bodyMedium,
                     color = cs.onSurfaceVariant,
                 )
 
@@ -151,6 +162,31 @@ fun CatalogTransferScreen(
                     ) {
                         Text(stringResource(R.string.catalog_transfer_undo))
                     }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                if (dashboard.hasWipeBackup) {
+                    OutlinedButton(
+                        enabled = !isWorking,
+                        onClick = { showRestoreWipeConfirm = true },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                    ) {
+                        Text(stringResource(R.string.catalog_transfer_restore_wipe))
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                if (dashboard.bookCount > 0) {
+                    OutlinedButton(
+                        enabled = !isWorking,
+                        onClick = { showDeleteConfirm = true },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.catalog_transfer_delete_all),
+                            color = cs.error,
+                        )
+                    }
                 }
 
                 if (isWorking) {
@@ -174,6 +210,17 @@ fun CatalogTransferScreen(
                                 imported.skipped,
                             )
                         },
+                        onDismiss = { viewModel.dismissStatus() },
+                    )
+                }
+
+                if (status is CatalogTransferViewModel.Status.Wiped) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    SuccessCard(
+                        message = stringResource(
+                            R.string.catalog_transfer_wiped_ok,
+                            (status as CatalogTransferViewModel.Status.Wiped).count,
+                        ),
                         onDismiss = { viewModel.dismissStatus() },
                     )
                 }
@@ -204,6 +251,7 @@ fun CatalogTransferScreen(
         if (pendingUri != null && !isWorking) {
             ImportConfirmDialog(
                 preview = p,
+                fileLabel = p.meta?.fileLabel() ?: "?",
                 onCancel = {
                     pendingUri = null
                     viewModel.clearPreview()
@@ -233,6 +281,58 @@ fun CatalogTransferScreen(
                 TextButton(onClick = { showUndoConfirm = false }) {
                     Text(stringResource(R.string.cancel))
                 }
+            },
+        )
+    }
+
+    if (showRestoreWipeConfirm) {
+        AlertDialog(
+            onDismissRequest = { showRestoreWipeConfirm = false },
+            title = { Text(stringResource(R.string.catalog_transfer_restore_wipe)) },
+            text = { Text(stringResource(R.string.catalog_transfer_restore_wipe_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showRestoreWipeConfirm = false
+                    viewModel.restoreAfterWipe()
+                }) { Text(stringResource(R.string.catalog_transfer_undo_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestoreWipeConfirm = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text(stringResource(R.string.catalog_transfer_delete_all_confirm_title)) },
+            text = { Text(stringResource(R.string.catalog_transfer_delete_all_confirm_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    showDeleteType = true
+                }) { Text(stringResource(R.string.confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+
+    if (showDeleteType) {
+        TypedConfirmDialog(
+            title = stringResource(R.string.catalog_transfer_delete_all_type_title),
+            body = stringResource(R.string.catalog_transfer_delete_all_type_body),
+            requiredPhrase = stringResource(R.string.catalog_transfer_delete_all_phrase),
+            confirmLabel = stringResource(R.string.catalog_transfer_delete_all_ok),
+            onDismiss = { showDeleteType = false },
+            onConfirmed = {
+                showDeleteType = false
+                viewModel.deleteAllBooks()
             },
         )
     }
@@ -317,41 +417,3 @@ private fun ErrorCard(message: String, onDismiss: () -> Unit) {
     }
 }
 
-@Composable
-private fun ImportConfirmDialog(
-    preview: CivCatalogIO.ImportPreview,
-    onCancel: () -> Unit,
-    onConfirm: () -> Unit,
-) {
-    val fileLabel = preview.meta?.fileLabel() ?: "?"
-    AlertDialog(
-        onDismissRequest = onCancel,
-        title = { Text(stringResource(R.string.catalog_transfer_confirm_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.catalog_transfer_chosen_file, fileLabel))
-                Text(
-                    stringResource(
-                        R.string.catalog_transfer_confirm_preview,
-                        preview.addedCount,
-                        preview.skippedCount,
-                        preview.currentCount,
-                        preview.totalAfter,
-                    ),
-                )
-                Text(
-                    text = stringResource(R.string.catalog_transfer_confirm_safety),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-        },
-        confirmButton = {
-            Button(onClick = onConfirm) {
-                Text(stringResource(R.string.catalog_transfer_confirm_ok))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
-        },
-    )
-}

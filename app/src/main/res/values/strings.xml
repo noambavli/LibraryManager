@@ -106,8 +106,8 @@
     <string name="management_shortcuts_subtitle">הוספה ומחיקה של תגיות חיפוש מהיר</string>
     <string name="management_tech_support">בקשות תמיכה טכנית</string>
     <string name="management_tech_support_subtitle">דיווחי תקלות מהציבור</string>
-    <string name="management_catalog_transfer">ייבוא קטלוג מהמחשב</string>
-    <string name="management_catalog_transfer_subtitle">סנכרון ממחשב — מוסיף ספרים חדשים בלבד</string>
+    <string name="management_catalog_transfer">סנכרון מהמחשב</string>
+    <string name="management_catalog_transfer_subtitle">אישור ייבוא וצפייה בסיכום</string>
 
     <!-- Out-of-order books (missing / swapped letter &amp; number) -->
     <string name="out_of_order_title">ספרים לא מסודרים</string>
@@ -148,8 +148,19 @@
     <string name="catalog_transfer_book_count">%1$d ספרים בקטלוג</string>
     <string name="catalog_transfer_no_sync_yet">עדיין לא סונכרן מהמחשב</string>
     <string name="catalog_transfer_last_file">בסנכרון האחרון נוספו %1$d ספרים</string>
-    <string name="catalog_transfer_merge_short">מוסיף ספרים חדשים בלבד — לא מוחק קיימים.</string>
-    <string name="catalog_transfer_pick_file">בחר קובץ (1.civ, 2.civ…)</string>
+    <string name="catalog_transfer_how_it_works">שליחה מהמחשב: חברו USB, לחצו Send — יופיע חלון אישור על המסך. מוסיף ספרים חדשים בלבד.</string>
+    <string name="catalog_transfer_manual_fallback">גיבוי ידני: בחרו 1.civ, 2.civ… מ‑Download לפי סדר. אחרי מחיקת הכל — ייבוא אחד־אחד משחזר את הקטלוג.</string>
+    <string name="catalog_transfer_delete_all">מחק את כל הספרים…</string>
+    <string name="catalog_transfer_delete_all_confirm_title">למחוק את כל הספרים?</string>
+    <string name="catalog_transfer_delete_all_confirm_body">כל הספרים יימחקו מהטאבלט. נשמר גיבוי לשחזור מיידי, או ייבוא מחדש של 1.civ, 2.civ… מהמחשב.</string>
+    <string name="catalog_transfer_delete_all_type_title">אישור מחיקה</string>
+    <string name="catalog_transfer_delete_all_type_body">הקלידו ״מחק הכל״ לאישור:</string>
+    <string name="catalog_transfer_delete_all_phrase">מחק הכל</string>
+    <string name="catalog_transfer_delete_all_ok">מחק הכל</string>
+    <string name="catalog_transfer_wiped_ok">נמחקו %1$d ספרים. ניתן לשחזר או לייבא קבצי civ ישנים.</string>
+    <string name="catalog_transfer_restore_wipe">שחזור אחרי מחיקת הכל</string>
+    <string name="catalog_transfer_restore_wipe_body">להחזיר את הקטלוג כפי שהיה לפני המחיקה?</string>
+    <string name="catalog_transfer_pick_file">בחר קובץ ידנית (1.civ, 2.civ…)</string>
     <string name="catalog_transfer_view_summary">צפייה בסיכום הייבוא האחרון</string>
     <string name="catalog_transfer_chosen_file">בחרתם: קובץ %1$s</string>
     <string name="catalog_transfer_undo">שחזור לפני הסנכרון האחרון</string>
@@ -162,6 +173,7 @@
     <string name="catalog_transfer_imported_none">אין ספרים חדשים — %1$d כבר היו בקטלוג</string>
     <string name="catalog_transfer_restored_ok">הקטלוג שוחזר — %1$d ספרים</string>
     <string name="catalog_transfer_confirm_title">לאשר הוספה?</string>
+    <string name="catalog_transfer_adb_confirm_title">קובץ הגיע מהמחשב — לאשר הוספה?</string>
     <string name="catalog_transfer_confirm_preview">יתווספו %1$d חדשים · %2$d כבר קיימים · מ‑%3$d ל‑%4$d סה״כ.</string>
     <string name="catalog_transfer_confirm_safety">נשמר גיבוי — אפשר לשחזר בלחיצה אחת.</string>
     <string name="catalog_transfer_confirm_ok">הוסף</string>

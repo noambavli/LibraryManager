@@ -4,8 +4,9 @@ Flow (same pattern as the app's APK update):
   1. Detect adb + a connected tablet
   2. Best-effort enable USB file-transfer mode on the device
   3. Push catalog.civ to /data/local/tmp/catalog.civ
-  4. Broadcast IMPORT_CATALOG to the tablet app
-  5. Read catalog-import-result.txt (or logcat fallback) to confirm import
+  4. Broadcast IMPORT_CATALOG to wake the tablet app
+  5. Read catalog-import-result.txt — PENDING while waiting for on-tablet
+     confirmation, then OK (merged) or ERR (cancelled / failed)
 
 Requires USB debugging enabled on the tablet (done automatically for
 device-owner/kiosk tablets). Works even when the tablet does not appear
@@ -19,7 +20,6 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 import time
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
@@ -34,6 +34,7 @@ REMOTE_RESULT_APP = (
 # Downloads first — that path worked in the original "fix file import" flow.
 REMOTE_RESULTS = [REMOTE_RESULT, REMOTE_RESULT_TMP, REMOTE_RESULT_APP]
 RESULT_PROGRESS = "RUNNING"
+CONFIRM_TIMEOUT_SEC = 600
 IMPORT_ACTION = "com.mh.librarymanager.IMPORT_CATALOG"
 IMPORT_RECEIVER = "com.mh.librarymanager/.CatalogImportReceiver"
 PACKAGE = "com.mh.librarymanager"
@@ -314,7 +315,8 @@ def _is_final_result(line: str) -> bool:
 
 
 def _is_progress_result(line: str) -> bool:
-    return line.strip() == RESULT_PROGRESS
+    stripped = line.strip()
+    return stripped == RESULT_PROGRESS or stripped.startswith("PENDING:")
 
 
 def _import_timeout_sec(local_civ: str) -> int:
@@ -333,6 +335,9 @@ def _read_result_file(adb: str, serial: str, remote: str) -> str:
 _LOGCAT_MERGED = re.compile(
     r"Merged catalog: \+(\d+) added, (\d+) skipped, total (\d+)"
 )
+_LOGCAT_AWAITING = re.compile(
+    r"Awaiting confirmation: \+(\d+) to add, (\d+) skipped"
+)
 
 
 def _parse_logcat_import(logcat: str) -> str:
@@ -343,6 +348,11 @@ def _parse_logcat_import(logcat: str) -> str:
         if match:
             added, skipped, total = match.groups()
             return f"OK:added={added}:skipped={skipped}:total={total}"
+    for line in reversed(lines):
+        match = _LOGCAT_AWAITING.search(line)
+        if match:
+            added, skipped = match.groups()
+            return f"PENDING:added={added}:skipped={skipped}:current=0:total=0"
     for line in reversed(lines):
         if "Import failed:" in line:
             detail = line.split("Import failed:", 1)[1].strip()
@@ -425,8 +435,14 @@ def _trigger_import(adb: str, serial: str) -> None:
     )
 
 
-def push_and_import(adb: str, serial: str, local_civ: str) -> AdbSendResult:
-    """Push catalog.civ and trigger silent import on the tablet."""
+def push_and_import(
+    adb: str,
+    serial: str,
+    local_civ: str,
+    *,
+    download_name: str = "catalog.civ",
+) -> AdbSendResult:
+    """Push catalog to tmp for import and copy a numbered archive into Download."""
     prepare_usb(adb, serial)
 
     for path in REMOTE_RESULTS:
@@ -440,10 +456,11 @@ def push_and_import(adb: str, serial: str, local_civ: str) -> AdbSendResult:
 
     _verify_remote_file(adb, serial, local_civ, REMOTE_CIV_TMP)
 
-    # Best-effort copy into public Download so it can appear in file managers.
+    # Best-effort copy into public Download under the batch name (1.civ, 2.civ …).
+    remote_download = f"/sdcard/Download/{download_name}"
     _run(
         adb,
-        ["-s", serial, "shell", "cp", REMOTE_CIV_TMP, REMOTE_CIV_DOWNLOAD],
+        ["-s", serial, "shell", "cp", REMOTE_CIV_TMP, remote_download],
         timeout=30,
     )
     _run(
@@ -451,7 +468,7 @@ def push_and_import(adb: str, serial: str, local_civ: str) -> AdbSendResult:
         [
             "-s", serial, "shell", "am", "broadcast",
             "-a", "android.intent.action.MEDIA_SCANNER_SCAN_FILE",
-            "-d", f"file://{REMOTE_CIV_DOWNLOAD}",
+            "-d", f"file://{remote_download}",
         ],
         timeout=15,
     )
@@ -508,7 +525,7 @@ def _wait_for_result(
     logcat_baseline: str = "",
 ) -> str:
     deadline = time.time() + timeout_sec
-    saw_running = False
+    saw_pending = False
     while time.time() < deadline:
         for remote in REMOTE_RESULTS:
             line = _read_result_file(adb, serial, remote)
@@ -517,21 +534,31 @@ def _wait_for_result(
             if _is_final_result(line):
                 return line
             if _is_progress_result(line):
-                saw_running = True
-                if deadline - time.time() < 45:
+                if line.strip().startswith("PENDING:"):
+                    saw_pending = True
+                    deadline = max(deadline, time.time() + CONFIRM_TIMEOUT_SEC)
+                elif deadline - time.time() < 45:
                     deadline = time.time() + 60
         line = _read_result_mediastore(adb, serial)
         if line:
             if _is_final_result(line):
                 return line
             if _is_progress_result(line):
-                saw_running = True
-                if deadline - time.time() < 45:
+                if line.strip().startswith("PENDING:"):
+                    saw_pending = True
+                    deadline = max(deadline, time.time() + CONFIRM_TIMEOUT_SEC)
+                elif deadline - time.time() < 45:
                     deadline = time.time() + 60
         line = _read_result_logcat(adb, serial, since=logcat_baseline)
-        if line and _is_final_result(line):
-            return line
+        if line:
+            if _is_final_result(line):
+                return line
+            if _is_progress_result(line) and line.strip().startswith("PENDING:"):
+                saw_pending = True
+                deadline = max(deadline, time.time() + CONFIRM_TIMEOUT_SEC)
         time.sleep(0.8)
+    if saw_pending:
+        return "ERR:confirm_timeout"
     return ""
 
 
@@ -555,33 +582,16 @@ def _parse_import_count(line: str) -> Optional[int]:
         return None
 
 
-def write_temp_civ(
-    write_fn,
-    books,
-    source_file: str = "",
-    batch_number: Optional[int] = None,
-) -> str:
-    """Write books to a temp .civ file; caller deletes when done."""
-    fd, path = tempfile.mkstemp(prefix="catalog-", suffix=".civ")
-    os.close(fd)
-    if batch_number is not None:
-        write_fn(
-            path, books, source_file,
-            batch_number=batch_number, consume_counter=False,
-        )
-    else:
-        write_fn(path, books, source_file)
-    return path
-
-
 def send_books(
     write_fn,
     books,
     source_file: str = "",
     batch_number: Optional[int] = None,
 ) -> AdbSendResult:
-    """High-level: find adb + device, write .civ, push, import, verify."""
+    """High-level: find adb + device, archive .civ, push, wait for tablet confirm."""
+    from . import civ as civ_mod
     from .export_counter import commit_batch_number, peek_next_batch_number
+    from .exports import path_for_batch
 
     # Avoid kill-server on every send — that was not in the working "fix file import" flow
     # and can disrupt a stable USB session mid-transfer.
@@ -599,19 +609,28 @@ def send_books(
     device = diag.ready[0]
     adb = diag.adb_path
     batch = batch_number if batch_number is not None else peek_next_batch_number()
-    local = write_temp_civ(write_fn, books, source_file, batch_number=batch)
-    try:
-        result = push_and_import(adb, device.serial, local)
-        result.device = device
-        if result.result_line.startswith("ERR:"):
-            raise IOError(
-                f"Tablet rejected the catalog: {result.result_line}. "
-                "The file was pushed but import failed."
-            )
-        commit_batch_number(batch)
-        return result
-    finally:
-        try:
-            os.remove(local)
-        except OSError:
-            pass
+    archive_path = path_for_batch(batch)
+    if os.path.exists(archive_path):
+        raise IOError(
+            f"Archive {civ_mod.export_filename(batch)} already exists on this PC. "
+            "The batch counter may be out of sync — check .librarytool/export_counter.txt."
+        )
+    write_fn(
+        archive_path,
+        books,
+        source_file,
+        batch_number=batch,
+        consume_counter=False,
+    )
+    download_name = civ_mod.export_filename(batch)
+    result = push_and_import(
+        adb, device.serial, archive_path, download_name=download_name,
+    )
+    result.device = device
+    if result.result_line.startswith("ERR:"):
+        raise IOError(
+            f"Tablet rejected the catalog: {result.result_line}. "
+            "The file was pushed but import failed."
+        )
+    commit_batch_number(batch)
+    return result

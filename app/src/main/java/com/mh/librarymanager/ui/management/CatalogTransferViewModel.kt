@@ -35,6 +35,7 @@ class CatalogTransferViewModel(app: Application) : AndroidViewModel(app) {
             val fileLabel: String,
         ) : Status
         data class Restored(val count: Int) : Status
+        data class Wiped(val count: Int) : Status
         data class Error(val message: String) : Status
     }
 
@@ -42,6 +43,7 @@ class CatalogTransferViewModel(app: Application) : AndroidViewModel(app) {
         val bookCount: Int,
         val lastImport: CivCatalogIO.LastImportSummary,
         val hasBackup: Boolean,
+        val hasWipeBackup: Boolean,
         val hasSummary: Boolean,
     )
 
@@ -51,11 +53,18 @@ class CatalogTransferViewModel(app: Application) : AndroidViewModel(app) {
     private val _hasBackup = MutableStateFlow(io.hasBackup())
     val hasBackup: StateFlow<Boolean> = _hasBackup.asStateFlow()
 
+    private val _hasWipeBackup = MutableStateFlow(io.hasWipeBackup())
+    val hasWipeBackup: StateFlow<Boolean> = _hasWipeBackup.asStateFlow()
+
     private val _importSummary = MutableStateFlow(io.importSummary())
     val importSummary: StateFlow<CivCatalogIO.ImportSummaryDetail> = _importSummary.asStateFlow()
 
     private val _preview = MutableStateFlow<CivCatalogIO.ImportPreview?>(null)
     val preview: StateFlow<CivCatalogIO.ImportPreview?> = _preview.asStateFlow()
+
+    /** PC-pushed catalog waiting for on-tablet confirmation (shown as a global overlay). */
+    private val _adbPending = MutableStateFlow<CivCatalogIO.ImportPreview?>(null)
+    val adbPending: StateFlow<CivCatalogIO.ImportPreview?> = _adbPending.asStateFlow()
 
     private val _openSummary = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val openSummary = _openSummary.asSharedFlow()
@@ -63,18 +72,26 @@ class CatalogTransferViewModel(app: Application) : AndroidViewModel(app) {
     val dashboard: StateFlow<DashboardState> = container.repository
         .observeAll()
         .combine(_hasBackup) { books, backup -> books.size to backup }
-        .combine(_importSummary) { (count, backup), summary ->
+        .combine(_hasWipeBackup) { (count, backup), wipeBackup -> Triple(count, backup, wipeBackup) }
+        .combine(_importSummary) { (count, backup, wipeBackup), summary ->
             DashboardState(
                 bookCount = count,
                 lastImport = io.lastImportSummary(),
                 hasBackup = backup,
+                hasWipeBackup = wipeBackup,
                 hasSummary = summary.hasData,
             )
         }
         .stateIn(
             viewModelScope,
             SharingStarted.Eagerly,
-            DashboardState(0, io.lastImportSummary(), io.hasBackup(), io.importSummary().hasData),
+            DashboardState(
+                0,
+                io.lastImportSummary(),
+                io.hasBackup(),
+                io.hasWipeBackup(),
+                io.importSummary().hasData,
+            ),
         )
 
     fun loadPreview(uri: Uri) {
@@ -96,12 +113,69 @@ class CatalogTransferViewModel(app: Application) : AndroidViewModel(app) {
         _preview.value = null
     }
 
+    /** Called when adb stages a file, or on startup to resume an unstaged confirmation. */
+    fun refreshAdbPending() {
+        viewModelScope.launch {
+            when (val outcome = io.loadPendingPreview()) {
+                is CivCatalogIO.PreviewOutcome.Ready -> _adbPending.value = outcome.preview
+                is CivCatalogIO.PreviewOutcome.Failed -> _adbPending.value = null
+            }
+        }
+    }
+
+    fun onAdbImportStaged() = refreshAdbPending()
+
+    fun confirmAdbPending() {
+        _status.value = Status.Working
+        viewModelScope.launch {
+            val result = runCatching { io.commitPendingImport() }
+                .getOrElse { CivCatalogIO.ImportResult.IoFailure(it.message ?: "Unknown error") }
+            io.writeImportResult(result)
+            _adbPending.value = null
+            applyResult(result)
+        }
+    }
+
+    fun cancelAdbPending() {
+        viewModelScope.launch {
+            io.discardPendingImport()
+            _adbPending.value = null
+            _status.value = Status.Error("הייבוא בוטל — לא נוספו ספרים.")
+        }
+    }
+
     fun importFromUri(uri: Uri) {
         _status.value = Status.Working
         viewModelScope.launch {
             val result = runCatching { io.importFromUri(uri) }
                 .getOrElse { CivCatalogIO.ImportResult.IoFailure(it.message ?: "Unknown error") }
             applyResult(result)
+        }
+    }
+
+    fun deleteAllBooks() {
+        _status.value = Status.Working
+        viewModelScope.launch {
+            val removed = runCatching { io.wipeAllBooks() }.getOrDefault(-1)
+            _status.value = when {
+                removed < 0 -> Status.Error("לא ניתן למחוק — שגיאת אחסון.")
+                removed == 0 -> Status.Error("הקטלוג כבר ריק.")
+                else -> Status.Wiped(removed)
+            }
+            refreshMeta()
+        }
+    }
+
+    fun restoreAfterWipe() {
+        _status.value = Status.Working
+        viewModelScope.launch {
+            val restored = runCatching { io.restoreAfterWipe() }.getOrDefault(-1)
+            _status.value = if (restored < 0) {
+                Status.Error("לא ניתן לשחזר — אין גיבוי תקין.")
+            } else {
+                Status.Restored(restored)
+            }
+            refreshMeta()
         }
     }
 
@@ -156,6 +230,7 @@ class CatalogTransferViewModel(app: Application) : AndroidViewModel(app) {
                 Status.Error("הקובץ גדול מדי (${result.sizeBytes / (1024 * 1024)} MB).")
             is CivCatalogIO.ImportResult.IoFailure ->
                 Status.Error("בעיית אחסון: ${result.reason}")
+            is CivCatalogIO.ImportResult.AwaitingConfirmation -> Status.Idle
         }
         if (result !is CivCatalogIO.ImportResult.Ok) refreshMeta()
     }
@@ -171,10 +246,12 @@ class CatalogTransferViewModel(app: Application) : AndroidViewModel(app) {
             Status.Error("הקובץ גדול מדי (${result.sizeBytes / (1024 * 1024)} MB).")
         is CivCatalogIO.ImportResult.IoFailure -> Status.Error(result.reason)
         is CivCatalogIO.ImportResult.Ok -> Status.Error("שגיאה לא צפויה.")
+        is CivCatalogIO.ImportResult.AwaitingConfirmation -> Status.Error("ממתין לאישור.")
     }
 
     private fun refreshMeta() {
         _hasBackup.value = io.hasBackup()
+        _hasWipeBackup.value = io.hasWipeBackup()
         _importSummary.value = io.importSummary()
         _preview.value = null
     }

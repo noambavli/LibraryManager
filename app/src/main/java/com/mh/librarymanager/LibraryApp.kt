@@ -10,8 +10,6 @@ import com.mh.librarymanager.data.store.CatalogStore
 import com.mh.librarymanager.data.store.PublicRequestStore
 import com.mh.librarymanager.data.store.SearchShortcutStore
 import com.mh.librarymanager.data.store.TechSupportStore
-import com.mh.librarymanager.data.xlsx.CatalogImporter
-
 /**
  * Tiny manual DI container. One layer above singletons, one layer below Hilt.
  * Sufficient for this milestone; the API is stable so swapping for Hilt later
@@ -26,12 +24,9 @@ class LibraryApp : Application() {
     val shortcutStore: SearchShortcutStore by lazy { SearchShortcutStore(this) }
     val techSupportStore: TechSupportStore by lazy { TechSupportStore(this) }
     val repository: BookRepository by lazy { BookRepository(catalogStore, auditStore) }
-    val importer: CatalogImporter by lazy { CatalogImporter(this, repository) }
     val civCatalogIo: CivCatalogIO by lazy { CivCatalogIO(this, repository) }
 
     companion object {
-        const val BUNDLED_CATALOG_ASSET = "catalog.xlsx"
-
         fun from(context: Context): LibraryApp =
             context.applicationContext as LibraryApp
     }

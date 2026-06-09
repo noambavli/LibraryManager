@@ -7,7 +7,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mh.librarymanager.R
 import com.mh.librarymanager.ui.home.HomeScreen
 import com.mh.librarymanager.ui.management.BookEditorScreen
 import com.mh.librarymanager.ui.management.BooksManagementScreen
@@ -23,6 +25,7 @@ import com.mh.librarymanager.ui.management.AnnouncementsManagementScreen
 import com.mh.librarymanager.ui.management.AnnouncementsManagementViewModel
 import com.mh.librarymanager.ui.management.CatalogTransferScreen
 import com.mh.librarymanager.ui.management.CatalogTransferViewModel
+import com.mh.librarymanager.ui.management.ImportConfirmDialog
 import com.mh.librarymanager.ui.management.ImportSummaryScreen
 import com.mh.librarymanager.ui.management.ManagementDashboardScreen
 import com.mh.librarymanager.ui.management.OutOfOrderBooksScreen
@@ -82,6 +85,11 @@ fun AppRoot(
     val catalogTransferVm: CatalogTransferViewModel = catalogTransferViewModel
     val session: ManagementSession = managementSession
     val outOfOrderCount by managementVm.outOfOrderCount.collectAsStateWithLifecycle()
+    val adbPending by catalogTransferVm.adbPending.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        catalogTransferVm.refreshAdbPending()
+    }
 
     SideEffect {
         onRegisterBackHandler {
@@ -302,6 +310,16 @@ fun AppRoot(
                 )
             }
         }
+        }
+
+        adbPending?.let { preview ->
+            ImportConfirmDialog(
+                preview = preview,
+                title = stringResource(R.string.catalog_transfer_adb_confirm_title),
+                fileLabel = preview.meta?.fileLabel(),
+                onCancel = { catalogTransferVm.cancelAdbPending() },
+                onConfirm = { catalogTransferVm.confirmAdbPending() },
+            )
         }
     }
 }

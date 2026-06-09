@@ -4,6 +4,7 @@ import com.mh.librarymanager.data.store.AuditStore
 import com.mh.librarymanager.data.store.CatalogStore
 import com.mh.librarymanager.domain.AuditEvent
 import com.mh.librarymanager.domain.Book
+import com.mh.librarymanager.domain.BookMerge
 import com.mh.librarymanager.domain.CustomColor
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -65,6 +66,14 @@ class BookRepository(
         )
     }
 
+    /** Remove every book from the catalog. Returns how many latest rows were removed. */
+    suspend fun clearCatalog(): Int = catalogMutex.withLock {
+        store.loadFromDisk()
+        val count = store.books.value.count { it.isLatest }
+        store.replaceAll(emptyList())
+        count
+    }
+
     data class MergeImportResult(
         val added: Int,
         val skipped: Int,
@@ -79,70 +88,58 @@ class BookRepository(
 
     /**
      * Add books from a PC export without removing existing rows.
-     * A row is skipped when its [Book.id] already exists on the tablet.
-     * Duplicate IDs inside the same file are ignored (first wins).
+     *
+     * A row is skipped only when an existing book has the **same content**
+     * (see [BookMerge.contentKey]) — not when it happens to share the
+     * row-index id/number from the source sheet. New books get a fresh unique
+     * id and system number so they never collide with existing rows.
      */
     suspend fun mergeImport(incoming: List<Book>): MergeImportOutcome = catalogMutex.withLock {
         store.loadFromDisk()
         val previous = store.books.value.toList()
-        val prepared = prepareIncoming(incoming)
-        val existingIds = previous.map { it.id }.toSet()
-        val toAdd = prepared.filter { it.id !in existingIds }
-        if (toAdd.isEmpty()) {
+        val plan = BookMerge.plan(previous, incoming)
+        if (plan.toAdd.isEmpty()) {
             return@withLock MergeImportOutcome(
                 previous = previous,
                 result = MergeImportResult(
                     added = 0,
-                    skipped = incoming.size,
+                    skipped = plan.skipped,
                     totalAfter = previous.size,
                     addedBooks = emptyList(),
                 ),
             )
         }
-        val merged = previous + toAdd
+        val merged = previous + plan.toAdd
         store.replaceAll(merged)
         auditStore.append(
             AuditEvent.Imported(
                 id = UUID.randomUUID().toString(),
                 timestamp = System.currentTimeMillis(),
-                importedCount = toAdd.size,
+                importedCount = plan.toAdd.size,
             ),
         )
         MergeImportOutcome(
             previous = previous,
             result = MergeImportResult(
-                added = toAdd.size,
-                skipped = incoming.size - toAdd.size,
+                added = plan.toAdd.size,
+                skipped = plan.skipped,
                 totalAfter = merged.size,
-                addedBooks = toAdd,
+                addedBooks = plan.toAdd,
             ),
         )
     }
 
     /** Count how many incoming rows would be added vs skipped (no writes). */
     suspend fun previewMerge(incoming: List<Book>): MergeImportResult {
-        val prepared = prepareIncoming(incoming)
         store.loadFromDisk()
-        val existingIds = store.books.value.map { it.id }.toSet()
-        val toAdd = prepared.filter { it.id !in existingIds }
-        val total = store.books.value.size
+        val previous = store.books.value.toList()
+        val plan = BookMerge.plan(previous, incoming)
         return MergeImportResult(
-            added = toAdd.size,
-            skipped = incoming.size - toAdd.size,
-            totalAfter = total + toAdd.size,
-            addedBooks = toAdd,
+            added = plan.toAdd.size,
+            skipped = plan.skipped,
+            totalAfter = plan.totalAfter,
+            addedBooks = plan.toAdd,
         )
-    }
-
-    private fun prepareIncoming(incoming: List<Book>): List<Book> {
-        val seen = mutableSetOf<String>()
-        val out = ArrayList<Book>()
-        for (book in incoming) {
-            if (book.id.isBlank() || book.id in seen) continue
-            seen.add(book.id)
-            out.add(book)
-        }
-        return out
     }
 
     /**
