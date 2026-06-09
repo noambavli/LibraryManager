@@ -66,6 +66,9 @@ class CatalogTransferViewModel(app: Application) : AndroidViewModel(app) {
     private val _adbPending = MutableStateFlow<CivCatalogIO.ImportPreview?>(null)
     val adbPending: StateFlow<CivCatalogIO.ImportPreview?> = _adbPending.asStateFlow()
 
+    private val _adbConfirming = MutableStateFlow(false)
+    val adbConfirming: StateFlow<Boolean> = _adbConfirming.asStateFlow()
+
     private val _openSummary = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val openSummary = _openSummary.asSharedFlow()
 
@@ -126,20 +129,33 @@ class CatalogTransferViewModel(app: Application) : AndroidViewModel(app) {
     fun onAdbImportStaged() = refreshAdbPending()
 
     fun confirmAdbPending() {
+        if (_adbConfirming.value) return
+        _adbConfirming.value = true
+        _adbPending.value = null
         _status.value = Status.Working
         viewModelScope.launch {
-            val result = runCatching { io.commitPendingImport() }
-                .getOrElse { CivCatalogIO.ImportResult.IoFailure(it.message ?: "Unknown error") }
-            io.writeImportResult(result)
-            _adbPending.value = null
-            applyResult(result)
+            try {
+                val result = runCatching { io.commitPendingImport() }
+                    .getOrElse { CivCatalogIO.ImportResult.IoFailure(it.message ?: "Unknown error") }
+                when (result) {
+                    // Duplicate tap after a successful commit — don't overwrite OK.
+                    is CivCatalogIO.ImportResult.Invalid -> Unit
+                    else -> {
+                        io.writeImportResult(result)
+                        applyResult(result)
+                    }
+                }
+            } finally {
+                _adbConfirming.value = false
+            }
         }
     }
 
     fun cancelAdbPending() {
+        if (_adbConfirming.value) return
+        _adbPending.value = null
         viewModelScope.launch {
             io.discardPendingImport()
-            _adbPending.value = null
             _status.value = Status.Error("הייבוא בוטל — לא נוספו ספרים.")
         }
     }

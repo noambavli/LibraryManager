@@ -1,7 +1,6 @@
 package com.mh.librarymanager
 
 import android.content.Context
-import android.content.Intent
 import android.util.Log
 import com.mh.librarymanager.data.civ.CivCatalogIO
 import kotlinx.coroutines.Dispatchers
@@ -27,14 +26,12 @@ object CatalogImportRunner {
         val result = io.stageIncomingFile()
         io.writeImportResult(result)
         when (result) {
-            is CivCatalogIO.ImportResult.AwaitingConfirmation -> {
+            is CivCatalogIO.ImportResult.AwaitingConfirmation ->
                 Log.i(
                     TAG,
                     "Awaiting confirmation: +${result.preview.addedCount} to add, " +
                         "${result.preview.skippedCount} skipped",
                 )
-                wakeForConfirmation(context)
-            }
             is CivCatalogIO.ImportResult.Ok ->
                 Log.i(
                     TAG,
@@ -45,14 +42,5 @@ object CatalogImportRunner {
                 Log.e(TAG, "Import failed: $result")
         }
         result
-    }
-
-    /** Bring the app forward so the confirmation dialog is visible on the tablet. */
-    private fun wakeForConfirmation(context: Context) {
-        val launch = Intent(context, MainActivity::class.java).apply {
-            action = CatalogImportReceiver.ACTION
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        }
-        runCatching { context.startActivity(launch) }
     }
 }

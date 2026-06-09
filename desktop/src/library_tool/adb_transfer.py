@@ -31,8 +31,8 @@ REMOTE_RESULT = "/sdcard/Download/catalog-import-result.txt"
 REMOTE_RESULT_APP = (
     "/sdcard/Android/data/com.mh.librarymanager/files/catalog-import-result.txt"
 )
-# Downloads first — that path worked in the original "fix file import" flow.
-REMOTE_RESULTS = [REMOTE_RESULT, REMOTE_RESULT_TMP, REMOTE_RESULT_APP]
+# App-private path first (always fresh); Downloads last (MediaStore can lag).
+REMOTE_RESULTS = [REMOTE_RESULT_APP, REMOTE_RESULT_TMP, REMOTE_RESULT]
 RESULT_PROGRESS = "RUNNING"
 CONFIRM_TIMEOUT_SEC = 600
 IMPORT_ACTION = "com.mh.librarymanager.IMPORT_CATALOG"
@@ -526,6 +526,36 @@ def push_and_import(
     )
 
 
+def _pick_best_result(*candidates: str) -> str:
+    """Prefer OK over stale ERR when multiple result paths disagree."""
+    lines = [c.strip() for c in candidates if c and c.strip()]
+    for line in lines:
+        if line.startswith("OK:"):
+            return line
+    for line in lines:
+        if line.startswith("ERR:cancelled"):
+            return line
+    for line in lines:
+        if _is_final_result(line):
+            return line
+    for line in lines:
+        if _is_progress_result(line):
+            return line
+    return ""
+
+
+def _collect_result_candidates(adb: str, serial: str) -> List[str]:
+    out: List[str] = []
+    for remote in REMOTE_RESULTS:
+        line = _read_result_file(adb, serial, remote)
+        if line:
+            out.append(line)
+    line = _read_result_mediastore(adb, serial)
+    if line:
+        out.append(line)
+    return out
+
+
 def _wait_for_result(
     adb: str,
     serial: str,
@@ -535,31 +565,30 @@ def _wait_for_result(
     deadline = time.time() + timeout_sec
     saw_pending = False
     while time.time() < deadline:
-        for remote in REMOTE_RESULTS:
-            line = _read_result_file(adb, serial, remote)
-            if not line:
-                continue
-            if _is_final_result(line):
-                return line
-            if _is_progress_result(line):
-                if line.strip().startswith("PENDING:"):
-                    saw_pending = True
-                    deadline = max(deadline, time.time() + CONFIRM_TIMEOUT_SEC)
-                elif deadline - time.time() < 45:
-                    deadline = time.time() + 60
-        line = _read_result_mediastore(adb, serial)
-        if line:
-            if _is_final_result(line):
-                return line
-            if _is_progress_result(line):
-                if line.strip().startswith("PENDING:"):
-                    saw_pending = True
-                    deadline = max(deadline, time.time() + CONFIRM_TIMEOUT_SEC)
-                elif deadline - time.time() < 45:
-                    deadline = time.time() + 60
+        best = _pick_best_result(*_collect_result_candidates(adb, serial))
+        if best.startswith("PENDING:"):
+            saw_pending = True
+            deadline = max(deadline, time.time() + CONFIRM_TIMEOUT_SEC)
+        elif best.startswith("OK:"):
+            return best
+        elif best.startswith("ERR:cancelled"):
+            return best
+        elif saw_pending:
+            # After preview is ready, ignore stale ERR from an earlier attempt
+            # until we see OK, cancel, or time out.
+            pass
+        elif best.startswith("ERR:"):
+            return best
+        elif best == RESULT_PROGRESS and deadline - time.time() < 45:
+            deadline = time.time() + 60
+
         line = _read_result_logcat(adb, serial, since=logcat_baseline)
         if line:
-            if _is_final_result(line):
+            if line.startswith("OK:"):
+                return line
+            if saw_pending and line.startswith("ERR:") and not line.startswith("ERR:cancelled"):
+                pass
+            elif _is_final_result(line):
                 return line
             if _is_progress_result(line) and line.strip().startswith("PENDING:"):
                 saw_pending = True

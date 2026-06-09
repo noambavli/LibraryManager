@@ -86,6 +86,7 @@ fun AppRoot(
     val session: ManagementSession = managementSession
     val outOfOrderCount by managementVm.outOfOrderCount.collectAsStateWithLifecycle()
     val adbPending by catalogTransferVm.adbPending.collectAsStateWithLifecycle()
+    val adbConfirming by catalogTransferVm.adbConfirming.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         catalogTransferVm.refreshAdbPending()
@@ -319,6 +320,7 @@ fun AppRoot(
                 fileLabel = preview.meta?.fileLabel(),
                 onCancel = { catalogTransferVm.cancelAdbPending() },
                 onConfirm = { catalogTransferVm.confirmAdbPending() },
+                confirmEnabled = !adbConfirming,
             )
         }
     }

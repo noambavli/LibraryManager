@@ -5,6 +5,7 @@ from library_tool.adb_transfer import (
     _is_progress_result,
     _parse_import_count,
     _parse_logcat_import,
+    _pick_best_result,
 )
 
 
@@ -49,6 +50,13 @@ def test_parse_logcat_import_merged():
 def test_parse_logcat_import_failure():
     logcat = "06-09 23:50:19.262 12784 12858 E CatalogImport: Import failed: WrongVersion"
     assert _parse_logcat_import(logcat) == "ERR:WrongVersion"
+
+
+def test_pick_best_result_prefers_ok_over_stale_err():
+    assert _pick_best_result(
+        "ERR:cancelled",
+        "OK:added=2:skipped=0:total=100",
+    ) == "OK:added=2:skipped=0:total=100"
 
 
 def test_parse_logcat_import_awaiting_confirmation():

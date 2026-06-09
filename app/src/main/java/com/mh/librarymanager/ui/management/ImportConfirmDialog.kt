@@ -22,6 +22,7 @@ fun ImportConfirmDialog(
     title: String = stringResource(R.string.catalog_transfer_confirm_title),
     fileLabel: String? = preview.meta?.fileLabel(),
     showSafetyNote: Boolean = true,
+    confirmEnabled: Boolean = true,
 ) {
     AlertDialog(
         onDismissRequest = {},
@@ -53,12 +54,14 @@ fun ImportConfirmDialog(
             }
         },
         confirmButton = {
-            Button(onClick = onConfirm) {
+            Button(onClick = onConfirm, enabled = confirmEnabled) {
                 Text(stringResource(R.string.catalog_transfer_confirm_ok))
             }
         },
         dismissButton = {
-            TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
+            TextButton(onClick = onCancel, enabled = confirmEnabled) {
+                Text(stringResource(R.string.cancel))
+            }
         },
     )
 }

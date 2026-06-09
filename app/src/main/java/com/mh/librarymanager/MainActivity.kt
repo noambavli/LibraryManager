@@ -136,18 +136,10 @@ class MainActivity : ComponentActivity() {
         if (intent?.action != CatalogImportReceiver.ACTION) return
         intent.action = null
         lifecycleScope.launch {
-            try {
-                // The receiver may have already staged this push. Re-running here
-                // would re-stage and re-wake, looping the dialog — so only stage
-                // when nothing is pending; otherwise just surface the dialog.
-                val io = LibraryApp.from(this@MainActivity).civCatalogIo
-                if (!io.hasPendingImport()) {
-                    CatalogImportRunner.run(this@MainActivity)
-                }
-                catalogTransferViewModel.onAdbImportStaged()
-            } catch (_: Exception) {
-                // CatalogImportRunner logs; receiver path still available as fallback.
-            }
+            // Staging runs in [CatalogImportReceiver] only. The activity's job is
+            // to surface the confirmation dialog — never re-stage here (that
+            // caused loops and double-tap races that overwrote OK with ERR).
+            catalogTransferViewModel.onAdbImportStaged()
         }
     }
 
