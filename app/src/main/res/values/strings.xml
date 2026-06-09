@@ -124,7 +124,7 @@
     <string name="catalog_transfer_how_title">תהליך מומלץ</string>
     <string name="catalog_transfer_step1">חברו USB‑C למחשב Windows.</string>
     <string name="catalog_transfer_step2">ב‑LibraryTool: ייבוא אקסל → \"שליחה לטאבלט (אוטומטי)\".</string>
-    <string name="catalog_transfer_step3">או: בחרו קובץ ‎.civ ידנית מכאן. לפני הוספה תוצג תצוגה מקדימה.</string>
+    <string name="catalog_transfer_step3">או: בחרו קובץ ‎.civ ידנית מכאן (אחרי שליחה אוטומטית הקובץ מופיע ב‑Download).</string>
     <string name="catalog_transfer_pick_file">בחירת קובץ ‎.civ מהמחשב</string>
     <string name="catalog_transfer_undo">שחזור לפני הסנכרון האחרון</string>
     <string name="catalog_transfer_undo_body">השחזור יחזיר את הקטלוג כפי שהיה לפני הסנכרון האחרון. להמשיך?</string>

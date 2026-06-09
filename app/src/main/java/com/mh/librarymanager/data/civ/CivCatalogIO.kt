@@ -50,11 +50,16 @@ class CivCatalogIO(
 
         const val BACKUP_FILE_NAME = "catalog-import-backup.civ"
 
-        /** Where the PC tool (adb push) drops the catalog. First readable wins. */
+        /**
+         * Where the PC tool (adb push) drops the catalog. First readable wins.
+         * Prefer /data/local/tmp — same pattern as APK maintenance updates.
+         */
         val INCOMING_PATHS = listOf(
-            "/sdcard/Download/catalog.civ",
             "/data/local/tmp/catalog.civ",
+            "/sdcard/Download/catalog.civ",
         )
+
+        const val INCOMING_CANONICAL_NAME = "catalog.civ"
 
         /** Written after an adb-triggered import so the PC can read the outcome. */
         const val RESULT_PATH = "/sdcard/Download/catalog-import-result.txt"
@@ -139,7 +144,17 @@ class CivCatalogIO(
         } catch (e: Exception) {
             return@withContext ImportResult.Invalid(e.message ?: "Could not read file")
         }
-        importFromText(text)
+        val result = importFromText(text)
+        if (result is ImportResult.Ok) {
+            publishToDownloads(text, result.meta)
+        }
+        result
+    }
+
+    /** Make the last received catalog visible under Downloads for manual pick / debugging. */
+    private fun publishToDownloads(text: String, meta: CivExportMeta?) {
+        CivDownloadPublisher.publish(context, text, INCOMING_CANONICAL_NAME)
+        CivDownloadPublisher.publish(context, text, CivDownloadPublisher.archiveFilename(meta))
     }
 
     fun writeImportResult(result: ImportResult) {

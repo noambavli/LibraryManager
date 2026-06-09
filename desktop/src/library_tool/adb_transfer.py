@@ -23,7 +23,8 @@ import time
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-REMOTE_CIV = "/sdcard/Download/catalog.civ"
+REMOTE_CIV_TMP = "/data/local/tmp/catalog.civ"
+REMOTE_CIV_DOWNLOAD = "/sdcard/Download/catalog.civ"
 REMOTE_RESULT = "/sdcard/Download/catalog-import-result.txt"
 IMPORT_ACTION = "com.mh.librarymanager.IMPORT_CATALOG"
 IMPORT_RECEIVER = "com.mh.librarymanager/.CatalogImportReceiver"
@@ -268,10 +269,26 @@ def push_and_import(adb: str, serial: str, local_civ: str) -> AdbSendResult:
     _run(adb, ["-s", serial, "shell", "rm", "-f", REMOTE_RESULT], timeout=15)
 
     code, _, err = _run(
-        adb, ["-s", serial, "push", local_civ, REMOTE_CIV], timeout=180,
+        adb, ["-s", serial, "push", local_civ, REMOTE_CIV_TMP], timeout=180,
     )
     if code != 0:
         raise IOError(f"adb push failed: {err or 'unknown error'}")
+
+    # Best-effort copy into public Download so it can appear in file managers.
+    _run(
+        adb,
+        ["-s", serial, "shell", "cp", REMOTE_CIV_TMP, REMOTE_CIV_DOWNLOAD],
+        timeout=30,
+    )
+    _run(
+        adb,
+        [
+            "-s", serial, "shell", "am", "broadcast",
+            "-a", "android.intent.action.MEDIA_SCANNER_SCAN_FILE",
+            "-d", f"file://{REMOTE_CIV_DOWNLOAD}",
+        ],
+        timeout=15,
+    )
 
     with open(local_civ, "rb") as fh:
         digest = hashlib.sha256(fh.read()).hexdigest()
@@ -294,7 +311,7 @@ def push_and_import(adb: str, serial: str, local_civ: str) -> AdbSendResult:
     return AdbSendResult(
         device=DeviceInfo(serial=serial, model=""),
         local_path=local_civ,
-        remote_path=REMOTE_CIV,
+        remote_path=REMOTE_CIV_TMP,
         sha256=digest,
         imported_count=imported,
         result_line=result_line,
