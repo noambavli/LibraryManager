@@ -1,0 +1,25 @@
+{
+  "normalize": [
+    {"input": "", "expected": ""},
+    {"input": "בראשית", "expected": "בראשית"},
+    {"input": "עֲבֹדָה", "expected": "עבדה"},
+    {"input": "ךְלִי", "expected": "כלי"},
+    {"input": "אבן׳ עזרא", "expected": "אבנ עזרא"},
+    {"input": "אבן-עזרא", "expected": "אבנ עזרא"},
+    {"input": "  Hello  World  ", "expected": "hello world"},
+    {"input": "שֵׁם הספר", "expected": "שמ הספר"},
+    {"input": "תת־קטגוריה", "expected": "תת קטגוריה"},
+    {"input": "רמב\"ן", "expected": "רמבנ"},
+    {"input": "מספר 12", "expected": "מספר 12"}
+  ],
+  "number_key": [
+    {"input": "", "expected": ""},
+    {"input": "   ", "expected": ""},
+    {"input": "5", "expected": "5"},
+    {"input": "05", "expected": "5"},
+    {"input": "0042", "expected": "42"},
+    {"input": "0", "expected": "0"},
+    {"input": "000", "expected": "0"},
+    {"input": " 12 ", "expected": "12"}
+  ]
+}

@@ -4,6 +4,9 @@ dist/
 .buildenv/
 *.spec.bak
 
+# Local tool state (export batch counter, etc.)
+.librarytool/
+
 # Python caches
 __pycache__/
 *.pyc
