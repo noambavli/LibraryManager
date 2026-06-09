@@ -26,6 +26,20 @@ object KioskPolicyManager {
 
     fun isKioskReady(context: Context): Boolean = isDeviceOwner(context)
 
+    /** Briefly lift kiosk so a system USB-debugging dialog can appear. */
+    fun suspendKioskForMaintenance(context: Context) {
+        if (!isDeviceOwner(context)) return
+        val dpm = devicePolicyManager(context)
+        val admin = adminComponent(context)
+        try {
+            dpm.setLockTaskPackages(admin, arrayOf())
+            dpm.setStatusBarDisabled(admin, false)
+            Log.i(TAG, "Kiosk suspended for PC authorize maintenance")
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not suspend kiosk for maintenance", e)
+        }
+    }
+
     fun applyPolicies(context: Context) {
         if (!isDeviceOwner(context)) {
             Log.w(TAG, "Not device owner — kiosk policies skipped")

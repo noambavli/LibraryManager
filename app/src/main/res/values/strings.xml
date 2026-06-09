@@ -257,4 +257,9 @@
     <string name="kiosk_active">מצב קיוסק פעיל</string>
     <string name="kiosk_setup_required">לא הוגדר Device Owner — האפליקציה רצה במצב רגיל</string>
     <string name="kiosk_setup_command">חבר את הטאבלט במצב פיתוח והרץ:\nadb shell dpm set-device-owner com.mh.librarymanager/.KioskDeviceAdminReceiver</string>
+
+    <!-- PC authorize maintenance (technician only) -->
+    <string name="pc_authorize_title">תחזוקה: אישור מחשב Windows</string>
+    <string name="pc_authorize_body">חברו את הטאבלט למחשב Windows והריצו authorize_tablet.bat.\n\nאם מופיעה הודעה \"Allow USB debugging?\" — לחצו Allow פעם אחת.\n\nאחרי זה LibraryTool יעבוד אוטומטית.</string>
+    <string name="pc_authorize_timer">נשארו %1$d שניות</string>
 </resources>

@@ -53,6 +53,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleMaintenanceIntent(intent)
         onBackPressedDispatcher.addCallback(
             this,
             object : OnBackPressedCallback(true) {
@@ -92,8 +93,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        KioskPolicyManager.applyPolicies(this)
+        if (!MaintenanceMode.isActive(this)) {
+            KioskPolicyManager.applyPolicies(this)
+        }
         enterKioskMode()
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleMaintenanceIntent(intent)
     }
 
     override fun onResume() {
@@ -110,8 +119,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun handleMaintenanceIntent(intent: android.content.Intent?) {
+        if (intent?.getBooleanExtra(MaintenanceMode.EXTRA_STOP_LOCK_TASK, false) != true) return
+        try {
+            stopLockTask()
+        } catch (_: Exception) {
+            // Not in lock task, or maintenance already lifted it.
+        }
+    }
+
     private fun enterKioskMode() {
         if (!KioskPolicyManager.isKioskReady(this)) return
+        if (MaintenanceMode.isActive(this)) return
 
         val activityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
         if (activityManager.lockTaskModeState == ActivityManager.LOCK_TASK_MODE_NONE) {

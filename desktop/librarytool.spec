@@ -18,6 +18,7 @@ a = Analysis(
         "library_tool.validation",
         "library_tool.backups",
         "library_tool.transfer",
+        "library_tool.adb_transfer",
         "library_tool.xlsx_reader",
         "library_tool.hebrew",
         "library_tool.model",

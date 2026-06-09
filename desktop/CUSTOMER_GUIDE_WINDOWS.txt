@@ -6,12 +6,20 @@
 WHAT'S ON THE USB STICK
   LibraryTool.exe          the program
   adb\adb.exe              talks to the tablet (do not delete)
+  authorize_tablet.bat     technician — run once if PC not recognized
   CUSTOMER_GUIDE_WINDOWS.txt   this file
 
 ONE-TIME SETUP (your technician — not the daily user)
   Each tablet must be provisioned as "device owner" once:
     adb shell dpm set-device-owner com.mh.librarymanager/.KioskDeviceAdminReceiver
   After that, USB debugging stays on automatically.
+
+  Authorize the Windows PC (once per tablet):
+    Option A — from Mac that already sees the tablet:
+      authorize_from_mac.sh
+    Option B — on Windows:
+      Double-click authorize_tablet.bat (plug in tablet first)
+    Option C — install Samsung/Android USB driver on Windows, then retry
 
 ------------------------------------------------------------
 DAILY USE (3 clicks)
@@ -34,9 +42,16 @@ Staff do NOT drag files and do NOT open menus on the tablet.
 IF IT SAYS "No tablet detected"
 ------------------------------------------------------------
   • Unplug and replug the USB cable
-  • Try another USB port on the PC
-  • Make sure adb\adb.exe is in the same folder as LibraryTool.exe
-  • Ask your technician to re-run device-owner setup on the tablet
+  • Try another USB port on the PC (not a cheap USB hub)
+  • Install Samsung / Android USB driver on Windows
+  • Keep LibraryTool.exe and the whole adb\ folder together
+  • Technician: run authorize_tablet.bat once
+
+IF IT SAYS "not authorized"
+------------------------------------------------------------
+  The tablet was set up from a different computer.
+  Technician runs authorize_tablet.bat or authorize_from_mac.sh once.
+  Daily staff do not touch the tablet.
 
 ------------------------------------------------------------
 EXCEL FORMAT

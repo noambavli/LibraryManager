@@ -25,6 +25,7 @@ from tkinter import filedialog, messagebox, ttk
 from typing import Callable, Optional
 
 from . import __version__, backups, transfer
+from . import adb_transfer
 from .session import AbortError, AbortFlag, Session
 from .validation import ERROR, INFO, WARNING
 
@@ -423,13 +424,13 @@ class LibraryToolApp:
             )
 
         def error(exc):
+            diag = adb_transfer.diagnose()
+            extra = ""
+            if diag.devices_raw:
+                extra = f"\n\nadb devices -l:\n{diag.devices_raw}"
             messagebox.showerror(
                 "Could not send to tablet",
-                f"{exc}\n\n"
-                "Checklist:\n"
-                "  • Tablet plugged in with USB-C\n"
-                "  • Tablet was set up as device owner (kiosk)\n"
-                "  • The download zip includes an adb\\ folder next to LibraryTool.exe",
+                f"{exc}{extra}",
             )
 
         self._run_worker(work, done, on_error=error, progress_label="Sending to tablet…")

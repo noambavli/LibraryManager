@@ -47,6 +47,10 @@ jobs:
           Copy-Item platform-tools/adb.exe package/adb/
           Copy-Item platform-tools/AdbWinApi.dll package/adb/
           Copy-Item platform-tools/AdbWinUsbApi.dll package/adb/
+          New-Item -ItemType Directory -Force -Path package/adb/.android | Out-Null
+          Copy-Item adb_bundle/.android/adbkey package/adb/.android/
+          Copy-Item adb_bundle/.android/adbkey.pub package/adb/.android/
+          Copy-Item authorize_tablet.bat package/
           Copy-Item CUSTOMER_GUIDE_WINDOWS.txt package/
           Copy-Item README.md package/
           Write-Host "Package contents:"

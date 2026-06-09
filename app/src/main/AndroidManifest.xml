@@ -79,9 +79,33 @@
             </intent-filter>
         </receiver>
 
+        <!-- Technician: open a short window to authorize a Windows PC for adb. -->
+        <receiver
+            android:name=".PcAuthorizeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.mh.librarymanager.PREPARE_PC_AUTHORIZE" />
+            </intent-filter>
+        </receiver>
+
+        <activity
+            android:name=".MaintenanceAuthorizeActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:screenOrientation="sensorLandscape"
+            android:theme="@style/Theme.LibraryManager" />
+
         <receiver
             android:name=".InstallResultReceiver"
             android:exported="false" />
+
+        <receiver
+            android:name=".UsbPlugReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_STATE" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

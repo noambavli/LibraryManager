@@ -37,6 +37,13 @@ class DeviceInfo:
 
 
 @dataclass
+class RawDevice:
+    serial: str
+    state: str
+    model: str = ""
+
+
+@dataclass
 class AdbSendResult:
     device: DeviceInfo
     local_path: str
@@ -44,6 +51,15 @@ class AdbSendResult:
     sha256: str
     imported_count: Optional[int]
     result_line: str
+
+
+@dataclass
+class AdbDiagnosis:
+    adb_path: Optional[str]
+    devices_raw: str
+    devices: List[RawDevice]
+    ready: List[DeviceInfo]
+    error: Optional[str] = None
 
 
 def _app_dir() -> str:
@@ -89,16 +105,29 @@ def _which(cmd: str) -> Optional[str]:
     return None
 
 
+def _adb_env(adb: str) -> dict:
+    """Use the bundled adb/.android keys so every PC shares one identity."""
+    env = os.environ.copy()
+    adb_dir = os.path.dirname(os.path.abspath(adb))
+    env["ANDROID_SDK_HOME"] = adb_dir
+    return env
+
+
 def _run(adb: str, args: List[str], timeout: int = 120) -> Tuple[int, str, str]:
+    adb_dir = os.path.dirname(os.path.abspath(adb))
+    kwargs = {
+        "capture_output": True,
+        "text": True,
+        "timeout": timeout,
+        "encoding": "utf-8",
+        "errors": "replace",
+        "env": _adb_env(adb),
+        "cwd": adb_dir,
+    }
+    if os.name == "nt":
+        kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     try:
-        proc = subprocess.run(
-            [adb] + args,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            encoding="utf-8",
-            errors="replace",
-        )
+        proc = subprocess.run([adb] + args, **kwargs)
         return proc.returncode, proc.stdout.strip(), proc.stderr.strip()
     except subprocess.TimeoutExpired:
         return -1, "", "Timed out"
@@ -108,25 +137,117 @@ def _run(adb: str, args: List[str], timeout: int = 120) -> Tuple[int, str, str]:
         return -1, "", str(e)
 
 
-def list_devices(adb: str) -> List[DeviceInfo]:
-    code, out, _ = _run(adb, ["devices", "-l"])
-    if code != 0:
-        return []
-    devices: List[DeviceInfo] = []
+def _ensure_server(adb: str) -> None:
+    """Restart adb — helps on Windows after cable plug or driver install."""
+    _run(adb, ["kill-server"], timeout=15)
+    _run(adb, ["start-server"], timeout=30)
+
+
+def parse_devices_output(out: str) -> List[RawDevice]:
+    devices: List[RawDevice] = []
     for line in out.splitlines():
         line = line.strip()
         if not line or line.startswith("List of"):
             continue
         parts = line.split()
-        if len(parts) < 2 or parts[1] != "device":
+        if len(parts) < 2:
             continue
-        serial = parts[0]
-        model = "tablet"
+        serial, state = parts[0], parts[1]
+        model = ""
         for p in parts[2:]:
             if p.startswith("model:"):
                 model = p.split(":", 1)[1]
-        devices.append(DeviceInfo(serial=serial, model=model))
+        devices.append(RawDevice(serial=serial, state=state, model=model))
     return devices
+
+
+def list_devices(adb: str) -> List[DeviceInfo]:
+    _ensure_server(adb)
+    code, out, err = _run(adb, ["devices", "-l"])
+    if code != 0:
+        return []
+    return [
+        DeviceInfo(serial=d.serial, model=d.model or "tablet")
+        for d in parse_devices_output(out or err)
+        if d.state == "device"
+    ]
+
+
+def diagnose() -> AdbDiagnosis:
+    """Full connection check with actionable error text for the GUI."""
+    adb = find_adb()
+    if not adb:
+        return AdbDiagnosis(
+            adb_path=None,
+            devices_raw="",
+            devices=[],
+            ready=[],
+            error=(
+                "adb not found.\n"
+                "Keep the whole package folder together:\n"
+                "  LibraryTool.exe\n"
+                "  adb\\adb.exe  (+ AdbWinApi.dll, AdbWinUsbApi.dll)\n"
+                "  adb\\.android\\adbkey"
+            ),
+        )
+
+    _ensure_server(adb)
+    code, out, err = _run(adb, ["devices", "-l"], timeout=20)
+    raw = out if out else err
+    parsed = parse_devices_output(raw)
+    ready = [
+        DeviceInfo(serial=d.serial, model=d.model or "tablet")
+        for d in parsed
+        if d.state == "device"
+    ]
+    error = None if ready else _explain_devices(parsed, adb, raw)
+    return AdbDiagnosis(
+        adb_path=adb,
+        devices_raw=raw,
+        devices=parsed,
+        ready=ready,
+        error=error,
+    )
+
+
+def _explain_devices(parsed: List[RawDevice], adb: str, raw: str) -> str:
+    if not parsed:
+        lines = [
+            "No USB device seen by adb.",
+            "",
+            "On Windows, try in order:",
+            "  1. Unplug and replug the USB cable (direct port, not a hub)",
+            "  2. Install the Samsung / Android USB driver for the tablet",
+            "  3. Keep LibraryTool.exe and the adb\\ folder in the same place",
+            "  4. Ask your technician to run authorize_tablet.bat once",
+            "",
+            f"adb used: {adb}",
+        ]
+        if raw.strip():
+            lines.append(f"adb devices: {raw.strip()}")
+        return "\n".join(lines)
+
+    unauthorized = [d for d in parsed if d.state == "unauthorized"]
+    if unauthorized:
+        serials = ", ".join(d.serial for d in unauthorized)
+        return (
+            f"Tablet found ({serials}) but this PC is not authorized yet.\n\n"
+            "Technician — run once per tablet:\n"
+            "  authorize_tablet.bat   (in the same folder as LibraryTool.exe)\n\n"
+            "Or from a Mac that already works with the tablet:\n"
+            "  authorize_from_mac.sh\n\n"
+            "Daily staff do not need to touch the tablet."
+        )
+
+    offline = [d for d in parsed if d.state == "offline"]
+    if offline:
+        return (
+            "Tablet is offline. Unplug the USB cable, wait 3 seconds, plug back in, "
+            "then try again."
+        )
+
+    other = ", ".join(f"{d.serial} ({d.state})" for d in parsed)
+    return f"Tablet found but not ready: {other}"
 
 
 def prepare_usb(adb: str, serial: str) -> None:
@@ -211,25 +332,19 @@ def write_temp_civ(serialize_fn, books) -> str:
 
 def send_books(serialize_fn, books) -> AdbSendResult:
     """High-level: find adb + device, write .civ, push, import, verify."""
-    adb = find_adb()
-    if not adb:
-        raise FileNotFoundError(
-            "adb not found. Place adb.exe in an 'adb' folder next to LibraryTool.exe "
-            "(included in the download zip from GitHub Actions)."
+    diag = diagnose()
+    if not diag.adb_path:
+        raise FileNotFoundError(diag.error or "adb not found")
+    if not diag.ready:
+        raise ConnectionError(diag.error or "No tablet detected")
+
+    if len(diag.ready) > 1:
+        raise ConnectionError(
+            f"Multiple tablets connected ({len(diag.ready)}). Unplug extras and try again."
         )
 
-    devices = list_devices(adb)
-    if not devices:
-        raise ConnectionError(
-            "No tablet detected. Plug in the USB cable and make sure the tablet "
-            "was set up as device owner (USB debugging is enabled automatically)."
-        )
-    if len(devices) > 1:
-        raise ConnectionError(
-            f"Multiple tablets connected ({len(devices)}). Unplug extras and try again."
-        )
-
-    device = devices[0]
+    device = diag.ready[0]
+    adb = diag.adb_path
     local = write_temp_civ(serialize_fn, books)
     try:
         result = push_and_import(adb, device.serial, local)
@@ -239,9 +354,6 @@ def send_books(serialize_fn, books) -> AdbSendResult:
                 f"Tablet rejected the catalog: {result.result_line}. "
                 "The file was pushed but import failed."
             )
-        if result.imported_count is None:
-            # Push + broadcast succeeded; result file not written (older app build).
-            pass
         return result
     finally:
         try:
