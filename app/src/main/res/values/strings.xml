@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">ספריה</string>
+    <string name="app_logo_content_description">לוגו ספריית בית המדרש</string>
 
     <!-- Home -->
     <string name="home_title">ספריית בית המדרש</string>
