@@ -44,9 +44,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
 import com.mh.librarymanager.domain.Book
-import com.mh.librarymanager.domain.resolvedParentName
+import com.mh.librarymanager.domain.linkedParent
 import com.mh.librarymanager.domain.CustomColor
 import com.mh.librarymanager.ui.components.BookCard
+import com.mh.librarymanager.ui.components.AppHorizontalDivider
+import com.mh.librarymanager.ui.components.AppPaneDivider
+import com.mh.librarymanager.ui.components.AppScreenBackground
+import com.mh.librarymanager.ui.components.ManagementHeader
 import com.mh.librarymanager.ui.search.HebrewKeyboard
 import com.mh.librarymanager.ui.search.KeyboardEditField
 import com.mh.librarymanager.ui.search.SearchField
@@ -70,20 +74,21 @@ fun BooksManagementScreen(
     val results by viewModel.results.collectAsStateWithLifecycle()
     val catalogSize by viewModel.catalogSize.collectAsStateWithLifecycle()
     val customColors by viewModel.customColors.collectAsStateWithLifecycle()
-    val parentNameLookup by viewModel.parentNameLookup.collectAsStateWithLifecycle()
+    val booksById by viewModel.booksById.collectAsStateWithLifecycle()
 
     SuppressPlatformKeyboardEffect()
 
-    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        ManagementHeader(
-            title = stringResource(R.string.books_management_title),
-            onBack = onBack,
-            onLogout = onLogout,
-            primaryAction = stringResource(R.string.add_book),
-            onPrimaryAction = { onOpenEditor(null) },
-        )
+    AppScreenBackground {
+        Column(modifier = Modifier.fillMaxSize()) {
+            ManagementHeader(
+                title = stringResource(R.string.books_management_title),
+                onBack = onBack,
+                onLogout = onLogout,
+                primaryAction = stringResource(R.string.add_book),
+                onPrimaryAction = { onOpenEditor(null) },
+            )
 
-        Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
             SearchPane(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 fieldValues = fieldValues,
@@ -93,12 +98,7 @@ fun BooksManagementScreen(
                 onKey = viewModel::handleKey,
             )
 
-            Box(
-                modifier = Modifier
-                    .width(2.dp)
-                    .fillMaxHeight()
-                    .background(Color.Black),
-            )
+            AppPaneDivider()
 
             ResultsPane(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -107,55 +107,9 @@ fun BooksManagementScreen(
                 catalogSize = catalogSize,
                 queryIsEmpty = fieldValues.values.all { it.text.isBlank() },
                 customColors = customColors,
-                parentNameLookup = parentNameLookup,
+                booksById = booksById,
                 onOpenEditor = onOpenEditor,
             )
-        }
-    }
-}
-
-@Composable
-internal fun ManagementHeader(
-    title: String,
-    onBack: () -> Unit,
-    onLogout: () -> Unit,
-    primaryAction: String? = null,
-    onPrimaryAction: (() -> Unit)? = null,
-) {
-    val cs = MaterialTheme.colorScheme
-    Surface(
-        color = cs.surface,
-        tonalElevation = 0.dp,
-        shadowElevation = 2.dp,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(onClick = onBack) {
-                Text(
-                    text = "‹  " + stringResource(R.string.back),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = cs.onSurface,
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            if (primaryAction != null && onPrimaryAction != null) {
-                Button(onClick = onPrimaryAction) {
-                    Text("+  $primaryAction")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-            }
-            OutlinedButton(onClick = onLogout) {
-                Text(stringResource(R.string.logout))
             }
         }
     }
@@ -196,7 +150,7 @@ private fun SearchPane(
             )
         }
 
-        HorizontalDivider(thickness = 2.dp, color = Color.Black)
+        AppHorizontalDivider()
 
         HebrewKeyboard(
             onKey = onKey,
@@ -267,7 +221,7 @@ private fun ResultsPane(
     catalogSize: Int,
     queryIsEmpty: Boolean,
     customColors: List<CustomColor>,
-    parentNameLookup: Map<String, String>,
+    booksById: Map<String, Book>,
     onOpenEditor: (bookId: String?) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -308,7 +262,7 @@ private fun ResultsPane(
                 items(results, key = { it.id }) { book ->
                     ManagementBookRow(
                         book = book,
-                        parentName = book.resolvedParentName(parentNameLookup),
+                        parentBook = book.linkedParent(booksById),
                         customColors = customColors,
                         onEdit = { onOpenEditor(book.id) },
                         onDelete = { deleteCandidate = book },
@@ -333,7 +287,7 @@ private fun ResultsPane(
 @Composable
 private fun ManagementBookRow(
     book: Book,
-    parentName: String?,
+    parentBook: Book?,
     customColors: List<CustomColor>,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -341,7 +295,7 @@ private fun ManagementBookRow(
     Column {
         BookCard(
             book = book,
-            parentName = parentName,
+            parentBook = parentBook,
             customColors = customColors,
             onClick = onEdit,
             trailing = {

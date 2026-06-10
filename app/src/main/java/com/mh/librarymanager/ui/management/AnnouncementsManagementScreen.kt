@@ -38,6 +38,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
+import com.mh.librarymanager.ui.components.AppScreenBackground
+import com.mh.librarymanager.ui.components.ManagementHeader
 import com.mh.librarymanager.domain.Announcement
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -59,8 +61,9 @@ fun AnnouncementsManagementScreen(
     var deleteCandidate by remember { mutableStateOf<Announcement?>(null) }
 
     val cs = MaterialTheme.colorScheme
-    Column(modifier = Modifier.fillMaxSize().background(cs.background)) {
-        ManagementHeader(
+    AppScreenBackground {
+        Column(modifier = Modifier.fillMaxSize()) {
+            ManagementHeader(
             title = stringResource(R.string.announcements_management_title),
             onBack = onBack,
             onLogout = onLogout,
@@ -104,6 +107,7 @@ fun AnnouncementsManagementScreen(
                 deleteCandidate = null
             },
         )
+    }
     }
 }
 

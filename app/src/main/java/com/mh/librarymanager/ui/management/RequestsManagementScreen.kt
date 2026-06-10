@@ -39,6 +39,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
+import com.mh.librarymanager.ui.components.AppScreenBackground
+import com.mh.librarymanager.ui.components.ManagementHeader
 import com.mh.librarymanager.domain.PublicRequest
 import com.mh.librarymanager.domain.RequestStatus
 import java.text.SimpleDateFormat
@@ -65,8 +67,9 @@ fun RequestsManagementScreen(
     var deleteCandidate by remember { mutableStateOf<PublicRequest?>(null) }
 
     val cs = MaterialTheme.colorScheme
-    Column(modifier = Modifier.fillMaxSize().background(cs.background)) {
-        ManagementHeader(
+    AppScreenBackground {
+        Column(modifier = Modifier.fillMaxSize()) {
+            ManagementHeader(
             title = stringResource(R.string.requests_management_title),
             onBack = onBack,
             onLogout = onLogout,
@@ -117,6 +120,7 @@ fun RequestsManagementScreen(
                 deleteCandidate = null
             },
         )
+    }
     }
 }
 

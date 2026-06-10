@@ -54,6 +54,9 @@ import com.mh.librarymanager.domain.Book
 import com.mh.librarymanager.domain.BookPlace
 import com.mh.librarymanager.domain.BookState
 import com.mh.librarymanager.domain.CustomColor
+import com.mh.librarymanager.ui.components.AppColors
+import com.mh.librarymanager.ui.components.AppPaneDivider
+import com.mh.librarymanager.ui.components.AppScreenBackground
 import com.mh.librarymanager.ui.components.resolveBookColorStyle
 import com.mh.librarymanager.ui.search.HebrewKeyboard
 import com.mh.librarymanager.ui.search.KeyAction
@@ -249,8 +252,9 @@ fun BookEditorScreen(
         setText(focused, next)
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        EditorHeader(
+    AppScreenBackground {
+        Column(modifier = Modifier.fillMaxSize()) {
+            EditorHeader(
             isNew = bookId == null,
             onBack = { attemptExit(onBack) },
             onLogout = { attemptExit(onLogout) },
@@ -289,12 +293,13 @@ fun BookEditorScreen(
                 onSetState = { form = form.copy(state = it) },
             )
 
-            Box(modifier = Modifier.width(2.dp).fillMaxHeight().background(Color.Black))
+            AppPaneDivider()
 
             HebrewKeyboard(
                 onKey = { handleKey(it) },
                 modifier = Modifier.weight(1f).fillMaxHeight(),
             )
+        }
         }
     }
 
@@ -413,17 +418,19 @@ private fun EditorHeader(
     canDelete: Boolean,
 ) {
     val cs = MaterialTheme.colorScheme
-    Surface(color = cs.surface, shadowElevation = 2.dp) {
+    Surface(color = AppColors.Panel, shadowElevation = 1.dp) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TextButton(onClick = onBack) {
                 Text(
                     text = "‹  " + stringResource(R.string.back),
                     style = MaterialTheme.typography.titleMedium,
+                    color = AppColors.Accent,
+                    fontWeight = FontWeight.SemiBold,
                 )
             }
             Spacer(modifier = Modifier.width(6.dp))
@@ -431,9 +438,9 @@ private fun EditorHeader(
                 text = stringResource(
                     if (isNew) R.string.add_book else R.string.edit_book
                 ),
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = cs.onSurface,
+                color = AppColors.TextPrimary,
             )
 
             Spacer(modifier = Modifier.weight(1f))
@@ -447,9 +454,53 @@ private fun EditorHeader(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
             }
-            Button(onClick = onSave) { Text(stringResource(R.string.save)) }
+            Button(
+                onClick = onSave,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AppColors.HeroStart,
+                    contentColor = Color.White,
+                ),
+            ) { Text(stringResource(R.string.save)) }
             Spacer(modifier = Modifier.width(8.dp))
-            OutlinedButton(onClick = onLogout) { Text(stringResource(R.string.logout)) }
+            OutlinedButton(
+                onClick = onLogout,
+                border = BorderStroke(1.dp, AppColors.Border),
+            ) {
+                Text(stringResource(R.string.logout), color = AppColors.TextSecondary)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReadOnlyValueField(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    val cs = MaterialTheme.colorScheme
+    Column(modifier = modifier) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = cs.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
+        )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = cs.surfaceVariant.copy(alpha = 0.5f),
+            shape = RoundedCornerShape(10.dp),
+            border = BorderStroke(1.dp, cs.outlineVariant),
+        ) {
+            Text(
+                text = value,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                style = MaterialTheme.typography.bodyLarge,
+                color = cs.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -652,38 +703,6 @@ private fun FormColumn(
         )
 
         Spacer(modifier = Modifier.height(20.dp))
-    }
-}
-
-@Composable
-@Composable
-private fun ReadOnlyValueField(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
-    val cs = MaterialTheme.colorScheme
-    Column(modifier = modifier) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = cs.onSurfaceVariant,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
-        )
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = cs.surfaceVariant.copy(alpha = 0.5f),
-            shape = RoundedCornerShape(10.dp),
-            border = BorderStroke(1.dp, cs.outlineVariant),
-        ) {
-            Text(
-                text = value,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                style = MaterialTheme.typography.bodyLarge,
-                color = cs.onSurfaceVariant,
-            )
-        }
     }
 }
 

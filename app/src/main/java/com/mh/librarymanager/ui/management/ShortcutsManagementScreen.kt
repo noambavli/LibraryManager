@@ -40,6 +40,8 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
+import com.mh.librarymanager.ui.components.AppScreenBackground
+import com.mh.librarymanager.ui.components.ManagementHeader
 import com.mh.librarymanager.data.store.SearchShortcutStore
 import com.mh.librarymanager.ui.search.HebrewKeyboard
 import com.mh.librarymanager.ui.search.KeyAction
@@ -77,8 +79,9 @@ fun ShortcutsManagementScreen(
     SuppressPlatformKeyboardEffect()
 
     val cs = MaterialTheme.colorScheme
-    Box(modifier = Modifier.fillMaxSize().background(cs.background)) {
-        Column(modifier = Modifier.fillMaxSize()) {
+    AppScreenBackground {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize()) {
             ManagementHeader(
                 title = stringResource(R.string.shortcuts_management_title),
                 onBack = onBack,
@@ -160,6 +163,7 @@ fun ShortcutsManagementScreen(
                 }
             },
         )
+    }
     }
 }
 

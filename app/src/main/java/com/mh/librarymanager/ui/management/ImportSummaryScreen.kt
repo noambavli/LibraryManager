@@ -24,6 +24,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
+import com.mh.librarymanager.ui.components.AppScreenBackground
+import com.mh.librarymanager.ui.components.ManagementHeader
 import com.mh.librarymanager.data.civ.CivCatalogIO
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -38,18 +40,17 @@ fun ImportSummaryScreen(
     val summary by viewModel.importSummary.collectAsStateWithLifecycle()
     val cs = MaterialTheme.colorScheme
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(cs.background),
-    ) {
-        ManagementHeader(
-            title = stringResource(R.string.import_summary_title),
-            onBack = onBack,
-            onLogout = onLogout,
-        )
+    AppScreenBackground {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            ManagementHeader(
+                title = stringResource(R.string.import_summary_title),
+                onBack = onBack,
+                onLogout = onLogout,
+            )
 
-        if (!summary.hasData) {
+            if (!summary.hasData) {
             Column(
                 modifier = Modifier.padding(28.dp),
                 verticalArrangement = Arrangement.Center,
@@ -63,10 +64,10 @@ fun ImportSummaryScreen(
                     Text(stringResource(R.string.import_summary_back_sync))
                 }
             }
-            return
-        }
+                return@Column
+            }
 
-        LazyColumn(
+            LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 28.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -123,6 +124,7 @@ fun ImportSummaryScreen(
                 ) {
                     Text(stringResource(R.string.import_summary_done))
                 }
+            }
             }
         }
     }

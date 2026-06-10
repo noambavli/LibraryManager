@@ -37,6 +37,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
+import com.mh.librarymanager.ui.components.AppScreenBackground
+import com.mh.librarymanager.ui.components.ManagementHeader
 import com.mh.librarymanager.domain.TechSupportRequest
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -53,8 +55,9 @@ fun TechSupportManagementScreen(
     var deleteCandidate by remember { mutableStateOf<TechSupportRequest?>(null) }
 
     val cs = MaterialTheme.colorScheme
-    Column(modifier = Modifier.fillMaxSize().background(cs.background)) {
-        ManagementHeader(
+    AppScreenBackground {
+        Column(modifier = Modifier.fillMaxSize()) {
+            ManagementHeader(
             title = stringResource(R.string.tech_support_management_title),
             onBack = onBack,
             onLogout = onLogout,
@@ -96,6 +99,7 @@ fun TechSupportManagementScreen(
                 deleteCandidate = null
             },
         )
+    }
     }
 }
 

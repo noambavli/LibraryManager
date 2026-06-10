@@ -38,6 +38,9 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
+import com.mh.librarymanager.ui.components.AppPaneDivider
+import com.mh.librarymanager.ui.components.AppScreenBackground
+import com.mh.librarymanager.ui.components.PublicBackBar
 import com.mh.librarymanager.ui.search.HebrewKeyboard
 import com.mh.librarymanager.ui.search.KeyboardEditField
 import com.mh.librarymanager.ui.search.SuppressPlatformKeyboardEffect
@@ -64,22 +67,22 @@ fun PublicRequestScreen(
 
     SuppressPlatformKeyboardEffect()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-    ) {
-        BackBar(onBack = onBack)
-
-        if (submitted) {
-            SentConfirmation(
-                onSendAnother = { submitted = false },
+    AppScreenBackground {
+        Column(modifier = Modifier.fillMaxSize()) {
+            PublicBackBar(
                 onBack = onBack,
+                title = stringResource(R.string.requests_public_title),
             )
-            return@Column
-        }
 
-        Row(modifier = Modifier.fillMaxSize()) {
+            if (submitted) {
+                SentConfirmation(
+                    onSendAnother = { submitted = false },
+                    onBack = onBack,
+                )
+                return@Column
+            }
+
+            Row(modifier = Modifier.fillMaxSize()) {
             FormPane(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 fieldValues = fieldValues,
@@ -95,43 +98,14 @@ fun PublicRequestScreen(
                 },
             )
 
-            Box(
-                modifier = Modifier
-                    .width(2.dp)
-                    .fillMaxHeight()
-                    .background(Color.Black),
-            )
+            AppPaneDivider()
 
             HebrewKeyboard(
                 onKey = viewModel::handleKey,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
             )
+            }
         }
-    }
-}
-
-@Composable
-private fun BackBar(onBack: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        TextButton(onClick = onBack) {
-            Text(
-                text = "‹  " + stringResource(R.string.back),
-                style = MaterialTheme.typography.titleMedium,
-            )
-        }
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = stringResource(R.string.requests_public_title),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
     }
 }
 
