@@ -1,27 +1,21 @@
 package com.mh.librarymanager.ui.announcements
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -30,7 +24,8 @@ import com.mh.librarymanager.R
 import com.mh.librarymanager.domain.Announcement
 import com.mh.librarymanager.domain.Book
 import com.mh.librarymanager.domain.CustomColor
-import com.mh.librarymanager.domain.resolvedParentName
+import com.mh.librarymanager.domain.linkedParent
+import com.mh.librarymanager.ui.components.AppColors
 import com.mh.librarymanager.ui.components.BookCard
 
 /** A description is "long" (and gets a "full announcement" link) past this length. */
@@ -50,46 +45,57 @@ fun AnnouncementsHomeSection(
     onOpenAll: () -> Unit,
     modifier: Modifier = Modifier,
     maxVisible: Int = 3,
+    compact: Boolean = false,
 ) {
     if (announcements.isEmpty()) return
     val cs = MaterialTheme.colorScheme
     val visible = announcements.take(maxVisible)
 
-    Column(modifier = modifier) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .clip(CircleShape)
-                    .background(cs.secondary),
-            )
-            Spacer(modifier = Modifier.width(8.dp))
+    val panelModifier = modifier.fillMaxWidth()
+
+    Surface(
+        modifier = panelModifier,
+        color = if (compact) AppColors.Panel else cs.surface,
+        shape = RoundedCornerShape(if (compact) 14.dp else 0.dp),
+        border = if (compact) BorderStroke(1.dp, AppColors.Border) else null,
+        shadowElevation = if (compact) 1.dp else 0.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(
+                horizontal = if (compact) 14.dp else 0.dp,
+                vertical = if (compact) 12.dp else 0.dp,
+            ),
+        ) {
             Text(
                 text = stringResource(R.string.announcements_home_title),
-                style = MaterialTheme.typography.titleMedium,
-                color = cs.onBackground,
+                style = MaterialTheme.typography.titleSmall,
+                color = if (compact) AppColors.TextSecondary else cs.onBackground,
                 fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-        }
-        Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            visible.forEach { announcement ->
-                AnnouncementCompactCard(
-                    announcement = announcement,
-                    onOpenFull = { onOpenAnnouncement(announcement.id) },
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                visible.forEach { announcement ->
+                    AnnouncementCompactCard(
+                        announcement = announcement,
+                        onOpenFull = { onOpenAnnouncement(announcement.id) },
+                        compact = compact,
+                    )
+                }
             }
-        }
 
-        Spacer(modifier = Modifier.height(6.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = onOpenAll) {
-                Text(
-                    text = stringResource(R.string.announcements_see_all),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                )
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onOpenAll) {
+                    Text(
+                        text = stringResource(R.string.announcements_see_all),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (compact) AppColors.Accent else cs.primary,
+                    )
+                }
             }
         }
     }
@@ -99,45 +105,45 @@ fun AnnouncementsHomeSection(
 private fun AnnouncementCompactCard(
     announcement: Announcement,
     onOpenFull: () -> Unit,
+    compact: Boolean = false,
 ) {
     val cs = MaterialTheme.colorScheme
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = cs.surface,
-        shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, cs.outlineVariant),
-        shadowElevation = 1.dp,
+        color = if (compact) Color.White else cs.surface,
+        shape = RoundedCornerShape(if (compact) 10.dp else 14.dp),
+        border = BorderStroke(1.dp, if (compact) AppColors.BorderLight else cs.outlineVariant),
+        shadowElevation = if (compact) 0.dp else 1.dp,
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(if (compact) 10.dp else 16.dp)) {
             Text(
                 text = announcement.title.ifBlank { "—" },
-                style = MaterialTheme.typography.titleLarge,
-                color = cs.onSurface,
-                fontWeight = FontWeight.Bold,
-                maxLines = 2,
+                style = if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleLarge,
+                color = if (compact) AppColors.TextPrimary else cs.onSurface,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = if (compact) 1 else 2,
                 overflow = TextOverflow.Ellipsis,
             )
             if (announcement.description.isNotBlank()) {
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(if (compact) 3.dp else 6.dp))
                 Text(
                     text = announcement.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = cs.onSurfaceVariant,
-                    maxLines = 3,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (compact) AppColors.TextMuted else cs.onSurfaceVariant,
+                    maxLines = if (compact) 2 else 3,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
             if (announcement.isLong()) {
-                Spacer(modifier = Modifier.height(4.dp))
                 TextButton(
                     onClick = onOpenFull,
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
                 ) {
                     Text(
                         text = stringResource(R.string.announcement_full),
-                        style = MaterialTheme.typography.labelLarge,
+                        style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = cs.primary,
+                        color = if (compact) AppColors.Accent else cs.primary,
                     )
                 }
             }
@@ -189,7 +195,7 @@ fun AnnouncementFullView(
                     linked.forEach { book ->
                         BookCard(
                             book = book,
-                            parentName = book.resolvedParentName(booksById.mapValues { it.value.name }),
+                            parentBook = book.linkedParent(booksById),
                             customColors = customColors,
                         )
                     }

@@ -70,6 +70,10 @@ class BooksManagementViewModel(app: Application) : AndroidViewModel(app) {
         .map { books -> books.associate { it.id to it.name } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
+    val booksById: StateFlow<Map<String, Book>> = catalog
+        .map { books -> books.associateBy { it.id } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
     val catalogSize: StateFlow<Int> = engine.map { it.size }
         .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 

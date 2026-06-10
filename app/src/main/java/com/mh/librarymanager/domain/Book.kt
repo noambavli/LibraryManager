@@ -47,3 +47,7 @@ data class Book(
 fun Book.resolvedParentName(nameById: Map<String, String>): String? =
     parentBookId?.let { nameById[it] }?.takeIf { it.isNotBlank() }
         ?: parentBookName.takeIf { it.isNotBlank() }
+
+/** Full linked parent row when [parentBookId] points at a catalog book. */
+fun Book.linkedParent(booksById: Map<String, Book>): Book? =
+    parentBookId?.let { booksById[it] }

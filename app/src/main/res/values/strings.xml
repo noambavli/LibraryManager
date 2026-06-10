@@ -68,6 +68,7 @@
     <string name="book_state_unavailable">לא זמין</string>
     <string name="book_state_in_repair">בתיקון</string>
     <string name="book_inside_of">בתוך %1$s</string>
+    <string name="book_inside_of_label">בתוך</string>
 
     <!-- Management gateway -->
     <string name="back">חזרה</string>

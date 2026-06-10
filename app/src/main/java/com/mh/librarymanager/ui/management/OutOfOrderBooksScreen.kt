@@ -40,7 +40,9 @@ import com.mh.librarymanager.domain.BookOrderIssues
 import com.mh.librarymanager.domain.CustomColor
 import com.mh.librarymanager.domain.OutOfOrderBook
 import com.mh.librarymanager.domain.OutOfOrderFilter
-import com.mh.librarymanager.domain.resolvedParentName
+import com.mh.librarymanager.domain.linkedParent
+import com.mh.librarymanager.ui.components.AppScreenBackground
+import com.mh.librarymanager.ui.components.ManagementHeader
 import com.mh.librarymanager.ui.components.BookCard
 import com.mh.librarymanager.ui.components.ChipPill
 
@@ -58,11 +60,12 @@ fun OutOfOrderBooksScreen(
     val filterCounts by viewModel.outOfOrderFilterCounts.collectAsStateWithLifecycle()
     val issueCounts by viewModel.outOfOrderIssueCounts.collectAsStateWithLifecycle()
     val customColors by viewModel.customColors.collectAsStateWithLifecycle()
-    val parentNameLookup by viewModel.parentNameLookup.collectAsStateWithLifecycle()
+    val booksById by viewModel.booksById.collectAsStateWithLifecycle()
     val cs = MaterialTheme.colorScheme
 
-    Column(modifier = Modifier.fillMaxSize().background(cs.background)) {
-        ManagementHeader(
+    AppScreenBackground {
+        Column(modifier = Modifier.fillMaxSize()) {
+            ManagementHeader(
             title = stringResource(R.string.out_of_order_title),
             onBack = onBack,
             onLogout = onLogout,
@@ -101,12 +104,13 @@ fun OutOfOrderBooksScreen(
                 items(entries, key = { it.book.id }) { entry ->
                     OutOfOrderRow(
                         entry = entry,
-                        parentName = entry.book.resolvedParentName(parentNameLookup),
+                        parentBook = entry.book.linkedParent(booksById),
                         customColors = customColors,
                         onEdit = { onOpenEditor(entry.book.id) },
                     )
                 }
             }
+        }
         }
     }
 }
@@ -323,7 +327,7 @@ private fun EmptyFilter(filter: OutOfOrderFilter, issueFilter: BookOrderIssue?) 
 @Composable
 private fun OutOfOrderRow(
     entry: OutOfOrderBook,
-    parentName: String?,
+    parentBook: Book?,
     customColors: List<CustomColor>,
     onEdit: () -> Unit,
 ) {
@@ -338,7 +342,7 @@ private fun OutOfOrderRow(
         Column(modifier = Modifier.padding(12.dp)) {
             BookCard(
                 book = entry.book,
-                parentName = parentName,
+                parentBook = parentBook,
                 customColors = customColors,
                 onClick = onEdit,
                 trailing = {

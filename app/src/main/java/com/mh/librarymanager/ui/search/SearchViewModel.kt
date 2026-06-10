@@ -67,8 +67,12 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
         .map { books -> books.associate { it.id to it.name } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
+    val booksById: StateFlow<Map<String, Book>> = container.repository.observeAll()
+        .map { books -> books.associateBy { it.id } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
     /**
-     * Up to 3 books added in the last [RECENT_WINDOW_MS]. Empty if nothing
+     * Up to [RECENTLY_ADDED_LIMIT] books added in the last [RECENT_WINDOW_MS]. Empty if nothing
      * was added in the window — the home screen treats that as "no news"
      * rather than showing stale entries.
      */

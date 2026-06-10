@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -49,9 +50,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
 import com.mh.librarymanager.domain.Announcement
 import com.mh.librarymanager.domain.Book
-import com.mh.librarymanager.domain.resolvedParentName
+import com.mh.librarymanager.domain.linkedParent
 import com.mh.librarymanager.search.SearchEngine
 import com.mh.librarymanager.search.SearchQuery
+import com.mh.librarymanager.ui.components.AppColors
+import com.mh.librarymanager.ui.components.AppPaneDivider
+import com.mh.librarymanager.ui.components.AppScreenBackground
 import com.mh.librarymanager.ui.components.BookCard
 import kotlinx.coroutines.launch
 import com.mh.librarymanager.ui.search.HebrewKeyboard
@@ -100,8 +104,9 @@ fun AnnouncementEditorScreen(
     }
 
     val cs = MaterialTheme.colorScheme
-    Column(modifier = Modifier.fillMaxSize().background(cs.background)) {
-        Header(
+    AppScreenBackground {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Header(
             title = stringResource(R.string.announcement_add),
             canSave = title.text.isNotBlank(),
             onBack = { attemptExit(onBack) },
@@ -165,12 +170,13 @@ fun AnnouncementEditorScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            Box(modifier = Modifier.width(2.dp).fillMaxHeight().background(Color.Black))
+            AppPaneDivider()
 
             HebrewKeyboard(
                 onKey = { handleKey(it) },
                 modifier = Modifier.weight(1f).fillMaxHeight(),
             )
+        }
         }
     }
 
@@ -205,26 +211,42 @@ private fun Header(
     onLogout: () -> Unit,
     onSave: () -> Unit,
 ) {
-    val cs = MaterialTheme.colorScheme
-    Surface(color = cs.surface, shadowElevation = 2.dp) {
+    Surface(color = AppColors.Panel, shadowElevation = 1.dp) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TextButton(onClick = onBack) {
-                Text(text = "‹  " + stringResource(R.string.back), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = "‹  " + stringResource(R.string.back),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = AppColors.Accent,
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
             Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = title,
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = cs.onSurface,
+                color = AppColors.TextPrimary,
             )
             Spacer(modifier = Modifier.weight(1f))
-            Button(onClick = onSave, enabled = canSave) { Text(stringResource(R.string.save)) }
+            Button(
+                onClick = onSave,
+                enabled = canSave,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AppColors.HeroStart,
+                    contentColor = Color.White,
+                ),
+            ) { Text(stringResource(R.string.save)) }
             Spacer(modifier = Modifier.width(8.dp))
-            OutlinedButton(onClick = onLogout) { Text(stringResource(R.string.logout)) }
+            OutlinedButton(
+                onClick = onLogout,
+                border = BorderStroke(1.dp, AppColors.Border),
+            ) {
+                Text(stringResource(R.string.logout), color = AppColors.TextSecondary)
+            }
         }
     }
 }
@@ -331,7 +353,7 @@ private fun LinkedBooksEditor(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         BookCard(
                             book = book,
-                            parentName = book.resolvedParentName(booksById.mapValues { it.value.name }),
+                            parentBook = book.linkedParent(booksById),
                             customColors = customColors,
                             modifier = Modifier.weight(1f),
                         )
