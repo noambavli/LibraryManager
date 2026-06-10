@@ -30,6 +30,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,8 +41,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
-import com.mh.librarymanager.domain.resolvedParentName
+import com.mh.librarymanager.domain.Book
 import com.mh.librarymanager.domain.CustomColor
+import com.mh.librarymanager.domain.linkedParent
+import com.mh.librarymanager.ui.components.AppColors
+import com.mh.librarymanager.ui.components.AppHorizontalDivider
+import com.mh.librarymanager.ui.components.AppPaneDivider
+import com.mh.librarymanager.ui.components.AppScreenBackground
+import com.mh.librarymanager.ui.components.PublicBackBar
 import com.mh.librarymanager.ui.components.BookCard
 
 /**
@@ -59,20 +66,21 @@ fun SearchScreen(
     val results by viewModel.results.collectAsStateWithLifecycle()
     val catalogSize by viewModel.catalogSize.collectAsStateWithLifecycle()
     val customColors by viewModel.customColors.collectAsStateWithLifecycle()
-    val parentNameLookup by viewModel.parentNameLookup.collectAsStateWithLifecycle()
+    val booksById by viewModel.booksById.collectAsStateWithLifecycle()
     val shortcuts by viewModel.shortcuts.collectAsStateWithLifecycle()
 
     SuppressPlatformKeyboardEffect()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-    ) {
-        if (onBack != null) {
-            BackBar(onBack = onBack)
-        }
-        Row(modifier = Modifier.fillMaxSize()) {
+    DisposableEffect(Unit) {
+        onDispose { viewModel.clearAll() }
+    }
+
+    AppScreenBackground {
+        Column(modifier = Modifier.fillMaxSize()) {
+            if (onBack != null) {
+                PublicBackBar(onBack = onBack)
+            }
+            Row(modifier = Modifier.fillMaxSize()) {
             SearchPane(
                 modifier = Modifier
                     .weight(1f)
@@ -86,7 +94,7 @@ fun SearchScreen(
                 onKey = viewModel::handleKey,
             )
 
-            SectionDividerVertical()
+            AppPaneDivider()
 
             ResultsPane(
                 modifier = Modifier
@@ -96,26 +104,9 @@ fun SearchScreen(
                 catalogSize = catalogSize,
                 queryIsEmpty = fieldValues.values.all { it.text.isBlank() },
                 customColors = customColors,
-                parentNameLookup = parentNameLookup,
+                booksById = booksById,
             )
-        }
-    }
-}
-
-@Composable
-private fun BackBar(onBack: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        TextButton(onClick = onBack) {
-            Text(
-                text = "‹  " + stringResource(R.string.back),
-                style = MaterialTheme.typography.titleMedium,
-            )
+            }
         }
     }
 }
@@ -160,7 +151,7 @@ private fun SearchPane(
             )
         }
 
-        SectionDividerHorizontal()
+        AppHorizontalDivider()
 
         HebrewKeyboard(
             onKey = onKey,
@@ -270,27 +261,6 @@ private fun ShortcutTags(
     }
 }
 
-private val SectionDividerColor = Color.Black
-
-@Composable
-private fun SectionDividerHorizontal() {
-    HorizontalDivider(
-        modifier = Modifier.fillMaxWidth(),
-        thickness = 2.dp,
-        color = SectionDividerColor,
-    )
-}
-
-@Composable
-private fun SectionDividerVertical() {
-    Box(
-        modifier = Modifier
-            .width(2.dp)
-            .fillMaxHeight()
-            .background(SectionDividerColor),
-    )
-}
-
 @Composable
 private fun ResultsPane(
     modifier: Modifier,
@@ -298,7 +268,7 @@ private fun ResultsPane(
     catalogSize: Int,
     queryIsEmpty: Boolean,
     customColors: List<CustomColor>,
-    parentNameLookup: Map<String, String>,
+    booksById: Map<String, Book>,
 ) {
     val listState = rememberLazyListState()
     Column(
@@ -336,7 +306,7 @@ private fun ResultsPane(
                 items(results, key = { it.id }) { book ->
                     BookCard(
                         book = book,
-                        parentName = book.resolvedParentName(parentNameLookup),
+                        parentBook = book.linkedParent(booksById),
                         customColors = customColors,
                     )
                 }

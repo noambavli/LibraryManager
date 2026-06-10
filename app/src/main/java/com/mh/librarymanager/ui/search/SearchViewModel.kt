@@ -36,6 +36,7 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
     companion object {
         /** 30 days, matching the "What's new" home-screen recency window. */
         const val RECENT_WINDOW_MS: Long = 30L * 24L * 60L * 60L * 1000L
+        const val RECENTLY_ADDED_LIMIT: Int = 4
     }
 
     private val container = LibraryApp.from(app)
@@ -82,7 +83,7 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
             books
                 .filter { it.createdAt >= cutoff }
                 .sortedByDescending { it.createdAt }
-                .take(3)
+                .take(RECENTLY_ADDED_LIMIT)
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
@@ -124,8 +125,10 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
         setValue(field, next)
     }
 
+    /** Wipes every field so the next kiosk visitor starts with a blank search. */
     fun clearAll() {
         _fieldValues.value = SearchField.entries.associateWith { TextFieldValue("") }
+        _focusedField.value = SearchField.GENERAL
     }
 
     /** Loads the on-device catalog only — production data comes from PC .civ sync. */
