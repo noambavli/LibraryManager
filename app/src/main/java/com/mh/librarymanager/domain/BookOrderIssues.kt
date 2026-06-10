@@ -186,6 +186,7 @@ object BookOrderIssues {
             book.place.storedValue,
             book.state.storedValue,
             book.parentBookId.orEmpty(),
+            book.parentBookName,
             book.subcategories.map { HebrewText.normalize(it) }.sorted().joinToString("|"),
             book.relations.map { HebrewText.normalize(it) }.sorted().joinToString("|"),
             HebrewText.normalize(book.notes),

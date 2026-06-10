@@ -68,6 +68,7 @@ class Book:
     place: str
     state: str
     parentBookId: Optional[str]
+    parentBookName: str = ""
     relations: List[str]
 
     createdAt: int
@@ -94,6 +95,7 @@ class Book:
             "state": self.state,
             # The tablet stores an empty string (never null) for "no parent".
             "parentBookId": self.parentBookId or "",
+            "parentBookName": self.parentBookName,
             "relations": list(self.relations),
             "createdAt": self.createdAt,
             "updatedAt": self.updatedAt,
@@ -123,6 +125,7 @@ class Book:
             place=BookPlace.from_stored(o.get("place")),
             state=BookState.from_stored(o.get("state")),
             parentBookId=parent or None,
+            parentBookName=str(o.get("parentBookName") or ""),
             relations=[str(x) for x in (o.get("relations") or [])],
             createdAt=int(o.get("createdAt", 0) or 0),
             updatedAt=int(o.get("updatedAt", 0) or 0),

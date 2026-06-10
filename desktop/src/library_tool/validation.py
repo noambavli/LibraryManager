@@ -150,6 +150,7 @@ def _record_fingerprint(book: Book) -> str | None:
         book.place,
         book.state,
         book.parentBookId or "",
+        normalize(book.parentBookName),
         "|".join(sorted(normalize(s) for s in book.subcategories)),
         "|".join(sorted(normalize(r) for r in book.relations)),
         normalize(book.notes),

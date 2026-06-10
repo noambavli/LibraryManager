@@ -21,7 +21,7 @@ data class Book(
     val name: String,
     val topics: String,
     val writer: String,
-    /** System / technical identifier shown to staff (editable). */
+    /** Auto-assigned internal catalog number (row index at import). Not editable. */
     val bookNumber: String,
     /** Legacy "number" column from the source xlsx — display-only, no semantic meaning. */
     val displayNumber: String,
@@ -33,9 +33,17 @@ data class Book(
 
     val place: BookPlace,
     val state: BookState,
+    /** Linked parent row in the catalog, when known. */
     val parentBookId: String?,
+    /** Free-text parent title when the parent is not a catalog row. */
+    val parentBookName: String = "",
     val relations: List<String>,
 
     val createdAt: Long,
     val updatedAt: Long,
 )
+
+/** Linked parent name from [nameById], otherwise [Book.parentBookName]. */
+fun Book.resolvedParentName(nameById: Map<String, String>): String? =
+    parentBookId?.let { nameById[it] }?.takeIf { it.isNotBlank() }
+        ?: parentBookName.takeIf { it.isNotBlank() }

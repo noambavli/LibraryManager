@@ -154,6 +154,7 @@ class AuditStore(private val context: Context) {
         place = BookPlace.fromStored(o.optString("place")),
         state = BookState.fromStored(o.optString("state")),
         parentBookId = o.optString("parentBookId").takeIf { it.isNotBlank() },
+        parentBookName = o.optString("parentBookName", ""),
         relations = o.optJSONArray("relations")?.toStringList().orEmpty(),
         createdAt = o.optLong("createdAt"),
         updatedAt = o.optLong("updatedAt"),
@@ -178,6 +179,7 @@ class AuditStore(private val context: Context) {
         o.put("place", b.place.storedValue)
         o.put("state", b.state.storedValue)
         o.put("parentBookId", b.parentBookId.orEmpty())
+        o.put("parentBookName", b.parentBookName)
         o.put("relations", JSONArray(b.relations))
         o.put("createdAt", b.createdAt)
         o.put("updatedAt", b.updatedAt)

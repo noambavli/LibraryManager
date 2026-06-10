@@ -87,12 +87,13 @@ def test_civ_matches_tablet_json_shape(tmp_path):
     expected = {
         "id", "logicalBookId", "version", "isLatest", "name", "topics", "writer",
         "bookNumber", "displayNumber", "letter", "color", "category",
-        "subcategories", "notes", "place", "state", "parentBookId", "relations",
+        "subcategories", "notes", "place", "state", "parentBookId", "parentBookName", "relations",
         "createdAt", "updatedAt",
     }
     assert keys == expected
     # No-parent serialises as empty string, never null, like the tablet.
     assert root["books"][0]["parentBookId"] == ""
+    assert root["books"][0]["parentBookName"] == ""
 
 
 def test_civ_rejects_old_version(tmp_path):
@@ -226,7 +227,7 @@ def test_civ_field_types_are_what_tablet_expects(tmp_path):
     for k in (
         "id", "logicalBookId", "name", "topics", "writer", "bookNumber",
         "displayNumber", "letter", "color", "category", "notes",
-        "place", "state", "parentBookId",
+        "place", "state", "parentBookId", "parentBookName",
     ):
         assert isinstance(b[k], str), f"{k} must be a string, got {type(b[k])}"
 

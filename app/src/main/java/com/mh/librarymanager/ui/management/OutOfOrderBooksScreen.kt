@@ -40,6 +40,7 @@ import com.mh.librarymanager.domain.BookOrderIssues
 import com.mh.librarymanager.domain.CustomColor
 import com.mh.librarymanager.domain.OutOfOrderBook
 import com.mh.librarymanager.domain.OutOfOrderFilter
+import com.mh.librarymanager.domain.resolvedParentName
 import com.mh.librarymanager.ui.components.BookCard
 import com.mh.librarymanager.ui.components.ChipPill
 
@@ -100,7 +101,7 @@ fun OutOfOrderBooksScreen(
                 items(entries, key = { it.book.id }) { entry ->
                     OutOfOrderRow(
                         entry = entry,
-                        parentName = entry.book.parentBookId?.let { parentNameLookup[it] },
+                        parentName = entry.book.resolvedParentName(parentNameLookup),
                         customColors = customColors,
                         onEdit = { onOpenEditor(entry.book.id) },
                     )

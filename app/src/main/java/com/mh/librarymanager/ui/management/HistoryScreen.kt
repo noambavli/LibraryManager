@@ -447,15 +447,18 @@ private fun diffBooks(before: Book, after: Book): List<FieldDiff> {
     if (before.state != after.state) {
         out += FieldDiff(R.string.field_state, stateLabel(before.state), stateLabel(after.state))
     }
-    if (before.parentBookId != after.parentBookId) {
+    if (before.parentBookId != after.parentBookId || before.parentBookName != after.parentBookName) {
         out += FieldDiff(
             R.string.field_parent,
-            before.parentBookId.orEmpty(),
-            after.parentBookId.orEmpty(),
+            parentSummary(before),
+            parentSummary(after),
         )
     }
     return out
 }
+
+private fun parentSummary(book: Book): String =
+    book.parentBookName.ifBlank { book.parentBookId.orEmpty() }.ifBlank { "—" }
 
 private fun placeLabel(place: BookPlace): String = when (place) {
     BookPlace.OTZAR -> "אוצר הספרים"

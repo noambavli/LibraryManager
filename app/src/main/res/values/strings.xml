@@ -302,6 +302,8 @@
     <string name="remove">הסרה</string>
     <string name="none_selected">לא נבחר</string>
     <string name="choose_parent">בחר/י ספר אב</string>
+    <string name="enter_parent_name">הזנ/י שם ידנית</string>
+    <string name="enter_parent_name_title">הזנ/י שם ספר האב</string>
     <string name="clear_parent">ללא ספר אב</string>
     <string name="search_books_hint">חיפוש ספר…</string>
 

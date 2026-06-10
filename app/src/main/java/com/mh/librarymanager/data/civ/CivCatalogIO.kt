@@ -700,6 +700,7 @@ private fun JSONObject.toBook(): Book? {
         place = BookPlace.fromStored(safeString("place")),
         state = BookState.fromStored(safeString("state")),
         parentBookId = parent,
+        parentBookName = safeString("parentBookName"),
         relations = optJSONArray("relations").toStringList(),
         createdAt = optLong("createdAt"),
         updatedAt = optLong("updatedAt"),
@@ -732,6 +733,7 @@ private fun Book.toJson(): JSONObject = JSONObject().apply {
     put("place", place.storedValue)
     put("state", state.storedValue)
     put("parentBookId", parentBookId.orEmpty())
+    put("parentBookName", parentBookName)
     put("relations", JSONArray(relations))
     put("createdAt", createdAt)
     put("updatedAt", updatedAt)

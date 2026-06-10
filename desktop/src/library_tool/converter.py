@@ -143,6 +143,7 @@ def convert_rows(rows: List[List[str]], now_ms: Optional[int] = None) -> Convert
                 place=BookPlace.OTZAR,
                 state=BookState.AVAILABLE,
                 parentBookId=None,
+                parentBookName="",
                 relations=[],
                 createdAt=now_ms,
                 updatedAt=now_ms,

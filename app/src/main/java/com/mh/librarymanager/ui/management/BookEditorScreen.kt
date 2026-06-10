@@ -67,7 +67,7 @@ import java.util.UUID
  * in-app Hebrew keyboard via the focused-field pattern.
  */
 private enum class EditField {
-    NAME, WRITER, BOOK_NUMBER, DISPLAY_NUMBER, LETTER, CATEGORY, TOPICS, NOTES,
+    NAME, WRITER, DISPLAY_NUMBER, LETTER, CATEGORY, TOPICS, NOTES,
 }
 
 /** Snapshot of the form. Stored as one struct so save is straightforward. */
@@ -90,6 +90,7 @@ private data class FormState(
     val subcategories: List<String> = emptyList(),
     val relations: List<String> = emptyList(),
     val parentBookId: String? = null,
+    val parentBookName: String = "",
 )
 
 private fun Book.toForm(): FormState = FormState(
@@ -111,6 +112,7 @@ private fun Book.toForm(): FormState = FormState(
     subcategories = subcategories,
     relations = relations,
     parentBookId = parentBookId,
+    parentBookName = parentBookName,
 )
 
 private fun FormState.toBook(): Book = Book(
@@ -131,6 +133,7 @@ private fun FormState.toBook(): Book = Book(
     place = place,
     state = state,
     parentBookId = parentBookId,
+    parentBookName = parentBookName.trim(),
     relations = relations.map { it.trim() }.filter { it.isNotBlank() },
     createdAt = createdAt,
     updatedAt = System.currentTimeMillis(),
@@ -203,6 +206,7 @@ fun BookEditorScreen(
     // Dialog state
     var pickingColor by remember { mutableStateOf(false) }
     var pickingParent by remember { mutableStateOf(false) }
+    var enteringParentName by remember { mutableStateOf(false) }
     var addingSubcategory by remember { mutableStateOf(false) }
     var addingRelation by remember { mutableStateOf(false) }
     var confirmingDelete by remember { mutableStateOf(false) }
@@ -226,7 +230,6 @@ fun BookEditorScreen(
         form = form.copy(
             name = if (field == EditField.NAME) value.text else form.name,
             writer = if (field == EditField.WRITER) value.text else form.writer,
-            bookNumber = if (field == EditField.BOOK_NUMBER) value.text else form.bookNumber,
             displayNumber = if (field == EditField.DISPLAY_NUMBER) value.text else form.displayNumber,
             letter = if (field == EditField.LETTER) value.text else form.letter,
             category = if (field == EditField.CATEGORY) value.text else form.category,
@@ -273,6 +276,7 @@ fun BookEditorScreen(
                 onSetText = ::setText,
                 onChangeColor = { pickingColor = true },
                 onChangeParent = { pickingParent = true },
+                onEnterParentName = { enteringParentName = true },
                 onAddSubcategory = { addingSubcategory = true },
                 onRemoveSubcategory = { idx ->
                     form = form.copy(subcategories = form.subcategories.filterIndexed { i, _ -> i != idx })
@@ -314,12 +318,29 @@ fun BookEditorScreen(
             currentParentId = form.parentBookId,
             onDismiss = { pickingParent = false },
             onClear = {
-                form = form.copy(parentBookId = null)
+                form = form.copy(parentBookId = null, parentBookName = "")
                 pickingParent = false
             },
             onPick = {
-                form = form.copy(parentBookId = it.id)
+                form = form.copy(parentBookId = it.id, parentBookName = "")
                 pickingParent = false
+            },
+        )
+    }
+
+    if (enteringParentName) {
+        TextEntryDialog(
+            title = stringResource(R.string.enter_parent_name_title),
+            initialText = form.parentBookName,
+            onDismiss = { enteringParentName = false },
+            onConfirm = { entry ->
+                val name = entry.trim()
+                form = if (name.isBlank()) {
+                    form.copy(parentBookId = null, parentBookName = "")
+                } else {
+                    form.copy(parentBookId = null, parentBookName = name)
+                }
+                enteringParentName = false
             },
         )
     }
@@ -445,6 +466,7 @@ private fun FormColumn(
     onSetText: (EditField, TextFieldValue) -> Unit,
     onChangeColor: () -> Unit,
     onChangeParent: () -> Unit,
+    onEnterParentName: () -> Unit,
     onAddSubcategory: () -> Unit,
     onRemoveSubcategory: (Int) -> Unit,
     onAddRelation: () -> Unit,
@@ -488,7 +510,11 @@ private fun FormColumn(
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             textField(EditField.WRITER, R.string.field_writer, modifier = Modifier.weight(1f))
-            textField(EditField.BOOK_NUMBER, R.string.field_book_number, modifier = Modifier.weight(1f))
+            ReadOnlyValueField(
+                label = stringResource(R.string.field_book_number),
+                value = form.bookNumber.ifBlank { "—" },
+                modifier = Modifier.weight(1f),
+            )
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -577,6 +603,7 @@ private fun FormColumn(
         // Parent book
         LabeledBlock(label = stringResource(R.string.field_parent)) {
             val parentName = form.parentBookId?.let { parentNameLookup[it] }
+                ?: form.parentBookName.takeIf { it.isNotBlank() }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
                     color = cs.surface,
@@ -589,13 +616,20 @@ private fun FormColumn(
                             text = parentName ?: stringResource(R.string.none_selected),
                             style = MaterialTheme.typography.bodyLarge,
                             color = if (parentName == null) cs.outline else cs.onSurface,
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
-                Spacer(modifier = Modifier.width(10.dp))
-                OutlinedButton(onClick = onChangeParent) { Text(stringResource(R.string.choose_parent)) }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onChangeParent) {
+                    Text(stringResource(R.string.choose_parent))
+                }
+                OutlinedButton(onClick = onEnterParentName) {
+                    Text(stringResource(R.string.enter_parent_name))
+                }
             }
         }
 
@@ -618,6 +652,38 @@ private fun FormColumn(
         )
 
         Spacer(modifier = Modifier.height(20.dp))
+    }
+}
+
+@Composable
+@Composable
+private fun ReadOnlyValueField(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    val cs = MaterialTheme.colorScheme
+    Column(modifier = modifier) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = cs.onSurfaceVariant,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
+        )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = cs.surfaceVariant.copy(alpha = 0.5f),
+            shape = RoundedCornerShape(10.dp),
+            border = BorderStroke(1.dp, cs.outlineVariant),
+        ) {
+            Text(
+                text = value,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                style = MaterialTheme.typography.bodyLarge,
+                color = cs.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -804,9 +870,10 @@ private fun TextEntryDialog(
     title: String,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
+    initialText: String = "",
 ) {
     val cs = MaterialTheme.colorScheme
-    var text by remember { mutableStateOf(TextFieldValue("")) }
+    var text by remember { mutableStateOf(TextFieldValue(initialText)) }
     var focused by remember { mutableStateOf(true) }
 
     fun handleKey(action: KeyAction) {
@@ -885,7 +952,9 @@ private fun ParentBookPickerDialog(
         val q = query.text.trim()
         val candidates = allBooks.filter { it.id != excludedId && it.isLatest }
         if (q.isEmpty()) candidates.take(80)
-        else candidates.filter { it.name.contains(q) || it.writer.contains(q) }.take(80)
+        else candidates.filter {
+            it.name.contains(q) || it.writer.contains(q) || it.topics.contains(q)
+        }.take(80)
     }
 
     Box(
@@ -940,12 +1009,21 @@ private fun ParentBookPickerDialog(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
-                                if (book.writer.isNotBlank()) {
+                                Text(
+                                    text = book.writer.ifBlank {
+                                        stringResource(R.string.book_unknown_writer)
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = cs.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                if (book.topics.isNotBlank()) {
                                     Text(
-                                        text = book.writer,
+                                        text = book.topics,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = cs.onSurfaceVariant,
-                                        maxLines = 1,
+                                        maxLines = 2,
                                         overflow = TextOverflow.Ellipsis,
                                     )
                                 }
@@ -1007,7 +1085,6 @@ private fun TextFieldValue.deleteBack(): TextFieldValue {
 private fun initialFieldValues(form: FormState): Map<EditField, TextFieldValue> = mapOf(
     EditField.NAME to TextFieldValue(form.name),
     EditField.WRITER to TextFieldValue(form.writer),
-    EditField.BOOK_NUMBER to TextFieldValue(form.bookNumber),
     EditField.DISPLAY_NUMBER to TextFieldValue(form.displayNumber),
     EditField.LETTER to TextFieldValue(form.letter),
     EditField.CATEGORY to TextFieldValue(form.category),

@@ -151,6 +151,7 @@ class CatalogStore(private val context: Context) {
             place = BookPlace.fromStored(safeString("place")),
             state = BookState.fromStored(safeString("state")),
             parentBookId = parent,
+            parentBookName = safeString("parentBookName"),
             relations = optJSONArray("relations").toStringList(),
             createdAt = optLong("createdAt"),
             updatedAt = optLong("updatedAt"),
@@ -181,6 +182,7 @@ class CatalogStore(private val context: Context) {
             o.put("place", b.place.storedValue)
             o.put("state", b.state.storedValue)
             o.put("parentBookId", b.parentBookId.orEmpty())
+            o.put("parentBookName", b.parentBookName)
             o.put("relations", JSONArray(b.relations))
             o.put("createdAt", b.createdAt)
             o.put("updatedAt", b.updatedAt)

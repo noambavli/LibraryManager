@@ -40,7 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
-import com.mh.librarymanager.domain.Book
+import com.mh.librarymanager.domain.resolvedParentName
 import com.mh.librarymanager.domain.CustomColor
 import com.mh.librarymanager.ui.components.BookCard
 
@@ -336,7 +336,7 @@ private fun ResultsPane(
                 items(results, key = { it.id }) { book ->
                     BookCard(
                         book = book,
-                        parentName = book.parentBookId?.let { parentNameLookup[it] },
+                        parentName = book.resolvedParentName(parentNameLookup),
                         customColors = customColors,
                     )
                 }

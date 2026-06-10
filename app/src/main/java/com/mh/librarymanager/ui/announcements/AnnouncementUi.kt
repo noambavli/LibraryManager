@@ -30,6 +30,7 @@ import com.mh.librarymanager.R
 import com.mh.librarymanager.domain.Announcement
 import com.mh.librarymanager.domain.Book
 import com.mh.librarymanager.domain.CustomColor
+import com.mh.librarymanager.domain.resolvedParentName
 import com.mh.librarymanager.ui.components.BookCard
 
 /** A description is "long" (and gets a "full announcement" link) past this length. */
@@ -188,7 +189,7 @@ fun AnnouncementFullView(
                     linked.forEach { book ->
                         BookCard(
                             book = book,
-                            parentName = book.parentBookId?.let { booksById[it]?.name },
+                            parentName = book.resolvedParentName(booksById.mapValues { it.value.name }),
                             customColors = customColors,
                         )
                     }

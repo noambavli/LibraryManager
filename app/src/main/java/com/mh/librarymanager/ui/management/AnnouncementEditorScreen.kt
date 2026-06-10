@@ -49,6 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
 import com.mh.librarymanager.domain.Announcement
 import com.mh.librarymanager.domain.Book
+import com.mh.librarymanager.domain.resolvedParentName
 import com.mh.librarymanager.search.SearchEngine
 import com.mh.librarymanager.search.SearchQuery
 import com.mh.librarymanager.ui.components.BookCard
@@ -330,7 +331,7 @@ private fun LinkedBooksEditor(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         BookCard(
                             book = book,
-                            parentName = book.parentBookId?.let { booksById[it]?.name },
+                            parentName = book.resolvedParentName(booksById.mapValues { it.value.name }),
                             customColors = customColors,
                             modifier = Modifier.weight(1f),
                         )
