@@ -6,21 +6,22 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,9 +34,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mh.librarymanager.R
+import com.mh.librarymanager.ui.components.AppColors
+import com.mh.librarymanager.ui.components.AppContentCard
+import com.mh.librarymanager.ui.components.AppLogo
+import com.mh.librarymanager.ui.components.AppPaneDivider
+import com.mh.librarymanager.ui.components.AppScreenBackground
+import com.mh.librarymanager.ui.components.PublicBackBar
 import kotlinx.coroutines.delay
 
 private const val MAX_LEN = 8
@@ -44,6 +53,9 @@ private const val MAX_LEN = 8
  * Numeric password gate. The kiosk forcibly hides the system IME so we own a
  * deliberately big, tactile keypad. A small shake-style error label appears
  * on a bad code and clears itself on the next keystroke.
+ *
+ * On landscape tablets the branding and keypad sit side-by-side; on narrower
+ * layouts they stack vertically with a capped content width.
  */
 @Composable
 fun PasswordScreen(
@@ -51,7 +63,6 @@ fun PasswordScreen(
     onBack: () -> Unit,
     onUnlocked: () -> Unit,
 ) {
-    val cs = MaterialTheme.colorScheme
     var code by remember { mutableStateOf("") }
     var showError by remember { mutableStateOf(false) }
 
@@ -62,82 +73,157 @@ fun PasswordScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(cs.background)) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 48.dp, vertical = 36.dp),
-        ) {
-            TopBar(onBack = onBack)
+    val onDigit: (Char) -> Unit = { d ->
+        showError = false
+        if (code.length < MAX_LEN) code += d
+    }
+    val onBackspace: () -> Unit = {
+        showError = false
+        if (code.isNotEmpty()) code = code.dropLast(1)
+    }
+    val onSubmit: () -> Unit = {
+        if (session.tryUnlock(code)) {
+            code = ""
+            onUnlocked()
+        } else {
+            showError = true
+            code = ""
+        }
+    }
 
-            Spacer(modifier = Modifier.height(28.dp))
+    AppScreenBackground {
+        Column(modifier = Modifier.fillMaxSize()) {
+            PublicBackBar(onBack = onBack)
 
-            Column(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 32.dp, vertical = 20.dp),
             ) {
-                Text(
-                    text = stringResource(R.string.password_title),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = cs.onBackground,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = stringResource(R.string.password_subtitle),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = cs.onSurfaceVariant,
-                )
-                Spacer(modifier = Modifier.height(24.dp))
+                val landscapeTablet = maxWidth >= 720.dp && maxWidth > maxHeight
 
-                CodeDots(length = code.length)
+                if (landscapeTablet) {
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        PasswordBrandingPane(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .padding(horizontal = 24.dp),
+                            codeLength = code.length,
+                            showError = showError,
+                            logoSize = 88.dp,
+                            textAlign = TextAlign.Start,
+                        )
 
-                Spacer(modifier = Modifier.height(14.dp))
+                        AppPaneDivider()
 
-                AnimatedVisibility(visible = showError) {
-                    Text(
-                        text = stringResource(R.string.password_wrong),
-                        color = cs.error,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                Keypad(
-                    onDigit = { d ->
-                        showError = false
-                        if (code.length < MAX_LEN) code += d
-                    },
-                    onBackspace = {
-                        showError = false
-                        if (code.isNotEmpty()) code = code.dropLast(1)
-                    },
-                    onSubmit = {
-                        if (session.tryUnlock(code)) {
-                            code = ""
-                            onUnlocked()
-                        } else {
-                            showError = true
-                            code = ""
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .padding(horizontal = 24.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            AppContentCard(
+                                modifier = Modifier.widthIn(max = 420.dp),
+                            ) {
+                                Keypad(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(20.dp),
+                                    onDigit = onDigit,
+                                    onBackspace = onBackspace,
+                                    onSubmit = onSubmit,
+                                    submitEnabled = code.isNotEmpty(),
+                                )
+                            }
                         }
-                    },
-                    submitEnabled = code.isNotEmpty(),
-                )
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .widthIn(max = 480.dp)
+                            .align(Alignment.TopCenter),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        PasswordBrandingPane(
+                            modifier = Modifier.fillMaxWidth(),
+                            codeLength = code.length,
+                            showError = showError,
+                            logoSize = 80.dp,
+                            textAlign = TextAlign.Center,
+                        )
+
+                        Spacer(modifier = Modifier.height(28.dp))
+
+                        AppContentCard(modifier = Modifier.fillMaxWidth()) {
+                            Keypad(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp),
+                                onDigit = onDigit,
+                                onBackspace = onBackspace,
+                                onSubmit = onSubmit,
+                                submitEnabled = code.isNotEmpty(),
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun TopBar(onBack: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        TextButton(onClick = onBack) {
+private fun PasswordBrandingPane(
+    codeLength: Int,
+    showError: Boolean,
+    logoSize: Dp,
+    textAlign: TextAlign,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = when (textAlign) {
+            TextAlign.Start, TextAlign.Right -> Alignment.Start
+            else -> Alignment.CenterHorizontally
+        },
+        verticalArrangement = Arrangement.Center,
+    ) {
+        AppLogo(size = logoSize)
+        Spacer(modifier = Modifier.height(18.dp))
+        Text(
+            text = stringResource(R.string.password_title),
+            style = MaterialTheme.typography.headlineMedium,
+            color = AppColors.TextPrimary,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = textAlign,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = stringResource(R.string.password_subtitle),
+            style = MaterialTheme.typography.titleMedium,
+            color = AppColors.TextSecondary,
+            textAlign = textAlign,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(modifier = Modifier.height(22.dp))
+        CodeDots(length = codeLength)
+        Spacer(modifier = Modifier.height(12.dp))
+        AnimatedVisibility(visible = showError) {
             Text(
-                text = "‹  " + stringResource(R.string.back),
-                style = MaterialTheme.typography.titleMedium,
+                text = stringResource(R.string.password_wrong),
+                color = AppColors.Warning,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                textAlign = textAlign,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }
@@ -157,8 +243,8 @@ private fun CodeDots(length: Int) {
                     .size(18.dp)
                     .clip(CircleShape)
                     .background(
-                        if (filled) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.surfaceVariant
+                        if (filled) AppColors.Accent
+                        else AppColors.BorderLight,
                     ),
             )
         }
@@ -167,43 +253,59 @@ private fun CodeDots(length: Int) {
 
 @Composable
 private fun Keypad(
+    modifier: Modifier = Modifier,
     onDigit: (Char) -> Unit,
     onBackspace: () -> Unit,
     onSubmit: () -> Unit,
     submitEnabled: Boolean,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            KeyDigit('1', onDigit)
-            KeyDigit('2', onDigit)
-            KeyDigit('3', onDigit)
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            KeyDigit('1', onDigit, Modifier.weight(1f))
+            KeyDigit('2', onDigit, Modifier.weight(1f))
+            KeyDigit('3', onDigit, Modifier.weight(1f))
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            KeyDigit('4', onDigit)
-            KeyDigit('5', onDigit)
-            KeyDigit('6', onDigit)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            KeyDigit('4', onDigit, Modifier.weight(1f))
+            KeyDigit('5', onDigit, Modifier.weight(1f))
+            KeyDigit('6', onDigit, Modifier.weight(1f))
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            KeyDigit('7', onDigit)
-            KeyDigit('8', onDigit)
-            KeyDigit('9', onDigit)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            KeyDigit('7', onDigit, Modifier.weight(1f))
+            KeyDigit('8', onDigit, Modifier.weight(1f))
+            KeyDigit('9', onDigit, Modifier.weight(1f))
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            KeyAction(label = "⌫", onClick = onBackspace, accent = false)
-            KeyDigit('0', onDigit)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            KeyAction(label = "⌫", onClick = onBackspace, accent = false, modifier = Modifier.weight(1f))
+            KeyDigit('0', onDigit, Modifier.weight(1f))
             KeyAction(
                 label = stringResource(R.string.password_unlock),
                 onClick = onSubmit,
                 accent = true,
                 disabled = !submitEnabled,
+                modifier = Modifier.weight(1f),
             )
         }
     }
 }
 
 @Composable
-private fun KeyDigit(digit: Char, onDigit: (Char) -> Unit) {
-    KeyTile(label = digit.toString(), accent = false, disabled = false) { onDigit(digit) }
+private fun KeyDigit(digit: Char, onDigit: (Char) -> Unit, modifier: Modifier = Modifier) {
+    KeyTile(label = digit.toString(), accent = false, disabled = false, modifier = modifier) {
+        onDigit(digit)
+    }
 }
 
 @Composable
@@ -211,9 +313,10 @@ private fun KeyAction(
     label: String,
     onClick: () -> Unit,
     accent: Boolean,
+    modifier: Modifier = Modifier,
     disabled: Boolean = false,
 ) {
-    KeyTile(label = label, accent = accent, disabled = disabled, onClick = onClick)
+    KeyTile(label = label, accent = accent, disabled = disabled, modifier = modifier, onClick = onClick)
 }
 
 @Composable
@@ -221,25 +324,25 @@ private fun KeyTile(
     label: String,
     accent: Boolean,
     disabled: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val cs = MaterialTheme.colorScheme
     val bg = when {
-        disabled -> cs.surfaceVariant
-        accent -> cs.primary
-        else -> cs.surface
+        disabled -> AppColors.BorderLight
+        accent -> AppColors.HeroStart
+        else -> AppColors.PanelElevated
     }
     val fg = when {
-        disabled -> cs.onSurfaceVariant.copy(alpha = 0.4f)
-        accent -> cs.onPrimary
-        else -> cs.onSurface
+        disabled -> AppColors.TextMuted.copy(alpha = 0.4f)
+        accent -> Color.White
+        else -> AppColors.TextPrimary
     }
     Surface(
-        modifier = Modifier.size(width = 96.dp, height = 76.dp),
+        modifier = modifier.height(76.dp),
         color = bg,
         contentColor = fg,
         shape = RoundedCornerShape(14.dp),
-        border = if (accent) null else BorderStroke(1.dp, cs.outlineVariant),
+        border = if (accent) null else BorderStroke(1.dp, AppColors.Border),
         shadowElevation = if (accent) 4.dp else 1.dp,
     ) {
         Box(
@@ -251,9 +354,10 @@ private fun KeyTile(
         ) {
             Text(
                 text = label,
-                fontSize = 28.sp,
+                fontSize = if (label.length > 2) 20.sp else 28.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = if (disabled) Color.Gray else fg,
+                maxLines = 1,
             )
         }
     }
