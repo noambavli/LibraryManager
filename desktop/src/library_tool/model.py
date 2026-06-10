@@ -68,11 +68,11 @@ class Book:
     place: str
     state: str
     parentBookId: Optional[str]
-    parentBookName: str = ""
     relations: List[str]
 
     createdAt: int
     updatedAt: int
+    parentBookName: str = ""
 
     def to_json(self) -> dict:
         """Serialise to the exact shape CatalogStore.writeBooks produces."""
