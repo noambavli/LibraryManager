@@ -40,9 +40,7 @@ class AuditStore(private val context: Context) {
     @Volatile private var loaded = false
 
     suspend fun loadFromDisk() {
-        if (loaded) return
-        synchronized(this) {
-            if (loaded) return
+        loadFromDiskOnce(loadedFlag = { loaded }, lock = this) {
             _events.value = if (file.exists()) readFile(file) else emptyList()
             loaded = true
         }
