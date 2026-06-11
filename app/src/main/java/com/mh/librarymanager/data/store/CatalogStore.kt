@@ -5,9 +5,11 @@ import com.mh.librarymanager.domain.Book
 import com.mh.librarymanager.domain.BookPlace
 import com.mh.librarymanager.domain.BookState
 import com.mh.librarymanager.domain.CustomColor
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -51,18 +53,22 @@ class CatalogStore(private val context: Context) {
 
     suspend fun loadFromDisk() {
         if (!booksLoaded) {
-            synchronized(this) {
-                if (!booksLoaded) {
-                    _books.value = if (file.exists()) readBooks(file) else emptyList()
-                    booksLoaded = true
+            withContext(Dispatchers.IO) {
+                synchronized(this@CatalogStore) {
+                    if (!booksLoaded) {
+                        _books.value = if (file.exists()) readBooks(file) else emptyList()
+                        booksLoaded = true
+                    }
                 }
             }
         }
         if (!paletteLoaded) {
-            synchronized(this) {
-                if (!paletteLoaded) {
-                    _colors.value = if (paletteFile.exists()) readPalette(paletteFile) else emptyList()
-                    paletteLoaded = true
+            withContext(Dispatchers.IO) {
+                synchronized(this@CatalogStore) {
+                    if (!paletteLoaded) {
+                        _colors.value = if (paletteFile.exists()) readPalette(paletteFile) else emptyList()
+                        paletteLoaded = true
+                    }
                 }
             }
         }
@@ -110,12 +116,31 @@ class CatalogStore(private val context: Context) {
         _colors.value = next
     }
 
+    /**
+     * Copies an unparseable store file aside as `<name>.corrupt-<timestamp>`
+     * so a later write can't destroy the only copy of recoverable data. Best
+     * effort: failures here are swallowed since we are already in a degraded
+     * read path.
+     */
+    private fun backupUnreadableFile(source: File) {
+        try {
+            if (!source.exists()) return
+            val backup = File(source.parentFile, "${source.name}.corrupt-${System.currentTimeMillis()}")
+            source.copyTo(backup, overwrite = true)
+        } catch (_: Exception) {
+        }
+    }
+
     private fun readBooks(file: File): List<Book> {
         val text = file.readText(Charsets.UTF_8)
         if (text.isBlank()) return emptyList()
         val root = try {
             JSONObject(text)
         } catch (_: Exception) {
+            // A genuinely corrupt (unparseable) catalog is preserved aside before
+            // we fall back to "empty", so the next write never overwrites the only
+            // copy of recoverable data.
+            backupUnreadableFile(file)
             return emptyList()
         }
         val version = root.optInt("version", 0)
@@ -195,7 +220,13 @@ class CatalogStore(private val context: Context) {
     private fun readPalette(file: File): List<CustomColor> {
         val text = file.readText(Charsets.UTF_8)
         if (text.isBlank()) return emptyList()
-        val root = JSONObject(text)
+        val root = try {
+            JSONObject(text)
+        } catch (_: Exception) {
+            // A corrupt palette must not crash catalog load; preserve and skip.
+            backupUnreadableFile(file)
+            return emptyList()
+        }
         if (root.optInt("version", 0) < PALETTE_FORMAT_VERSION) return emptyList()
         val arr = root.optJSONArray("colors") ?: return emptyList()
         val out = ArrayList<CustomColor>(arr.length())
