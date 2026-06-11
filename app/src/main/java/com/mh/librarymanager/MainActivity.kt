@@ -21,6 +21,8 @@ import com.mh.librarymanager.ui.management.AnnouncementsManagementViewModel
 import com.mh.librarymanager.ui.management.BooksManagementViewModel
 import com.mh.librarymanager.ui.management.CatalogTransferViewModel
 import com.mh.librarymanager.ui.management.HistoryViewModel
+import com.mh.librarymanager.ui.management.PopularBooksViewModel
+import com.mh.librarymanager.ui.management.SearchHistoryViewModel
 import com.mh.librarymanager.ui.management.ManagementSession
 import com.mh.librarymanager.ui.management.RequestsManagementViewModel
 import com.mh.librarymanager.ui.management.ShortcutsManagementViewModel
@@ -36,6 +38,8 @@ class MainActivity : ComponentActivity() {
     private val searchViewModel: SearchViewModel by viewModels()
     private val managementViewModel: BooksManagementViewModel by viewModels()
     private val historyViewModel: HistoryViewModel by viewModels()
+    private val searchHistoryViewModel: SearchHistoryViewModel by viewModels()
+    private val popularBooksViewModel: PopularBooksViewModel by viewModels()
     private val publicRequestViewModel: PublicRequestViewModel by viewModels()
     private val requestsManagementViewModel: RequestsManagementViewModel by viewModels()
     private val announcementsViewModel: AnnouncementsViewModel by viewModels()
@@ -71,12 +75,15 @@ class MainActivity : ComponentActivity() {
                 WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING,
         )
         enableEdgeToEdge()
+        allowWakeFromSleep()
         setContent {
             LibraryManagerTheme {
                 AppRoot(
                     searchViewModel = searchViewModel,
                     managementViewModel = managementViewModel,
                     historyViewModel = historyViewModel,
+                    searchHistoryViewModel = searchHistoryViewModel,
+                    popularBooksViewModel = popularBooksViewModel,
                     publicRequestViewModel = publicRequestViewModel,
                     requestsManagementViewModel = requestsManagementViewModel,
                     announcementsViewModel = announcementsViewModel,
@@ -111,6 +118,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        allowWakeFromSleep()
         hideSystemUi()
         enterKioskMode()
     }
@@ -204,6 +212,14 @@ class MainActivity : ComponentActivity() {
             } catch (_: Exception) {
                 // Lock task requires device owner provisioning.
             }
+        }
+    }
+
+    /** Lets the first touch after display sleep turn the screen on and show the app. */
+    private fun allowWakeFromSleep() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
         }
     }
 

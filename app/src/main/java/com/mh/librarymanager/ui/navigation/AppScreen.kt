@@ -23,10 +23,16 @@ sealed interface AppScreen {
 
     /** Password gate guarding the management section. */
     data object ManagementGate : AppScreen
+
+    /** Blue standby screen — logo, announcements, swipe up to open. */
+    data object Attract : AppScreen
+
     data object ManagementHome : AppScreen
     data object BooksManagement : AppScreen
     data object OutOfOrderBooks : AppScreen
     data object ManagementHistory : AppScreen
+    data object ManagementSearchHistory : AppScreen
+    data object ManagementPopularBooks : AppScreen
     data object ManagementRequests : AppScreen
     data object ManagementAnnouncements : AppScreen
     data object AnnouncementEditor : AppScreen
@@ -41,4 +47,7 @@ sealed interface AppScreen {
 
     /** Book editor — `bookId == null` means "create a brand new book". */
     data class BookEditor(val bookId: String?) : AppScreen
+
+    /** Library map view for a single book (placeholder until map assets are wired). */
+    data class BookLocation(val bookId: String) : AppScreen
 }

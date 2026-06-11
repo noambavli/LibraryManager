@@ -3,14 +3,26 @@ package com.mh.librarymanager.ui
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mh.librarymanager.LibraryApp
 import com.mh.librarymanager.R
+import com.mh.librarymanager.ui.home.AttractScreen
 import com.mh.librarymanager.ui.home.HomeScreen
+import com.mh.librarymanager.ui.location.BookLocationScreen
 import com.mh.librarymanager.ui.management.BookEditorScreen
 import com.mh.librarymanager.ui.management.BooksManagementScreen
 import com.mh.librarymanager.ui.management.BooksManagementViewModel
@@ -30,9 +42,13 @@ import com.mh.librarymanager.ui.management.ImportSummaryScreen
 import com.mh.librarymanager.ui.management.ManagementDashboardScreen
 import com.mh.librarymanager.ui.management.OutOfOrderBooksScreen
 import com.mh.librarymanager.ui.management.ManagementSession
+import com.mh.librarymanager.ui.management.PopularBooksScreen
+import com.mh.librarymanager.ui.management.PopularBooksViewModel
 import com.mh.librarymanager.ui.management.PasswordScreen
 import com.mh.librarymanager.ui.management.RequestsManagementScreen
 import com.mh.librarymanager.ui.management.RequestsManagementViewModel
+import com.mh.librarymanager.ui.management.SearchHistoryScreen
+import com.mh.librarymanager.ui.management.SearchHistoryViewModel
 import com.mh.librarymanager.ui.management.ShortcutsManagementScreen
 import com.mh.librarymanager.ui.management.ShortcutsManagementViewModel
 import com.mh.librarymanager.ui.management.TechSupportManagementScreen
@@ -47,6 +63,9 @@ import com.mh.librarymanager.ui.navigation.rememberAppNavController
 import com.mh.librarymanager.ui.search.NoSystemKeyboard
 import com.mh.librarymanager.ui.search.SearchScreen
 import com.mh.librarymanager.ui.search.SearchViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Single top-level composable for the kiosk. Owns the nav stack, the
@@ -60,6 +79,8 @@ fun AppRoot(
     searchViewModel: SearchViewModel,
     managementViewModel: BooksManagementViewModel,
     historyViewModel: HistoryViewModel,
+    searchHistoryViewModel: SearchHistoryViewModel,
+    popularBooksViewModel: PopularBooksViewModel,
     publicRequestViewModel: PublicRequestViewModel,
     requestsManagementViewModel: RequestsManagementViewModel,
     announcementsViewModel: AnnouncementsViewModel,
@@ -71,10 +92,12 @@ fun AppRoot(
     managementSession: ManagementSession,
     onRegisterBackHandler: (handler: (() -> Boolean)) -> Unit,
 ) {
-    val nav: AppNavController = rememberAppNavController(AppScreen.Home)
+    val nav: AppNavController = rememberAppNavController(AppScreen.Attract)
     val searchVm: SearchViewModel = searchViewModel
     val managementVm: BooksManagementViewModel = managementViewModel
     val historyVm: HistoryViewModel = historyViewModel
+    val searchHistoryVm: SearchHistoryViewModel = searchHistoryViewModel
+    val popularBooksVm: PopularBooksViewModel = popularBooksViewModel
     val publicRequestVm: PublicRequestViewModel = publicRequestViewModel
     val requestsManagementVm: RequestsManagementViewModel = requestsManagementViewModel
     val announcementsVm: AnnouncementsViewModel = announcementsViewModel
@@ -84,9 +107,13 @@ fun AppRoot(
     val techSupportManagementVm: TechSupportManagementViewModel = techSupportManagementViewModel
     val catalogTransferVm: CatalogTransferViewModel = catalogTransferViewModel
     val session: ManagementSession = managementSession
-    val outOfOrderCount by managementVm.outOfOrderCount.collectAsStateWithLifecycle()
     val adbPending by catalogTransferVm.adbPending.collectAsStateWithLifecycle()
     val adbConfirming by catalogTransferVm.adbConfirming.collectAsStateWithLifecycle()
+    fun returnToAttract() {
+        session.logout()
+        searchVm.finalizePublicSearchSession()
+        nav.resetTo(AppScreen.Attract)
+    }
 
     LaunchedEffect(Unit) {
         catalogTransferVm.refreshAdbPending()
@@ -104,7 +131,12 @@ fun AppRoot(
     // could be authenticated while the navigator landed on Home — keep them
     // in sync by resetting auth when the user is on a public screen.
     LaunchedEffect(nav.current) {
-        val onPublic = nav.current is AppScreen.Home ||
+        // BookLocation is intentionally excluded: it is reachable from BOTH
+        // public screens and management (book list / editor / announcement
+        // editor). Logging out here would kick staff back to attract when they
+        // open a book's map, so it is not treated as a public-only screen.
+        val onPublic = nav.current is AppScreen.Attract ||
+            nav.current is AppScreen.Home ||
             nav.current is AppScreen.Search ||
             nav.current is AppScreen.PublicRequests ||
             nav.current is AppScreen.TechSupport ||
@@ -115,13 +147,59 @@ fun AppRoot(
         }
     }
 
+    // Power / side-button sleep wakes back to the attract screen (unless a
+    // system overlay like the file picker or an adb-import dialog is open).
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, session, adbPending) {
+        var wasStopped = false
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_STOP -> wasStopped = true
+                Lifecycle.Event.ON_RESUME -> {
+                    if (wasStopped &&
+                        !session.isExternalTaskActive() &&
+                        adbPending == null
+                    ) {
+                        returnToAttract()
+                    }
+                    wasStopped = false
+                }
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     val recentlyAdded by searchVm.recentlyAdded.collectAsStateWithLifecycle()
     val customColors by searchVm.customColors.collectAsStateWithLifecycle()
+    val booksById by searchVm.booksById.collectAsStateWithLifecycle()
     val activeAnnouncements by announcementsVm.active.collectAsStateWithLifecycle()
+    val app = LocalContext.current.applicationContext as LibraryApp
+    val scope = rememberCoroutineScope()
+    val openBookLocation: (String) -> Unit = { bookId ->
+        scope.launch {
+            withContext(Dispatchers.IO) {
+                app.bookLocationPressStore.recordPress(bookId)
+            }
+        }
+        nav.push(AppScreen.BookLocation(bookId))
+    }
 
     Surface(modifier = Modifier.fillMaxSize()) {
         NoSystemKeyboard {
+        PublicIdleScope(
+            enabled = nav.current.tracksPublicIdle() &&
+                nav.current !is AppScreen.Attract &&
+                adbPending == null,
+            onIdle = { returnToAttract() },
+        ) {
         when (val current = nav.current) {
+            AppScreen.Attract -> AttractScreen(
+                announcements = activeAnnouncements,
+                onOpenHome = { nav.resetTo(AppScreen.Home) },
+            )
+
             AppScreen.Home -> HomeScreen(
                 recentlyAdded = recentlyAdded,
                 customColors = customColors,
@@ -137,6 +215,7 @@ fun AppRoot(
             AppScreen.Search -> SearchScreen(
                 viewModel = searchVm,
                 onBack = { nav.pop() },
+                onOpenBookLocation = openBookLocation,
             )
 
             AppScreen.PublicRequests -> PublicRequestScreen(
@@ -152,11 +231,22 @@ fun AppRoot(
             is AppScreen.AnnouncementDetail -> AnnouncementDetailScreen(
                 viewModel = announcementsVm,
                 announcementId = current.announcementId,
+                booksById = booksById,
+                customColors = customColors,
                 onBack = { nav.pop() },
+                onOpenBookLocation = openBookLocation,
             )
 
             AppScreen.AllAnnouncements -> AllAnnouncementsScreen(
                 viewModel = announcementsVm,
+                booksById = booksById,
+                customColors = customColors,
+                onBack = { nav.pop() },
+                onOpenBookLocation = openBookLocation,
+            )
+
+            is AppScreen.BookLocation -> BookLocationScreen(
+                book = booksById[current.bookId],
                 onBack = { nav.pop() },
             )
 
@@ -167,11 +257,14 @@ fun AppRoot(
             )
 
             AppScreen.ManagementHome -> ManagementGuard(session = session, nav = nav) {
+                val outOfOrderCount by managementVm.outOfOrderCount.collectAsStateWithLifecycle()
                 ManagementDashboardScreen(
                     outOfOrderCount = outOfOrderCount,
                     onOpenBooks = { nav.push(AppScreen.BooksManagement) },
                     onOpenOutOfOrder = { nav.push(AppScreen.OutOfOrderBooks) },
                     onOpenHistory = { nav.push(AppScreen.ManagementHistory) },
+                    onOpenSearchHistory = { nav.push(AppScreen.ManagementSearchHistory) },
+                    onOpenPopularBooks = { nav.push(AppScreen.ManagementPopularBooks) },
                     onOpenRequests = { nav.push(AppScreen.ManagementRequests) },
                     onOpenAnnouncements = { nav.push(AppScreen.ManagementAnnouncements) },
                     onOpenShortcuts = { nav.push(AppScreen.ManagementShortcuts) },
@@ -179,7 +272,7 @@ fun AppRoot(
                     onOpenCatalogTransfer = { nav.push(AppScreen.ManagementCatalogTransfer) },
                     onLogout = {
                         session.logout()
-                        nav.resetTo(AppScreen.Home)
+                        nav.resetTo(AppScreen.Attract)
                     },
                 )
             }
@@ -191,7 +284,7 @@ fun AppRoot(
                     onBack = { nav.pop() },
                     onLogout = {
                         session.logout()
-                        nav.resetTo(AppScreen.Home)
+                        nav.resetTo(AppScreen.Attract)
                     },
                     onOpenSummary = { nav.push(AppScreen.ManagementImportSummary) },
                 )
@@ -203,7 +296,7 @@ fun AppRoot(
                     onBack = { nav.pop() },
                     onLogout = {
                         session.logout()
-                        nav.resetTo(AppScreen.Home)
+                        nav.resetTo(AppScreen.Attract)
                     },
                 )
             }
@@ -214,7 +307,7 @@ fun AppRoot(
                     onBack = { nav.pop() },
                     onLogout = {
                         session.logout()
-                        nav.resetTo(AppScreen.Home)
+                        nav.resetTo(AppScreen.Attract)
                     },
                 )
             }
@@ -225,7 +318,7 @@ fun AppRoot(
                     onBack = { nav.pop() },
                     onLogout = {
                         session.logout()
-                        nav.resetTo(AppScreen.Home)
+                        nav.resetTo(AppScreen.Attract)
                     },
                     onAdd = { nav.push(AppScreen.AnnouncementEditor) },
                 )
@@ -237,8 +330,9 @@ fun AppRoot(
                     onBack = { nav.pop() },
                     onLogout = {
                         session.logout()
-                        nav.resetTo(AppScreen.Home)
+                        nav.resetTo(AppScreen.Attract)
                     },
+                    onOpenBookLocation = openBookLocation,
                 )
             }
 
@@ -248,7 +342,7 @@ fun AppRoot(
                     onBack = { nav.pop() },
                     onLogout = {
                         session.logout()
-                        nav.resetTo(AppScreen.Home)
+                        nav.resetTo(AppScreen.Attract)
                     },
                 )
             }
@@ -259,7 +353,7 @@ fun AppRoot(
                     onBack = { nav.pop() },
                     onLogout = {
                         session.logout()
-                        nav.resetTo(AppScreen.Home)
+                        nav.resetTo(AppScreen.Attract)
                     },
                 )
             }
@@ -270,7 +364,29 @@ fun AppRoot(
                     onBack = { nav.pop() },
                     onLogout = {
                         session.logout()
-                        nav.resetTo(AppScreen.Home)
+                        nav.resetTo(AppScreen.Attract)
+                    },
+                )
+            }
+
+            AppScreen.ManagementSearchHistory -> ManagementGuard(session = session, nav = nav) {
+                SearchHistoryScreen(
+                    viewModel = searchHistoryVm,
+                    onBack = { nav.pop() },
+                    onLogout = {
+                        session.logout()
+                        nav.resetTo(AppScreen.Attract)
+                    },
+                )
+            }
+
+            AppScreen.ManagementPopularBooks -> ManagementGuard(session = session, nav = nav) {
+                PopularBooksScreen(
+                    viewModel = popularBooksVm,
+                    onBack = { nav.pop() },
+                    onLogout = {
+                        session.logout()
+                        nav.resetTo(AppScreen.Attract)
                     },
                 )
             }
@@ -281,9 +397,10 @@ fun AppRoot(
                     onBack = { nav.pop() },
                     onLogout = {
                         session.logout()
-                        nav.resetTo(AppScreen.Home)
+                        nav.resetTo(AppScreen.Attract)
                     },
                     onOpenEditor = { id -> nav.push(AppScreen.BookEditor(id)) },
+                    onOpenBookLocation = openBookLocation,
                 )
             }
 
@@ -293,9 +410,10 @@ fun AppRoot(
                     onBack = { nav.pop() },
                     onLogout = {
                         session.logout()
-                        nav.resetTo(AppScreen.Home)
+                        nav.resetTo(AppScreen.Attract)
                     },
                     onOpenEditor = { id -> nav.push(AppScreen.BookEditor(id)) },
+                    onOpenBookLocation = openBookLocation,
                 )
             }
 
@@ -306,10 +424,11 @@ fun AppRoot(
                     onBack = { nav.pop() },
                     onLogout = {
                         session.logout()
-                        nav.resetTo(AppScreen.Home)
+                        nav.resetTo(AppScreen.Attract)
                     },
                 )
             }
+        }
         }
         }
 
@@ -326,6 +445,24 @@ fun AppRoot(
     }
 }
 
+private fun AppScreen.tracksPublicIdle(): Boolean = when (this) {
+    AppScreen.ManagementHome,
+    AppScreen.BooksManagement,
+    AppScreen.OutOfOrderBooks,
+    AppScreen.ManagementHistory,
+    AppScreen.ManagementSearchHistory,
+    AppScreen.ManagementPopularBooks,
+    AppScreen.ManagementRequests,
+    AppScreen.ManagementAnnouncements,
+    AppScreen.AnnouncementEditor,
+    AppScreen.ManagementShortcuts,
+    AppScreen.ManagementTechSupport,
+    AppScreen.ManagementCatalogTransfer,
+    AppScreen.ManagementImportSummary,
+    is AppScreen.BookEditor -> false
+    else -> true
+}
+
 /**
  * Reusable wrapper that:
  *  - Forces management screens to redirect home if the session is dropped
@@ -339,13 +476,13 @@ private fun ManagementGuard(
     content: @Composable () -> Unit,
 ) {
     LaunchedEffect(session.isAuthenticated) {
-        if (!session.isAuthenticated) nav.resetTo(AppScreen.Home)
+        if (!session.isAuthenticated) nav.resetTo(AppScreen.Attract)
     }
     if (!session.isAuthenticated) return
 
     InactivityScope(
         session = session,
-        onAutoLogout = { nav.resetTo(AppScreen.Home) },
+        onAutoLogout = { nav.resetTo(AppScreen.Attract) },
     ) {
         content()
     }

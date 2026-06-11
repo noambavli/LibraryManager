@@ -74,6 +74,7 @@ fun AnnouncementEditorScreen(
     viewModel: AnnouncementsManagementViewModel,
     onBack: () -> Unit,
     onLogout: () -> Unit,
+    onOpenBookLocation: (String) -> Unit = {},
 ) {
     val catalog by viewModel.catalog.collectAsStateWithLifecycle()
     val booksById by viewModel.booksById.collectAsStateWithLifecycle()
@@ -164,6 +165,7 @@ fun AnnouncementEditorScreen(
                         customColors = customColors,
                         onAdd = { pickingBooks = true },
                         onRemove = { id -> linkedIds = linkedIds - id },
+                        onOpenBookLocation = onOpenBookLocation,
                     )
                 }
 
@@ -337,6 +339,7 @@ private fun LinkedBooksEditor(
     customColors: List<com.mh.librarymanager.domain.CustomColor>,
     onAdd: () -> Unit,
     onRemove: (String) -> Unit,
+    onOpenBookLocation: (String) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -356,6 +359,7 @@ private fun LinkedBooksEditor(
                             parentBook = book.linkedParent(booksById),
                             customColors = customColors,
                             modifier = Modifier.weight(1f),
+                            onOpenLocation = { onOpenBookLocation(book.id) },
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Box(

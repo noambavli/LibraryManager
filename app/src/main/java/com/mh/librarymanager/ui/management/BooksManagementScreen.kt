@@ -68,6 +68,7 @@ fun BooksManagementScreen(
     onBack: () -> Unit,
     onLogout: () -> Unit,
     onOpenEditor: (bookId: String?) -> Unit,
+    onOpenBookLocation: (String) -> Unit,
 ) {
     val fieldValues by viewModel.fieldValues.collectAsStateWithLifecycle()
     val focusedField by viewModel.focusedField.collectAsStateWithLifecycle()
@@ -109,6 +110,7 @@ fun BooksManagementScreen(
                 customColors = customColors,
                 booksById = booksById,
                 onOpenEditor = onOpenEditor,
+                onOpenBookLocation = onOpenBookLocation,
             )
             }
         }
@@ -223,6 +225,7 @@ private fun ResultsPane(
     customColors: List<CustomColor>,
     booksById: Map<String, Book>,
     onOpenEditor: (bookId: String?) -> Unit,
+    onOpenBookLocation: (String) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     val listState = rememberLazyListState()
@@ -266,6 +269,7 @@ private fun ResultsPane(
                         customColors = customColors,
                         onEdit = { onOpenEditor(book.id) },
                         onDelete = { deleteCandidate = book },
+                        onOpenBookLocation = { onOpenBookLocation(book.id) },
                     )
                 }
             }
@@ -291,6 +295,7 @@ private fun ManagementBookRow(
     customColors: List<CustomColor>,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onOpenBookLocation: () -> Unit,
 ) {
     Column {
         BookCard(
@@ -298,6 +303,7 @@ private fun ManagementBookRow(
             parentBook = parentBook,
             customColors = customColors,
             onClick = onEdit,
+            onOpenLocation = onOpenBookLocation,
             trailing = {
                 Text(
                     text = book.bookNumber.ifBlank { "—" },

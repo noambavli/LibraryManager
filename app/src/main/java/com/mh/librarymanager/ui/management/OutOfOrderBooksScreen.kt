@@ -52,6 +52,7 @@ fun OutOfOrderBooksScreen(
     onBack: () -> Unit,
     onLogout: () -> Unit,
     onOpenEditor: (bookId: String) -> Unit,
+    onOpenBookLocation: (String) -> Unit,
 ) {
     val allEntries by viewModel.outOfOrderBooks.collectAsStateWithLifecycle()
     val entries by viewModel.filteredOutOfOrderBooks.collectAsStateWithLifecycle()
@@ -107,6 +108,7 @@ fun OutOfOrderBooksScreen(
                         parentBook = entry.book.linkedParent(booksById),
                         customColors = customColors,
                         onEdit = { onOpenEditor(entry.book.id) },
+                        onOpenBookLocation = { onOpenBookLocation(entry.book.id) },
                     )
                 }
             }
@@ -330,6 +332,7 @@ private fun OutOfOrderRow(
     parentBook: Book?,
     customColors: List<CustomColor>,
     onEdit: () -> Unit,
+    onOpenBookLocation: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     Surface(
@@ -345,6 +348,7 @@ private fun OutOfOrderRow(
                 parentBook = parentBook,
                 customColors = customColors,
                 onClick = onEdit,
+                onOpenLocation = onOpenBookLocation,
                 trailing = {
                     FieldSnapshot(book = entry.book)
                 },
