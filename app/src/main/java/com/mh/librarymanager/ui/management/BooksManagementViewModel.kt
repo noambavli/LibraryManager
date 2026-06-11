@@ -56,26 +56,26 @@ class BooksManagementViewModel(app: Application) : AndroidViewModel(app) {
     val focusedField: StateFlow<SearchField> = _focusedField.asStateFlow()
 
     val customColors: StateFlow<List<CustomColor>> = container.repository.observeColors()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-
-    private val engine: StateFlow<SearchEngine> = container.repository.observeAll()
-        .map { books -> SearchEngine(books) }
-        .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.Eagerly, SearchEngine(emptyList()))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val catalog: StateFlow<List<Book>> = container.repository.observeAll()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val engine: StateFlow<SearchEngine> = catalog
+        .map { books -> SearchEngine(books) }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchEngine(emptyList()))
 
     val parentNameLookup: StateFlow<Map<String, String>> = catalog
         .map { books -> books.associate { it.id to it.name } }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     val booksById: StateFlow<Map<String, Book>> = catalog
         .map { books -> books.associateBy { it.id } }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     val catalogSize: StateFlow<Int> = engine.map { it.size }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     private val _outOfOrderFilter = MutableStateFlow(OutOfOrderFilter.ALL)
     val outOfOrderFilter: StateFlow<OutOfOrderFilter> = _outOfOrderFilter.asStateFlow()
@@ -90,7 +90,7 @@ class BooksManagementViewModel(app: Application) : AndroidViewModel(app) {
 
     val outOfOrderCount: StateFlow<Int> = outOfOrderBooks
         .map { it.size }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     val filteredOutOfOrderBooks: StateFlow<List<OutOfOrderBook>> = combine(
         outOfOrderBooks,
@@ -98,15 +98,15 @@ class BooksManagementViewModel(app: Application) : AndroidViewModel(app) {
         _outOfOrderIssueFilter,
     ) { entries, filter, issueFilter ->
         BookOrderIssues.filterEntries(entries, filter, issueFilter)
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val outOfOrderFilterCounts: StateFlow<Map<OutOfOrderFilter, Int>> = outOfOrderBooks
         .map { BookOrderIssues.countByFilter(it) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     val outOfOrderIssueCounts: StateFlow<Map<BookOrderIssue, Int>> = outOfOrderBooks
         .map { BookOrderIssues.countByIssue(it) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     fun setOutOfOrderFilter(filter: OutOfOrderFilter) {
         _outOfOrderFilter.value = filter

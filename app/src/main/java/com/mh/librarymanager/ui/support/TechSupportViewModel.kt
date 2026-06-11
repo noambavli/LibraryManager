@@ -73,6 +73,7 @@ class TechSupportViewModel(app: Application) : AndroidViewModel(app) {
         return true
     }
 
+    /** Wipes the form so the next kiosk visitor starts with blank fields. */
     fun reset() {
         _fieldValues.value = TechSupportField.entries.associateWith { TextFieldValue("") }
         _focusedField.value = TechSupportField.NAME

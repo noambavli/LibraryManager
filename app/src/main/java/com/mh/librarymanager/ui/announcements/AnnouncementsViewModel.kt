@@ -5,7 +5,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mh.librarymanager.LibraryApp
 import com.mh.librarymanager.domain.Announcement
-import com.mh.librarymanager.domain.Book
 import com.mh.librarymanager.domain.CustomColor
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -34,15 +33,6 @@ class AnnouncementsViewModel(app: Application) : AndroidViewModel(app) {
             val now = System.currentTimeMillis()
             list.filter { it.isActive(now) }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-
-    val booksById: StateFlow<Map<String, Book>> =
-        container.repository.observeAll()
-            .map { books -> books.associateBy { it.id } }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
-
-    val customColors: StateFlow<List<CustomColor>> =
-        container.repository.observeColors()
-            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun findById(id: String): Announcement? = all.value.firstOrNull { it.id == id }
 }

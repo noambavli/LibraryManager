@@ -28,11 +28,11 @@ class HistoryViewModel(app: Application) : AndroidViewModel(app) {
 
     private val audit: StateFlow<List<AuditEvent>> =
         container.repository.observeAudit()
-            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val catalog: StateFlow<List<Book>> =
         container.repository.observeAll()
-            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val rows: StateFlow<List<HistoryRow>> = combine(audit, catalog) { events, books ->
         val byId = books.associateBy { it.id }
@@ -40,7 +40,7 @@ class HistoryViewModel(app: Application) : AndroidViewModel(app) {
             .asReversed() // newest first
             .map { ev -> HistoryRow(event = ev, restore = restoreStateFor(ev, byId)) }
     }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     suspend fun restoreDeleted(event: AuditEvent.Deleted): RestoreOutcome =
         withContext(Dispatchers.IO) {
