@@ -47,6 +47,7 @@ fun BookCard(
     customColors: List<CustomColor>,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    onOpenLocation: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -109,7 +110,11 @@ fun BookCard(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            BookChipsRow(book = book, customColors = customColors)
+            BookChipsRow(
+                book = book,
+                customColors = customColors,
+                onOpenLocation = onOpenLocation,
+            )
         }
     }
 }
@@ -276,6 +281,7 @@ private fun ParentMetaChip(
 private fun BookChipsRow(
     book: Book,
     customColors: List<CustomColor>,
+    onOpenLocation: (() -> Unit)?,
 ) {
     val cs = MaterialTheme.colorScheme
     Row(
@@ -323,6 +329,28 @@ private fun BookChipsRow(
                 border = BorderStroke(1.dp, Color(0xFF9E9E9E)),
             )
         }
+        if (onOpenLocation != null) {
+            BookLocationMapButton(onClick = onOpenLocation)
+        }
+    }
+}
+
+@Composable
+private fun BookLocationMapButton(onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        color = AppColors.Accent.copy(alpha = 0.12f),
+        contentColor = AppColors.Accent,
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, AppColors.Accent.copy(alpha = 0.45f)),
+    ) {
+        Text(
+            text = stringResource(R.string.book_location_map_button),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
     }
 }
 
