@@ -17,6 +17,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.InputStream
+import java.util.UUID
 
 /**
  * Reads `.civ` catalogs produced by the desktop LibraryTool and **merges** new
@@ -87,6 +88,10 @@ class CivCatalogIO(
         private const val PREF_LAST_BATCH = "last_batch"
         private const val PREF_LAST_ADDED_BOOKS = "last_added_books"
         const val MAX_STORED_ADDED_BOOKS = 150
+
+        private const val HISTORY_FILE_NAME = "civ_import_log.json"
+        private const val HISTORY_FORMAT_VERSION = 1
+        private const val MAX_HISTORY_ENTRIES = 500
     }
 
     data class AddedBookLine(
@@ -95,8 +100,8 @@ class CivCatalogIO(
     )
 
     data class ImportSummaryDetail(
+        val id: String,
         val batchNumber: Int,
-        val fileLabel: String,
         val sourceFile: String,
         val at: Long,
         val added: Int,
@@ -104,9 +109,24 @@ class CivCatalogIO(
         val totalAfter: Int,
         val addedBooks: List<AddedBookLine>,
     ) {
+        val fileLabel: String get() =
+            if (batchNumber > 0) batchNumber.toString() else sourceFile.ifBlank { "?" }
         val hasData: Boolean get() = at > 0L
         val displayLimit: Int get() = addedBooks.size.coerceAtMost(100)
         val hasMoreBooks: Boolean get() = added > displayLimit
+
+        companion object {
+            val EMPTY = ImportSummaryDetail(
+                id = "",
+                batchNumber = 0,
+                sourceFile = "",
+                at = 0L,
+                added = 0,
+                skipped = 0,
+                totalAfter = 0,
+                addedBooks = emptyList(),
+            )
+        }
     }
 
     sealed interface PreviewOutcome {
@@ -150,35 +170,47 @@ class CivCatalogIO(
     private val prefs by lazy {
         context.getSharedPreferences("civ_import_history", Context.MODE_PRIVATE)
     }
+    private val historyFile: File by lazy { File(context.filesDir, HISTORY_FILE_NAME) }
     private val mutex = Mutex()
 
-    fun importSummary(): ImportSummaryDetail {
-        val booksJson = prefs.getString(PREF_LAST_ADDED_BOOKS, "[]") ?: "[]"
-        val books = parseAddedBooksJson(booksJson)
-        val batch = prefs.getInt(PREF_LAST_BATCH, 0)
-        val source = prefs.getString(PREF_LAST_SOURCE, "").orEmpty()
-        val label = if (batch > 0) batch.toString() else source.ifBlank { "?" }
-        return ImportSummaryDetail(
-            batchNumber = batch,
-            fileLabel = label,
-            sourceFile = source,
-            at = prefs.getLong(PREF_LAST_AT, 0L),
-            added = prefs.getInt(PREF_LAST_ADDED, 0),
-            skipped = prefs.getInt(PREF_LAST_SKIPPED, 0),
-            totalAfter = prefs.getInt(PREF_LAST_TOTAL, 0),
-            addedBooks = books,
-        )
+    @Volatile
+    private var historyCache: List<ImportSummaryDetail>? = null
+
+    /** All recorded imports, newest first. */
+    fun importHistory(): List<ImportSummaryDetail> {
+        ensureHistoryLoaded()
+        return historyCache ?: emptyList()
     }
 
-    fun lastImportSummary(): LastImportSummary = LastImportSummary(
-        at = prefs.getLong(PREF_LAST_AT, 0L),
-        added = prefs.getInt(PREF_LAST_ADDED, 0),
-        skipped = prefs.getInt(PREF_LAST_SKIPPED, 0),
-        totalAfter = prefs.getInt(PREF_LAST_TOTAL, 0),
-        tool = prefs.getString(PREF_LAST_TOOL, "").orEmpty(),
-        toolVersion = prefs.getString(PREF_LAST_TOOL_VER, "").orEmpty(),
-        sourceFile = prefs.getString(PREF_LAST_SOURCE, "").orEmpty(),
-    )
+    fun importSummary(): ImportSummaryDetail = importHistory().firstOrNull() ?: ImportSummaryDetail.EMPTY
+
+    fun importSummaryById(id: String): ImportSummaryDetail? =
+        importHistory().firstOrNull { it.id == id }
+
+    fun lastImportSummary(): LastImportSummary {
+        val latest = importHistory().firstOrNull()
+        return if (latest == null) {
+            LastImportSummary(
+                at = 0L,
+                added = 0,
+                skipped = 0,
+                totalAfter = 0,
+                tool = "",
+                toolVersion = "",
+                sourceFile = "",
+            )
+        } else {
+            LastImportSummary(
+                at = latest.at,
+                added = latest.added,
+                skipped = latest.skipped,
+                totalAfter = latest.totalAfter,
+                tool = "",
+                toolVersion = "",
+                sourceFile = latest.sourceFile,
+            )
+        }
+    }
 
     data class LastImportSummary(
         val at: Long,
@@ -263,13 +295,15 @@ class CivCatalogIO(
                     e.message ?: "Could not read pending import",
                 )
             }
-            try {
-                pendingFile.delete()
-            } catch (_: Exception) {
-            }
             deleteIncomingFiles()
             val result = importFromTextLocked(text.trim())
             if (result is ImportResult.Ok) {
+                // Drop the staged copy only after a successful merge, so a failed
+                // import stays retryable instead of vanishing.
+                try {
+                    pendingFile.delete()
+                } catch (_: Exception) {
+                }
                 publishToDownloads(text.trim(), result.meta)
             }
             result
@@ -486,14 +520,19 @@ class CivCatalogIO(
 
     private suspend fun commitMerge(books: List<Book>, meta: CivExportMeta?): ImportResult {
         return try {
+            // Snapshot + back up BEFORE the destructive merge so a crash (or a
+            // failed backup write) can never leave a mutated catalog without a
+            // restore point. If the backup write fails we throw here and the
+            // catalog is still untouched.
+            val previous = repository.snapshotForBackup()
+            writeBackup(previous)
             val outcome = repository.mergeImport(books)
             val merge = outcome.result
-            if (merge.added > 0) {
-                writeBackup(outcome.previous)
-                recordImportHistory(merge, meta, merge.addedBooks)
-            } else {
+            if (merge.added == 0) {
+                // Nothing actually changed — the pre-written backup is redundant.
                 clearImportBackup()
             }
+            recordImportHistory(merge, meta, merge.addedBooks)
             ImportResult.Ok(
                 addedCount = merge.added,
                 skippedCount = merge.skipped,
@@ -513,30 +552,125 @@ class CivCatalogIO(
         addedBooks: List<Book>,
     ) {
         val batch = meta?.batchNumber ?: 0
-        val booksJson = encodeAddedBooks(addedBooks)
-        prefs.edit()
-            .putLong(PREF_LAST_AT, System.currentTimeMillis())
-            .putInt(PREF_LAST_ADDED, merge.added)
-            .putInt(PREF_LAST_SKIPPED, merge.skipped)
-            .putInt(PREF_LAST_TOTAL, merge.totalAfter)
-            .putInt(PREF_LAST_BATCH, batch)
-            .putString(PREF_LAST_TOOL, meta?.tool.orEmpty())
-            .putString(PREF_LAST_TOOL_VER, meta?.toolVersion.orEmpty())
-            .putString(PREF_LAST_SOURCE, meta?.sourceFile.orEmpty())
-            .putString(PREF_LAST_ADDED_BOOKS, booksJson)
-            .apply()
+        val entry = ImportSummaryDetail(
+            id = UUID.randomUUID().toString(),
+            batchNumber = batch,
+            sourceFile = meta?.sourceFile.orEmpty(),
+            at = System.currentTimeMillis(),
+            added = merge.added,
+            skipped = merge.skipped,
+            totalAfter = merge.totalAfter,
+            addedBooks = addedBooks.take(MAX_STORED_ADDED_BOOKS).map { AddedBookLine(it.name, it.writer) },
+        )
+        ensureHistoryLoaded()
+        val updated = listOf(entry) + (historyCache ?: emptyList())
+        val trimmed = updated.take(MAX_HISTORY_ENTRIES)
+        writeHistoryFile(trimmed)
+        historyCache = trimmed
     }
 
-    private fun encodeAddedBooks(books: List<Book>): String {
+    private fun ensureHistoryLoaded() {
+        if (historyCache != null) return
+        synchronized(this) {
+            if (historyCache != null) return
+            var entries = readHistoryFile()
+            if (entries.isEmpty()) {
+                migrateLegacyPrefs()?.let { legacy ->
+                    entries = listOf(legacy)
+                    writeHistoryFile(entries)
+                    prefs.edit().clear().apply()
+                }
+            }
+            historyCache = entries
+        }
+    }
+
+    private fun migrateLegacyPrefs(): ImportSummaryDetail? {
+        val at = prefs.getLong(PREF_LAST_AT, 0L)
+        if (at <= 0L) return null
+        val booksJson = prefs.getString(PREF_LAST_ADDED_BOOKS, "[]") ?: "[]"
+        return ImportSummaryDetail(
+            id = UUID.randomUUID().toString(),
+            batchNumber = prefs.getInt(PREF_LAST_BATCH, 0),
+            sourceFile = prefs.getString(PREF_LAST_SOURCE, "").orEmpty(),
+            at = at,
+            added = prefs.getInt(PREF_LAST_ADDED, 0),
+            skipped = prefs.getInt(PREF_LAST_SKIPPED, 0),
+            totalAfter = prefs.getInt(PREF_LAST_TOTAL, 0),
+            addedBooks = parseAddedBooksJson(booksJson),
+        )
+    }
+
+    private fun readHistoryFile(): List<ImportSummaryDetail> {
+        if (!historyFile.exists()) return emptyList()
+        return try {
+            val text = historyFile.readText(Charsets.UTF_8)
+            if (text.isBlank()) return emptyList()
+            val root = JSONObject(text)
+            if (root.optInt("version", 0) < HISTORY_FORMAT_VERSION) return emptyList()
+            val arr = root.optJSONArray("entries") ?: return emptyList()
+            buildList {
+                for (i in 0 until arr.length()) {
+                    parseHistoryEntry(arr.optJSONObject(i) ?: continue)?.let { add(it) }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to read import history", e)
+            emptyList()
+        }
+    }
+
+    private fun parseHistoryEntry(o: JSONObject): ImportSummaryDetail? {
+        val at = o.optLong("at", 0L)
+        if (at <= 0L) return null
+        return ImportSummaryDetail(
+            id = o.optString("id").ifBlank { UUID.randomUUID().toString() },
+            batchNumber = o.optInt("batchNumber", 0),
+            sourceFile = o.optString("sourceFile", ""),
+            at = at,
+            added = o.optInt("added", 0),
+            skipped = o.optInt("skipped", 0),
+            totalAfter = o.optInt("totalAfter", 0),
+            addedBooks = parseAddedBooksJson(o.optJSONArray("addedBooks")?.toString() ?: "[]"),
+        )
+    }
+
+    private fun writeHistoryFile(entries: List<ImportSummaryDetail>) {
         val arr = JSONArray()
-        for (b in books.take(MAX_STORED_ADDED_BOOKS)) {
+        for (entry in entries) {
+            val booksArr = JSONArray()
+            for (book in entry.addedBooks) {
+                booksArr.put(
+                    JSONObject()
+                        .put("name", book.name)
+                        .put("writer", book.writer),
+                )
+            }
             arr.put(
                 JSONObject()
-                    .put("name", b.name)
-                    .put("writer", b.writer),
+                    .put("id", entry.id)
+                    .put("batchNumber", entry.batchNumber)
+                    .put("sourceFile", entry.sourceFile)
+                    .put("at", entry.at)
+                    .put("added", entry.added)
+                    .put("skipped", entry.skipped)
+                    .put("totalAfter", entry.totalAfter)
+                    .put("addedBooks", booksArr),
             )
         }
-        return arr.toString()
+        val root = JSONObject()
+            .put("version", HISTORY_FORMAT_VERSION)
+            .put("entries", arr)
+        atomicWriteText(historyFile, root.toString())
+    }
+
+    private fun removeLastHistoryEntry() {
+        ensureHistoryLoaded()
+        val current = historyCache ?: emptyList()
+        if (current.isEmpty()) return
+        val updated = current.drop(1)
+        writeHistoryFile(updated)
+        historyCache = updated
     }
 
     private fun parseAddedBooksJson(json: String): List<AddedBookLine> {
@@ -639,13 +773,9 @@ class CivCatalogIO(
             // Clear the now-redundant backup. Best effort; if the delete fails,
             // the worst case is the Undo button stays visible.
             try { backupFile.delete() } catch (_: Exception) { }
-            clearImportHistoryPrefs()
+            removeLastHistoryEntry()
             books.size
         }
-    }
-
-    private fun clearImportHistoryPrefs() {
-        prefs.edit().clear().apply()
     }
 
     private fun readBoundedText(input: InputStream): String {

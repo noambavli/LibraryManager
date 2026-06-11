@@ -51,6 +51,7 @@ fun CatalogTransferScreen(
     val status by viewModel.status.collectAsStateWithLifecycle()
     val dashboard by viewModel.dashboard.collectAsStateWithLifecycle()
     val preview by viewModel.preview.collectAsStateWithLifecycle()
+    val importHistory by viewModel.importHistory.collectAsStateWithLifecycle()
 
     var pendingUri by remember { mutableStateOf<Uri?>(null) }
     var showUndoConfirm by remember { mutableStateOf(false) }
@@ -59,6 +60,7 @@ fun CatalogTransferScreen(
     var showRestoreWipeConfirm by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        viewModel.refreshSummary()
         viewModel.openSummary.collect {
             viewModel.refreshSummary()
             onOpenSummary()
@@ -112,6 +114,26 @@ fun CatalogTransferScreen(
                     },
                 )
 
+                if (importHistory.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Text(
+                        text = stringResource(R.string.catalog_transfer_import_history),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    importHistory.forEach { entry ->
+                        ImportHistoryCompactRow(
+                            summary = entry,
+                            onClick = {
+                                viewModel.selectImport(entry.id)
+                                onOpenSummary()
+                            },
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
@@ -149,7 +171,10 @@ fun CatalogTransferScreen(
 
                 if (dashboard.hasSummary) {
                     OutlinedButton(
-                        onClick = onOpenSummary,
+                        onClick = {
+                            viewModel.selectImport(null)
+                            onOpenSummary()
+                        },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                     ) {
                         Text(stringResource(R.string.catalog_transfer_view_summary))
@@ -341,6 +366,51 @@ fun CatalogTransferScreen(
     }
     }
 }
+
+@Composable
+private fun ImportHistoryCompactRow(
+    summary: CivCatalogIO.ImportSummaryDetail,
+    onClick: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        color = cs.surface,
+        shape = RoundedCornerShape(12.dp),
+        shadowElevation = 1.dp,
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+            Text(
+                text = stringResource(
+                    R.string.catalog_transfer_import_history_item,
+                    summary.fileLabel,
+                    summary.added,
+                    formatImportWhen(summary.at),
+                ),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+            )
+            if (summary.sourceFile.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = summary.sourceFile,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = cs.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+private val IMPORT_WHEN_FMT: java.text.SimpleDateFormat by lazy {
+    java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.forLanguageTag("he")).apply {
+        timeZone = java.util.TimeZone.getDefault()
+    }
+}
+
+private fun formatImportWhen(ms: Long): String =
+    if (ms > 0L) IMPORT_WHEN_FMT.format(java.util.Date(ms)) else "—"
 
 @Composable
 private fun SimpleInfoCard(bookCount: Int, lastFile: String) {

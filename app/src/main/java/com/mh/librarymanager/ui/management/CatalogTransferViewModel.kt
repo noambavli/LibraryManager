@@ -59,6 +59,22 @@ class CatalogTransferViewModel(app: Application) : AndroidViewModel(app) {
     private val _importSummary = MutableStateFlow(io.importSummary())
     val importSummary: StateFlow<CivCatalogIO.ImportSummaryDetail> = _importSummary.asStateFlow()
 
+    private val _importHistory = MutableStateFlow(io.importHistory())
+    val importHistory: StateFlow<List<CivCatalogIO.ImportSummaryDetail>> = _importHistory.asStateFlow()
+
+    private val _selectedImportId = MutableStateFlow<String?>(null)
+    val selectedImportId: StateFlow<String?> = _selectedImportId.asStateFlow()
+
+    val selectedImport: StateFlow<CivCatalogIO.ImportSummaryDetail?> = combine(
+        _importHistory,
+        _selectedImportId,
+    ) { history, id ->
+        when {
+            id != null -> history.firstOrNull { it.id == id }
+            else -> history.firstOrNull()
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), io.importSummary().takeIf { it.hasData })
+
     private val _preview = MutableStateFlow<CivCatalogIO.ImportPreview?>(null)
     val preview: StateFlow<CivCatalogIO.ImportPreview?> = _preview.asStateFlow()
 
@@ -76,24 +92,24 @@ class CatalogTransferViewModel(app: Application) : AndroidViewModel(app) {
         .observeAll()
         .combine(_hasBackup) { books, backup -> books.size to backup }
         .combine(_hasWipeBackup) { (count, backup), wipeBackup -> Triple(count, backup, wipeBackup) }
-        .combine(_importSummary) { (count, backup, wipeBackup), summary ->
+        .combine(_importHistory) { (count, backup, wipeBackup), history ->
             DashboardState(
                 bookCount = count,
                 lastImport = io.lastImportSummary(),
                 hasBackup = backup,
                 hasWipeBackup = wipeBackup,
-                hasSummary = summary.hasData,
+                hasSummary = history.isNotEmpty(),
             )
         }
         .stateIn(
             viewModelScope,
-            SharingStarted.Eagerly,
+            SharingStarted.WhileSubscribed(5_000),
             DashboardState(
                 0,
                 io.lastImportSummary(),
                 io.hasBackup(),
                 io.hasWipeBackup(),
-                io.importSummary().hasData,
+                io.importHistory().isNotEmpty(),
             ),
         )
 
@@ -213,7 +229,12 @@ class CatalogTransferViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun refreshSummary() {
+        _importHistory.value = io.importHistory()
         _importSummary.value = io.importSummary()
+    }
+
+    fun selectImport(id: String?) {
+        _selectedImportId.value = id
     }
 
     private fun applyResult(result: CivCatalogIO.ImportResult) {
@@ -268,6 +289,7 @@ class CatalogTransferViewModel(app: Application) : AndroidViewModel(app) {
     private fun refreshMeta() {
         _hasBackup.value = io.hasBackup()
         _hasWipeBackup.value = io.hasWipeBackup()
+        _importHistory.value = io.importHistory()
         _importSummary.value = io.importSummary()
         _preview.value = null
     }
