@@ -192,17 +192,19 @@ fun BookEditorScreen(
     }
 
     // When the catalog finally produces an entry for the bookId we're editing,
-    // refresh the form with the real persisted data — but only once, while the
-    // form still matches the placeholder state.
+    // refresh the form with the real persisted data. We hydrate only while the
+    // form is still pristine (untouched seed), so a late catalog load can never
+    // clobber edits the user already started. Comparing against the placeholder
+    // seed (form == baseline) is reliable; the old field-emptiness check failed
+    // because the seed pre-fills bookNumber via suggestNextBookNumber().
     LaunchedEffect(catalog, bookId) {
         if (bookId == null) return@LaunchedEffect
         val persisted = catalog.firstOrNull { it.id == bookId } ?: return@LaunchedEffect
-        if (form.name.isEmpty() && form.writer.isEmpty() && form.bookNumber.isEmpty() &&
-            form.notes.isEmpty() && form.color.isEmpty()
-        ) {
-            form = persisted.toForm()
-            baseline = persisted.toForm()
-            fieldValues = initialFieldValues(form)
+        val persistedForm = persisted.toForm()
+        if (form == baseline && form != persistedForm) {
+            form = persistedForm
+            baseline = persistedForm
+            fieldValues = initialFieldValues(persistedForm)
         }
     }
 

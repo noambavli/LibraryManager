@@ -3,6 +3,7 @@
     <string name="app_logo_content_description">לוגו ספריית בית המדרש</string>
 
     <!-- Home -->
+    <string name="attract_swipe_up">החליקו למעלה לפתיחה</string>
     <string name="home_title">ספריית בית המדרש</string>
     <string name="home_subtitle">בחר/י פעולה</string>
     <string name="home_search">חיפוש ספרים</string>
@@ -16,13 +17,13 @@
 
     <!-- Technical support (public) -->
     <string name="tech_support_public_title">תמיכה טכנית</string>
-    <string name="tech_support_public_subtitle">תאר/י את הבעיה ונטפל בה בהקדם.</string>
+    <string name="tech_support_public_subtitle">תאר/י את הבעיה ושלח/י את הדיווח.</string>
     <string name="tech_support_field_name">השם שלך</string>
     <string name="tech_support_field_problem">תיאור הבעיה</string>
     <string name="tech_support_send">שליחה</string>
     <string name="tech_support_problem_required">יש לתאר את הבעיה כדי לשלוח.</string>
     <string name="tech_support_sent_title">הדיווח נשלח!</string>
-    <string name="tech_support_sent_body">תודה רבה. נבדוק את הבעיה בהקדם.</string>
+    <string name="tech_support_sent_body">תודה רבה. הדיווח התקבל.</string>
     <string name="tech_support_send_another">שליחת דיווח נוסף</string>
     <string name="tech_support_anonymous_label">אנונימי</string>
 
@@ -64,6 +65,9 @@
     <string name="book_place_beis_midrash">בית מדרש</string>
     <string name="book_place_other">אחר</string>
     <string name="book_place_unspecified">לא צוין</string>
+    <string name="book_location_map_button">מפה</string>
+    <string name="book_location_title">מיקום הספר</string>
+    <string name="book_location_missing">הספר לא נמצא.</string>
     <string name="book_state_available">זמין</string>
     <string name="book_state_unavailable">לא זמין</string>
     <string name="book_state_in_repair">בתיקון</string>
@@ -163,7 +167,9 @@
     <string name="catalog_transfer_restore_wipe">שחזור אחרי מחיקת הכל</string>
     <string name="catalog_transfer_restore_wipe_body">להחזיר את הקטלוג כפי שהיה לפני המחיקה?</string>
     <string name="catalog_transfer_pick_file">בחר קובץ ידנית (1.civ, 2.civ…)</string>
-    <string name="catalog_transfer_view_summary">צפייה בסיכום הייבוא האחרון</string>
+    <string name="catalog_transfer_view_summary">היסטוריית סנכרון</string>
+    <string name="catalog_transfer_import_history">היסטוריית סנכרון</string>
+    <string name="catalog_transfer_import_history_item">קובץ %1$s · נוספו %2$d · %3$s</string>
     <string name="catalog_transfer_chosen_file">בחרתם: קובץ %1$s</string>
     <string name="catalog_transfer_undo">שחזור לפני הסנכרון האחרון</string>
     <string name="catalog_transfer_undo_body">השחזור יחזיר את הקטלוג כפי שהיה לפני הסנכרון האחרון. להמשיך?</string>
@@ -181,8 +187,8 @@
     <string name="catalog_transfer_confirm_ok">הוסף</string>
 
     <!-- Import summary screen -->
-    <string name="import_summary_title">סיכום סנכרון</string>
-    <string name="import_summary_empty">אין עדיין סיכום ייבוא.</string>
+    <string name="import_summary_title">היסטוריית סנכרון</string>
+    <string name="import_summary_empty">אין עדיין סנכרונים מתועדים.</string>
     <string name="import_summary_back_sync">חזרה לסנכרון</string>
     <string name="import_summary_file_chosen">בחרתם: קובץ %1$s</string>
     <string name="import_summary_excel_source">מקור באקסל: %1$s</string>
@@ -229,7 +235,7 @@
 
     <!-- Public requests -->
     <string name="requests_public_title">בקשת ספר</string>
-    <string name="requests_public_subtitle">מלאו את הפרטים ונטפל בבקשה בהקדם.</string>
+    <string name="requests_public_subtitle">מלאו את הפרטים ושלחו את הבקשה.</string>
     <string name="request_field_name">השם שלך</string>
     <string name="request_field_book">שם הספר</string>
     <string name="request_field_details">פרטים נוספים</string>
@@ -238,7 +244,7 @@
     <string name="request_send">שליחה</string>
     <string name="request_book_required">יש להזין שם ספר כדי לשלוח.</string>
     <string name="request_sent_title">הבקשה נשלחה!</string>
-    <string name="request_sent_body">תודה רבה. נטפל בבקשה בהקדם.</string>
+    <string name="request_sent_body">תודה רבה. הבקשה התקבלה.</string>
     <string name="request_send_another">שליחת בקשה נוספת</string>
 
     <!-- Requests management -->
@@ -259,6 +265,27 @@
     <!-- History -->
     <string name="management_history">היסטוריית שינויים</string>
     <string name="management_history_subtitle">תצוגה ושחזור של הוספות, עדכונים ומחיקות</string>
+    <string name="management_search_history">היסטוריית חיפושים</string>
+    <string name="management_search_history_subtitle">חיפושים שבוצעו במסך הציבורי (6 חודשים)</string>
+    <string name="search_history_title">היסטוריית חיפושים</string>
+    <string name="search_history_empty">אין עדיין חיפושים מתועדים.</string>
+    <string name="search_history_privacy_notice">לשמירה על פרטיות המבקרים, החיפושים בכל יום מוצגים בסדר אקראי — לא לפי סדר ביצוע. חיפוש שבוצע לפני דקות ספורות עשוי להופיע בכל מקום ברשימת אותו יום.</string>
+    <string name="search_history_results_count">%1$d תוצאות</string>
+    <string name="search_history_confirm_delete">למחוק חיפוש זה מההיסטוריה?</string>
+    <string name="search_history_tab_daily">היסטוריה יומית</string>
+    <string name="search_history_tab_popular">חיפושים פופולריים</string>
+    <string name="search_popular_empty">אין עדיין מספיק נתונים לדירוג.</string>
+    <string name="search_popular_period_notice">דירוג החיפושים הפופולריים מבוסס על כל החיפושים מהשישה חודשים האחרונים.</string>
+    <string name="search_popular_search_count">%1$d חיפושים</string>
+    <string name="search_popular_rank">#%1$d</string>
+    <string name="management_popular_books">ספרים פופולריים</string>
+    <string name="management_popular_books_subtitle">לפי לחיצות על כפתור מפה (6 חודשים)</string>
+    <string name="popular_books_title">ספרים פופולריים</string>
+    <string name="popular_books_empty">אין עדיין מספיק נתונים לדירוג.</string>
+    <string name="popular_books_notice">הדירוג מבוסס על מספר לחיצות על כפתור \"מפה\" בשישה החודשים האחרונים. מדד זה אינו בהכרח משקף את הפופולריות האמיתית של הספר — ייתכן שמבקרים לחצו על מפה מסקרנות, בטעות, או לספרים שקשה למצוא.</string>
+    <string name="popular_books_press_count">%1$d לחיצות על מפה</string>
+    <string name="popular_books_rank">#%1$d</string>
+    <string name="popular_books_missing">ספר שנמחק מהמאגר (מזהה: %1$s)</string>
     <string name="history_title">היסטוריית שינויים</string>
     <string name="history_empty">אין עדיין שינויים מתועדים.</string>
     <string name="history_kind_added">נוסף</string>

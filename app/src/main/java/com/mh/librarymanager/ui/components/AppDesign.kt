@@ -106,7 +106,7 @@ fun AppBrandHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AppLogo(size = logoSize)
-        Spacer(modifier = Modifier.width(18.dp))
+        Spacer(modifier = Modifier.width(24.dp))
         AppScreenTitle(
             text = title,
             subtitle = subtitle,
@@ -143,7 +143,7 @@ fun PublicBackBar(
                 )
             }
             if (!title.isNullOrBlank()) {
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
@@ -151,11 +151,10 @@ fun PublicBackBar(
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
                 )
-            } else {
-                Spacer(modifier = Modifier.weight(1f))
             }
+            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.width(20.dp))
             AppLogo(size = 40.dp)
         }
     }
@@ -222,7 +221,7 @@ fun ManagementHeader(
                     color = AppColors.TextSecondary,
                 )
             }
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(20.dp))
             AppLogo(size = 40.dp)
         }
     }

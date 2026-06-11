@@ -161,6 +161,7 @@ fun AnnouncementFullView(
     booksById: Map<String, Book>,
     customColors: List<CustomColor>,
     modifier: Modifier = Modifier,
+    onOpenBookLocation: (String) -> Unit = {},
 ) {
     val cs = MaterialTheme.colorScheme
     val linked = announcement.linkedBookIds.mapNotNull { booksById[it] }
@@ -197,6 +198,7 @@ fun AnnouncementFullView(
                             book = book,
                             parentBook = book.linkedParent(booksById),
                             customColors = customColors,
+                            onOpenLocation = { onOpenBookLocation(book.id) },
                         )
                     }
                 }

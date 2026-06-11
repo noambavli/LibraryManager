@@ -16,6 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mh.librarymanager.domain.Book
+import com.mh.librarymanager.domain.CustomColor
 import com.mh.librarymanager.R
 import com.mh.librarymanager.ui.components.AppColors
 import com.mh.librarymanager.ui.components.AppContentCard
@@ -30,11 +32,12 @@ import com.mh.librarymanager.ui.components.PublicBackBar
 @Composable
 fun AllAnnouncementsScreen(
     viewModel: AnnouncementsViewModel,
+    booksById: Map<String, Book>,
+    customColors: List<CustomColor>,
     onBack: () -> Unit,
+    onOpenBookLocation: (String) -> Unit = {},
 ) {
     val active by viewModel.active.collectAsStateWithLifecycle()
-    val booksById by viewModel.booksById.collectAsStateWithLifecycle()
-    val customColors by viewModel.customColors.collectAsStateWithLifecycle()
 
     AppScreenBackground {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -68,6 +71,7 @@ fun AllAnnouncementsScreen(
                             booksById = booksById,
                             customColors = customColors,
                             modifier = Modifier.fillMaxWidth().padding(20.dp),
+                            onOpenBookLocation = onOpenBookLocation,
                         )
                     }
                 }

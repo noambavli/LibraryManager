@@ -17,6 +17,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
+import com.mh.librarymanager.domain.Announcement
+import com.mh.librarymanager.domain.Book
+import com.mh.librarymanager.domain.CustomColor
 import com.mh.librarymanager.ui.components.AppColors
 import com.mh.librarymanager.ui.components.AppScreenBackground
 import com.mh.librarymanager.ui.components.PublicBackBar
@@ -28,11 +31,12 @@ import com.mh.librarymanager.ui.components.PublicBackBar
 fun AnnouncementDetailScreen(
     viewModel: AnnouncementsViewModel,
     announcementId: String,
+    booksById: Map<String, Book>,
+    customColors: List<CustomColor>,
     onBack: () -> Unit,
+    onOpenBookLocation: (String) -> Unit = {},
 ) {
     val all by viewModel.all.collectAsStateWithLifecycle()
-    val booksById by viewModel.booksById.collectAsStateWithLifecycle()
-    val customColors by viewModel.customColors.collectAsStateWithLifecycle()
     val announcement = all.firstOrNull { it.id == announcementId }
     val isExpired = announcement != null && !announcement.isActive()
 
@@ -69,6 +73,7 @@ fun AnnouncementDetailScreen(
                     announcement = announcement,
                     booksById = booksById,
                     customColors = customColors,
+                    onOpenBookLocation = onOpenBookLocation,
                 )
             }
         }
