@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.mh.librarymanager.LibraryApp
 import com.mh.librarymanager.domain.Book
 import com.mh.librarymanager.domain.CustomColor
+import com.mh.librarymanager.domain.SearchHistoryEntry
 import com.mh.librarymanager.search.SearchEngine
 import com.mh.librarymanager.search.SearchQuery
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.UUID
 
 /**
  * Owns search UI state. The catalog flow is observed once, an in-memory
@@ -41,6 +43,9 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
 
     private val container = LibraryApp.from(app)
 
+    /** Prevents logging the same query twice until the visitor edits the fields. */
+    private var lastCommittedFingerprint: String? = null
+
     private val _fieldValues: MutableStateFlow<Map<SearchField, TextFieldValue>> =
         MutableStateFlow(SearchField.entries.associateWith { TextFieldValue("") })
     val fieldValues: StateFlow<Map<SearchField, TextFieldValue>> = _fieldValues.asStateFlow()
@@ -48,13 +53,16 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
     private val _focusedField = MutableStateFlow(SearchField.GENERAL)
     val focusedField: StateFlow<SearchField> = _focusedField.asStateFlow()
 
-    private val engine: StateFlow<SearchEngine> = container.repository.observeAll()
+    private val catalog: StateFlow<List<Book>> = container.repository.observeAll()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    private val engine: StateFlow<SearchEngine> = catalog
         .map { books -> SearchEngine(books) }
         .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.Eagerly, SearchEngine(emptyList()))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchEngine(emptyList()))
 
     val catalogSize: StateFlow<Int> = engine.map { it.size }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     val customColors: StateFlow<List<CustomColor>> = container.repository.observeColors()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -64,11 +72,11 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
         .onStart { container.shortcutStore.loadFromDisk() }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    val parentNameLookup: StateFlow<Map<String, String>> = container.repository.observeAll()
+    val parentNameLookup: StateFlow<Map<String, String>> = catalog
         .map { books -> books.associate { it.id to it.name } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
-    val booksById: StateFlow<Map<String, Book>> = container.repository.observeAll()
+    val booksById: StateFlow<Map<String, Book>> = catalog
         .map { books -> books.associateBy { it.id } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
@@ -77,7 +85,7 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
      * was added in the window — the home screen treats that as "no news"
      * rather than showing stale entries.
      */
-    val recentlyAdded: StateFlow<List<Book>> = container.repository.observeAll()
+    val recentlyAdded: StateFlow<List<Book>> = catalog
         .map { books ->
             val cutoff = System.currentTimeMillis() - RECENT_WINDOW_MS
             books
@@ -90,7 +98,12 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
     val results: StateFlow<List<Book>> = combine(
         engine,
         _fieldValues.debounce(60),
-    ) { eng, values -> eng.search(values.toQuery()) }
+    ) { eng, values ->
+        // The public search screen stays on its idle hint until the visitor
+        // actually types something — an empty query must not list the catalog.
+        val query = values.toQuery()
+        if (query.isEmpty) emptyList() else eng.search(query)
+    }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -120,15 +133,44 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
             is KeyAction.Insert -> current.insert(key.text)
             KeyAction.Backspace -> current.backspace()
             KeyAction.ClearField -> TextFieldValue("")
-            KeyAction.ClearAll -> { clearAll(); return }
+            KeyAction.ClearAll -> {
+                clearAll()
+                return
+            }
         }
         setValue(field, next)
+    }
+
+    /** Records a public search once the visitor interacts outside the Hebrew keyboard. */
+    fun commitSearchToHistory(resultCount: Int = results.value.size) {
+        val query = _fieldValues.value.toQuery()
+        if (query.isEmpty) return
+        val fingerprint = query.fingerprint()
+        if (fingerprint == lastCommittedFingerprint) return
+        lastCommittedFingerprint = fingerprint
+        viewModelScope.launch(Dispatchers.IO) {
+            container.searchHistoryStore.append(
+                SearchHistoryEntry(
+                    id = UUID.randomUUID().toString(),
+                    searchedAt = System.currentTimeMillis(),
+                    query = query,
+                    resultCount = resultCount,
+                ),
+            )
+        }
     }
 
     /** Wipes every field so the next kiosk visitor starts with a blank search. */
     fun clearAll() {
         _fieldValues.value = SearchField.entries.associateWith { TextFieldValue("") }
         _focusedField.value = SearchField.GENERAL
+        lastCommittedFingerprint = null
+    }
+
+    /** Called before [clearAll] when the public search screen closes. */
+    fun finalizePublicSearchSession() {
+        commitSearchToHistory()
+        clearAll()
     }
 
     /** Loads the on-device catalog only — production data comes from PC .civ sync. */

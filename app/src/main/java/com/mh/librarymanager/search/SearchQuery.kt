@@ -31,4 +31,10 @@ data class SearchQuery(
             displayNumber.isBlank() &&
             bookNumber.isBlank() &&
             notes.isBlank()
+
+    /** Stable key for deduplicating consecutive commits of the same query. */
+    fun fingerprint(): String = listOf(
+        general, name, topics, writer, letter, color, category,
+        subcategory, displayNumber, bookNumber, notes,
+    ).joinToString("\u0000")
 }

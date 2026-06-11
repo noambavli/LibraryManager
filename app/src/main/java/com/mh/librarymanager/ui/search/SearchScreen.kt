@@ -3,6 +3,7 @@ package com.mh.librarymanager.ui.search
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -60,6 +62,7 @@ import com.mh.librarymanager.ui.components.BookCard
 fun SearchScreen(
     viewModel: SearchViewModel,
     onBack: (() -> Unit)? = null,
+    onOpenBookLocation: (String) -> Unit = {},
 ) {
     val fieldValues by viewModel.fieldValues.collectAsStateWithLifecycle()
     val focusedField by viewModel.focusedField.collectAsStateWithLifecycle()
@@ -72,13 +75,18 @@ fun SearchScreen(
     SuppressPlatformKeyboardEffect()
 
     DisposableEffect(Unit) {
-        onDispose { viewModel.clearAll() }
+        onDispose { viewModel.finalizePublicSearchSession() }
     }
+
+    val commitSearch = { viewModel.commitSearchToHistory(results.size) }
 
     AppScreenBackground {
         Column(modifier = Modifier.fillMaxSize()) {
             if (onBack != null) {
-                PublicBackBar(onBack = onBack)
+                PublicBackBar(onBack = {
+                    commitSearch()
+                    onBack()
+                })
             }
             Row(modifier = Modifier.fillMaxSize()) {
             SearchPane(
@@ -92,6 +100,7 @@ fun SearchScreen(
                 onSetValue = viewModel::setValue,
                 onSetFocused = viewModel::setFocused,
                 onKey = viewModel::handleKey,
+                onOutsideKeyboard = commitSearch,
             )
 
             AppPaneDivider()
@@ -105,6 +114,8 @@ fun SearchScreen(
                 queryIsEmpty = fieldValues.values.all { it.text.isBlank() },
                 customColors = customColors,
                 booksById = booksById,
+                onOutsideKeyboard = commitSearch,
+                onOpenBookLocation = onOpenBookLocation,
             )
             }
         }
@@ -121,12 +132,16 @@ private fun SearchPane(
     onSetValue: (SearchField, androidx.compose.ui.text.input.TextFieldValue) -> Unit,
     onSetFocused: (SearchField) -> Unit,
     onKey: (KeyAction) -> Unit,
+    onOutsideKeyboard: () -> Unit,
 ) {
     Column(modifier = modifier) {
         Column(
             modifier = Modifier
                 .weight(0.48f)
                 .fillMaxWidth()
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = { onOutsideKeyboard() })
+                }
                 .padding(horizontal = 16.dp, vertical = 14.dp),
         ) {
             Text(
@@ -264,15 +279,22 @@ private fun ShortcutTags(
 @Composable
 private fun ResultsPane(
     modifier: Modifier,
-    results: List<Book>,
+    results: List<
+            Book>,
     catalogSize: Int,
     queryIsEmpty: Boolean,
     customColors: List<CustomColor>,
     booksById: Map<String, Book>,
+    onOutsideKeyboard: () -> Unit,
+    onOpenBookLocation: (String) -> Unit,
 ) {
     val listState = rememberLazyListState()
     Column(
-        modifier = modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+        modifier = modifier
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { onOutsideKeyboard() })
+            }
+            .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
         ResultsHeader(
             count = results.size,
@@ -308,6 +330,7 @@ private fun ResultsPane(
                         book = book,
                         parentBook = book.linkedParent(booksById),
                         customColors = customColors,
+                        onOpenLocation = { onOpenBookLocation(book.id) },
                     )
                 }
             }

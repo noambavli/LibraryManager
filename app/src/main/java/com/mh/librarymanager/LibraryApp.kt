@@ -8,6 +8,8 @@ import com.mh.librarymanager.data.store.AnnouncementStore
 import com.mh.librarymanager.data.store.AuditStore
 import com.mh.librarymanager.data.store.CatalogStore
 import com.mh.librarymanager.data.store.PublicRequestStore
+import com.mh.librarymanager.data.store.BookLocationPressStore
+import com.mh.librarymanager.data.store.SearchHistoryStore
 import com.mh.librarymanager.data.store.SearchShortcutStore
 import com.mh.librarymanager.data.store.TechSupportStore
 /**
@@ -22,6 +24,8 @@ class LibraryApp : Application() {
     val requestStore: PublicRequestStore by lazy { PublicRequestStore(this) }
     val announcementStore: AnnouncementStore by lazy { AnnouncementStore(this) }
     val shortcutStore: SearchShortcutStore by lazy { SearchShortcutStore(this) }
+    val searchHistoryStore: SearchHistoryStore by lazy { SearchHistoryStore(this) }
+    val bookLocationPressStore: BookLocationPressStore by lazy { BookLocationPressStore(this) }
     val techSupportStore: TechSupportStore by lazy { TechSupportStore(this) }
     val repository: BookRepository by lazy { BookRepository(catalogStore, auditStore) }
     val civCatalogIo: CivCatalogIO by lazy { CivCatalogIO(this, repository) }
