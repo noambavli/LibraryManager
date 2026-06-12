@@ -69,13 +69,11 @@ class MainActivity : ComponentActivity() {
                 }
             },
         )
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         window.setSoftInputMode(
             WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN or
                 WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING,
         )
         enableEdgeToEdge()
-        allowWakeFromSleep()
         setContent {
             LibraryManagerTheme {
                 AppRoot(
@@ -118,7 +116,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        allowWakeFromSleep()
         hideSystemUi()
         enterKioskMode()
     }
@@ -212,14 +209,6 @@ class MainActivity : ComponentActivity() {
             } catch (_: Exception) {
                 // Lock task requires device owner provisioning.
             }
-        }
-    }
-
-    /** Lets the first touch after display sleep turn the screen on and show the app. */
-    private fun allowWakeFromSleep() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
         }
     }
 
