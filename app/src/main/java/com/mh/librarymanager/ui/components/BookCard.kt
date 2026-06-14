@@ -3,16 +3,21 @@ package com.mh.librarymanager.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -21,8 +26,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mh.librarymanager.R
@@ -60,61 +67,70 @@ fun BookCard(
         tonalElevation = 0.dp,
         shadowElevation = 1.dp,
     ) {
-        Column(
-            modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .then(clickableModifier)
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            BookTitleRow(
-                book = book,
-                parentBook = parentBook,
-                trailing = trailing,
-            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .then(clickableModifier),
+            ) {
+                BookTitleRow(
+                    book = book,
+                    parentBook = parentBook,
+                    trailing = trailing,
+                )
 
-            if (parentBook != null) {
-                Spacer(modifier = Modifier.height(6.dp))
-                ParentBookReference(parentBook = parentBook, customColors = customColors)
-            }
+                if (parentBook != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    ParentBookReference(parentBook = parentBook, customColors = customColors)
+                }
 
-            val writer = book.writer.ifBlank { stringResource(R.string.book_unknown_writer) }
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = writer,
-                style = MaterialTheme.typography.bodyMedium,
-                color = cs.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-
-            if (book.topics.isNotBlank()) {
-                Spacer(modifier = Modifier.height(6.dp))
+                val writer = book.writer.ifBlank { stringResource(R.string.book_unknown_writer) }
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = book.topics,
-                    style = MaterialTheme.typography.bodySmall,
+                    text = writer,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = cs.onSurfaceVariant,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                )
+
+                if (book.topics.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = book.topics,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = cs.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
+                if (book.notes.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = book.notes,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = cs.onSurfaceVariant,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                BookChipsRow(
+                    book = book,
+                    customColors = customColors,
                 )
             }
 
-            if (book.notes.isNotBlank()) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = book.notes,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = cs.onSurfaceVariant,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            if (onOpenLocation != null) {
+                Spacer(modifier = Modifier.width(12.dp))
+                BookLocationMapButton(onClick = onOpenLocation)
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-            BookChipsRow(
-                book = book,
-                customColors = customColors,
-                onOpenLocation = onOpenLocation,
-            )
         }
     }
 }
@@ -281,7 +297,6 @@ private fun ParentMetaChip(
 private fun BookChipsRow(
     book: Book,
     customColors: List<CustomColor>,
-    onOpenLocation: (() -> Unit)?,
 ) {
     val cs = MaterialTheme.colorScheme
     Row(
@@ -329,27 +344,42 @@ private fun BookChipsRow(
                 border = BorderStroke(1.dp, Color(0xFF9E9E9E)),
             )
         }
-        if (onOpenLocation != null) {
-            BookLocationMapButton(onClick = onOpenLocation)
-        }
     }
 }
 
 @Composable
 private fun BookLocationMapButton(onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        color = AppColors.Accent.copy(alpha = 0.12f),
-        contentColor = AppColors.Accent,
-        shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, AppColors.Accent.copy(alpha = 0.45f)),
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(58.dp),
     ) {
+        Surface(
+            onClick = onClick,
+            shape = CircleShape,
+            color = Color(0xFFE8ECF0),
+            modifier = Modifier.size(46.dp),
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_location_pin),
+                    contentDescription = stringResource(R.string.book_location_title),
+                    tint = AppColors.TextMuted,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(5.dp))
         Text(
-            text = stringResource(R.string.book_location_map_button),
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
+            text = stringResource(R.string.book_location_title),
+            style = MaterialTheme.typography.labelSmall,
+            color = AppColors.TextMuted,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

@@ -23,6 +23,11 @@ class TechSupportManagementViewModel(app: Application) : AndroidViewModel(app) {
             .map { list -> list.sortedByDescending { it.createdAt } }
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    val loaded: StateFlow<Boolean> =
+        container.techSupportStore.loaded
+            .onStart { container.techSupportStore.loadFromDisk() }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     fun delete(id: String) {
         viewModelScope.launch(Dispatchers.IO) {
             container.techSupportStore.remove(id)

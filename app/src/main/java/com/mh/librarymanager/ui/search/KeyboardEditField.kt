@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -130,17 +132,21 @@ fun KeyboardEditField(
                 shape = RoundedCornerShape(if (compact) 8.dp else 10.dp),
                 border = BorderStroke(if (isActive) 2.dp else 1.dp, borderColor),
             ) {
+                val horizontalPadding = if (compact) 8.dp else 10.dp
+                val verticalPadding = if (singleLine) 0.dp else 6.dp
                 Row(
-                    verticalAlignment = if (singleLine) Alignment.CenterVertically else Alignment.Top,
+                    verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(min = fieldHeight)
                         .then(if (singleLine) Modifier.height(fieldHeight) else Modifier)
-                        .padding(horizontal = if (compact) 8.dp else 10.dp),
+                        .padding(horizontal = horizontalPadding),
                 ) {
                     Box(
                         modifier = Modifier
                             .weight(1f)
+                            .defaultMinSize(minHeight = fieldHeight - verticalPadding * 2)
                             .clip(RoundedCornerShape(8.dp)),
                         contentAlignment = if (singleLine) Alignment.CenterStart else Alignment.TopStart,
                     ) {
@@ -170,7 +176,15 @@ fun KeyboardEditField(
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .then(if (singleLine) Modifier else Modifier.padding(vertical = 6.dp))
+                                .then(
+                                    if (singleLine) {
+                                        Modifier.fillMaxHeight()
+                                    } else {
+                                        Modifier
+                                            .heightIn(min = fieldHeight - verticalPadding * 2)
+                                            .padding(vertical = verticalPadding)
+                                    },
+                                )
                                 .focusRequester(focusRequester)
                                 .onFocusChanged { state ->
                                     if (state.isFocused) {

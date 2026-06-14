@@ -32,17 +32,18 @@ class SearchHistoryStore(private val context: Context) {
     private val _entries = MutableStateFlow<List<SearchHistoryEntry>>(emptyList())
     val entries: StateFlow<List<SearchHistoryEntry>> = _entries.asStateFlow()
 
-    @Volatile private var loaded = false
+    private val loadState = StoreLoadState()
+    val loaded: StateFlow<Boolean> = loadState.loaded
 
     suspend fun loadFromDisk() {
-        loadFromDiskOnce(loadedFlag = { loaded }, lock = this) {
+        loadFromDiskOnce(loadedFlag = loadState::isLoaded, lock = this) {
             val raw = if (file.exists()) readFile(file) else emptyList()
             val pruned = prune(raw)
             if (pruned.size != raw.size) {
                 writeFile(file, pruned)
             }
             _entries.value = pruned
-            loaded = true
+            loadState.markLoaded()
         }
     }
 

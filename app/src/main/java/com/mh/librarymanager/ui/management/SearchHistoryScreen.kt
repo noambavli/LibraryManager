@@ -43,6 +43,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
 import com.mh.librarymanager.domain.SearchHistoryEntry
 import com.mh.librarymanager.search.SearchQuery
+import com.mh.librarymanager.ui.components.AppLoadingContent
 import com.mh.librarymanager.ui.components.AppColors
 import com.mh.librarymanager.ui.components.AppScreenBackground
 import com.mh.librarymanager.ui.components.ManagementHeader
@@ -59,6 +60,7 @@ fun SearchHistoryScreen(
 ) {
     val dayGroups by viewModel.dayGroups.collectAsStateWithLifecycle()
     val popularSearches by viewModel.popularSearches.collectAsStateWithLifecycle()
+    val loaded by viewModel.loaded.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var deleteCandidate by remember { mutableStateOf<SearchHistoryEntry?>(null) }
     var selectedTab by remember { mutableStateOf(SearchHistoryTab.Daily) }
@@ -82,10 +84,12 @@ fun SearchHistoryScreen(
             when (selectedTab) {
                 SearchHistoryTab.Daily -> DailySearchHistoryContent(
                     dayGroups = dayGroups,
+                    loaded = loaded,
                     onDelete = { deleteCandidate = it },
                 )
                 SearchHistoryTab.Popular -> PopularSearchHistoryContent(
                     ratings = popularSearches,
+                    loaded = loaded,
                 )
             }
         }
@@ -160,60 +164,64 @@ private fun SearchHistoryTabChip(
 @Composable
 private fun DailySearchHistoryContent(
     dayGroups: List<SearchHistoryDayGroup>,
+    loaded: Boolean,
     onDelete: (SearchHistoryEntry) -> Unit,
 ) {
-    if (dayGroups.isEmpty()) {
-        EmptySearchHistoryMessage(stringResource(R.string.search_history_empty))
-        return
-    }
+    when {
+        !loaded -> AppLoadingContent()
+        dayGroups.isEmpty() -> EmptySearchHistoryMessage(stringResource(R.string.search_history_empty))
+        else -> {
+            PrivacyNotice(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 4.dp),
+            )
 
-    PrivacyNotice(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 18.dp, vertical = 4.dp),
-    )
-
-    val listState = rememberLazyListState()
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        state = listState,
-        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        dayGroups.forEach { group ->
-            item(key = "day-${group.dayStartMs}") {
-                DayHeader(group.dayLabel)
-            }
-            items(group.entries, key = { it.id }) { entry ->
-                SearchHistoryCard(
-                    entry = entry,
-                    onDelete = { onDelete(entry) },
-                )
+            val listState = rememberLazyListState()
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                state = listState,
+                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                dayGroups.forEach { group ->
+                    item(key = "day-${group.dayStartMs}") {
+                        DayHeader(group.dayLabel)
+                    }
+                    items(group.entries, key = { it.id }) { entry ->
+                        SearchHistoryCard(
+                            entry = entry,
+                            onDelete = { onDelete(entry) },
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun PopularSearchHistoryContent(ratings: List<PopularSearchRating>) {
+private fun PopularSearchHistoryContent(
+    ratings: List<PopularSearchRating>,
+    loaded: Boolean,
+) {
     PopularPeriodNotice(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 18.dp, vertical = 4.dp),
     )
 
-    if (ratings.isEmpty()) {
-        EmptySearchHistoryMessage(stringResource(R.string.search_popular_empty))
-        return
-    }
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        items(ratings, key = { it.query.fingerprint() }) { rating ->
-            PopularSearchCard(rating = rating)
+    when {
+        !loaded -> AppLoadingContent()
+        ratings.isEmpty() -> EmptySearchHistoryMessage(stringResource(R.string.search_popular_empty))
+        else -> LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            items(ratings, key = { it.query.fingerprint() }) { rating ->
+                PopularSearchCard(rating = rating)
+            }
         }
     }
 }

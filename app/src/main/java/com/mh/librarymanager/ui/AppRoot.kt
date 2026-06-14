@@ -172,6 +172,7 @@ fun AppRoot(
     }
 
     val recentlyAdded by searchVm.recentlyAdded.collectAsStateWithLifecycle()
+    val catalogLoaded by searchVm.catalogLoaded.collectAsStateWithLifecycle()
     val customColors by searchVm.customColors.collectAsStateWithLifecycle()
     val booksById by searchVm.booksById.collectAsStateWithLifecycle()
     val activeAnnouncements by announcementsVm.active.collectAsStateWithLifecycle()
@@ -202,6 +203,7 @@ fun AppRoot(
 
             AppScreen.Home -> HomeScreen(
                 recentlyAdded = recentlyAdded,
+                catalogLoaded = catalogLoaded,
                 customColors = customColors,
                 announcements = activeAnnouncements,
                 onOpenSearch = { nav.push(AppScreen.Search) },
@@ -247,6 +249,7 @@ fun AppRoot(
 
             is AppScreen.BookLocation -> BookLocationScreen(
                 book = booksById[current.bookId],
+                catalogLoaded = catalogLoaded,
                 onBack = { nav.pop() },
             )
 
@@ -258,8 +261,10 @@ fun AppRoot(
 
             AppScreen.ManagementHome -> ManagementGuard(session = session, nav = nav) {
                 val outOfOrderCount by managementVm.outOfOrderCount.collectAsStateWithLifecycle()
+                val catalogLoaded by managementVm.catalogLoaded.collectAsStateWithLifecycle()
                 ManagementDashboardScreen(
                     outOfOrderCount = outOfOrderCount,
+                    catalogLoaded = catalogLoaded,
                     onOpenBooks = { nav.push(AppScreen.BooksManagement) },
                     onOpenOutOfOrder = { nav.push(AppScreen.OutOfOrderBooks) },
                     onOpenHistory = { nav.push(AppScreen.ManagementHistory) },

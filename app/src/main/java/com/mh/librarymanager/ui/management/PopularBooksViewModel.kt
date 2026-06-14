@@ -35,6 +35,13 @@ class PopularBooksViewModel(app: Application) : AndroidViewModel(app) {
         }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val dataLoaded: StateFlow<Boolean> = combine(
+        container.repository.observeCatalogLoaded(),
+        container.bookLocationPressStore.loaded
+            .onStart { container.bookLocationPressStore.loadFromDisk() },
+    ) { catalogLoaded, pressesLoaded -> catalogLoaded && pressesLoaded }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     val customColors = container.repository.observeColors()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 }

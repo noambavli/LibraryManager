@@ -33,6 +33,9 @@ class BookRepository(
         .map { books -> books.filter { it.isLatest } }
         .onStart { store.loadFromDisk() }
 
+    fun observeCatalogLoaded(): Flow<Boolean> = store.booksLoaded
+        .onStart { store.loadFromDisk() }
+
     /** Includes non-latest revisions; only the management layer needs this. */
     fun observeAllIncludingHistory(): Flow<List<Book>> = store.books
         .onStart { store.loadFromDisk() }
@@ -41,6 +44,9 @@ class BookRepository(
         .onStart { store.loadFromDisk() }
 
     fun observeAudit(): Flow<List<AuditEvent>> = auditStore.events
+        .onStart { auditStore.loadFromDisk() }
+
+    fun observeAuditLoaded(): Flow<Boolean> = auditStore.loaded
         .onStart { auditStore.loadFromDisk() }
 
     suspend fun count(): Int = store.count()

@@ -24,24 +24,33 @@ import com.mh.librarymanager.ui.components.PublicBackBar
 @Composable
 fun BookLocationScreen(
     book: Book?,
+    catalogLoaded: Boolean,
     onBack: () -> Unit,
 ) {
     AppScreenBackground {
         Column(modifier = Modifier.fillMaxSize()) {
             PublicBackBar(onBack = onBack)
 
-            if (book == null) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = stringResource(R.string.book_location_missing),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = AppColors.TextMuted,
-                    )
+            when {
+                !catalogLoaded -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = stringResource(R.string.results_loading),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = AppColors.TextMuted,
+                        )
+                    }
                 }
-                return@Column
-            }
-
-            Column(
+                book == null -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = stringResource(R.string.book_location_missing),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = AppColors.TextMuted,
+                        )
+                    }
+                }
+                else -> Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 32.dp, vertical = 24.dp),
@@ -67,6 +76,7 @@ fun BookLocationScreen(
                         color = AppColors.TextSecondary,
                     )
                 }
+            }
             }
         }
     }

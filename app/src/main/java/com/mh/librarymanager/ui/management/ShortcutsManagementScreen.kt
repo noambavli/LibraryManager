@@ -40,6 +40,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
+import com.mh.librarymanager.ui.components.AppLoadingContent
 import com.mh.librarymanager.ui.components.AppScreenBackground
 import com.mh.librarymanager.ui.components.ManagementHeader
 import com.mh.librarymanager.data.store.SearchShortcutStore
@@ -60,6 +61,7 @@ fun ShortcutsManagementScreen(
     onLogout: () -> Unit,
 ) {
     val shortcuts by viewModel.shortcuts.collectAsStateWithLifecycle()
+    val loaded by viewModel.loaded.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var adding by remember { mutableStateOf(false) }
     var transientMessage by remember { mutableStateOf<String?>(null) }
@@ -106,15 +108,15 @@ fun ShortcutsManagementScreen(
 
                 Spacer(modifier = Modifier.height(18.dp))
 
-                if (shortcuts.isEmpty()) {
-                    Text(
+                when {
+                    !loaded -> AppLoadingContent(modifier = Modifier.height(120.dp))
+                    shortcuts.isEmpty() -> Text(
                         text = stringResource(R.string.shortcuts_empty),
                         style = MaterialTheme.typography.titleMedium,
                         color = cs.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 24.dp),
                     )
-                } else {
-                    FlowRow(
+                    else -> FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),

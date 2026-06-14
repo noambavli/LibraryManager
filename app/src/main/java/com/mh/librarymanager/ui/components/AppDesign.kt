@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Image
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -76,6 +77,31 @@ fun AppScreenBackground(
             ),
     ) {
         content()
+    }
+}
+
+@Composable
+fun AppLoadingContent(
+    modifier: Modifier = Modifier,
+    message: String = stringResource(R.string.results_loading),
+) {
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(36.dp),
+                color = MaterialTheme.colorScheme.primary,
+                strokeWidth = 3.dp,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = message,
+                style = MaterialTheme.typography.titleMedium,
+                color = AppColors.TextMuted,
+            )
+        }
     }
 }
 
@@ -407,6 +433,31 @@ fun AppContentCard(
         shadowElevation = 1.dp,
     ) {
         content()
+    }
+}
+
+@Composable
+fun AppLoadingContent(
+    modifier: Modifier = Modifier,
+    message: String = stringResource(R.string.results_loading),
+) {
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(36.dp),
+                color = MaterialTheme.colorScheme.primary,
+                strokeWidth = 3.dp,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = message,
+                style = MaterialTheme.typography.titleMedium,
+                color = AppColors.TextMuted,
+            )
+        }
     }
 }
 

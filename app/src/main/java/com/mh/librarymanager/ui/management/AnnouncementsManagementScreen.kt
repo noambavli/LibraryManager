@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
+import com.mh.librarymanager.ui.components.AppLoadingContent
 import com.mh.librarymanager.ui.components.AppScreenBackground
 import com.mh.librarymanager.ui.components.ManagementHeader
 import com.mh.librarymanager.domain.Announcement
@@ -58,6 +59,7 @@ fun AnnouncementsManagementScreen(
     onAdd: () -> Unit,
 ) {
     val announcements by viewModel.announcements.collectAsStateWithLifecycle()
+    val loaded by viewModel.announcementsLoaded.collectAsStateWithLifecycle()
     var deleteCandidate by remember { mutableStateOf<Announcement?>(null) }
 
     val cs = MaterialTheme.colorScheme
@@ -71,30 +73,32 @@ fun AnnouncementsManagementScreen(
             onPrimaryAction = onAdd,
         )
 
-        if (announcements.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        when {
+            !loaded -> AppLoadingContent()
+            announcements.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = stringResource(R.string.announcements_empty),
                     style = MaterialTheme.typography.titleMedium,
                     color = cs.onSurfaceVariant,
                 )
             }
-            return@Column
-        }
-
-        val listState = rememberLazyListState()
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            state = listState,
-            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            items(announcements, key = { it.id }) { announcement ->
-                AnnouncementRow(
-                    announcement = announcement,
-                    onDelete = { deleteCandidate = announcement },
-                )
+            else -> {
+                val listState = rememberLazyListState()
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = listState,
+                    contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(announcements, key = { it.id }) { announcement ->
+                        AnnouncementRow(
+                            announcement = announcement,
+                            onDelete = { deleteCandidate = announcement },
+                        )
+                    }
+                }
             }
+        }
         }
     }
 

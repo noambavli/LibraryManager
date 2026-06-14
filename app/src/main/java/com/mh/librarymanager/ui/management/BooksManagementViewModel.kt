@@ -61,6 +61,9 @@ class BooksManagementViewModel(app: Application) : AndroidViewModel(app) {
     val catalog: StateFlow<List<Book>> = container.repository.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val catalogLoaded: StateFlow<Boolean> = container.repository.observeCatalogLoaded()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     private val engine: StateFlow<SearchEngine> = catalog
         .map { books -> SearchEngine(books) }
         .flowOn(Dispatchers.Default)

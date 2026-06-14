@@ -34,5 +34,10 @@ class AnnouncementsViewModel(app: Application) : AndroidViewModel(app) {
             list.filter { it.isActive(now) }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    val loaded: StateFlow<Boolean> =
+        container.announcementStore.loaded
+            .onStart { container.announcementStore.loadFromDisk() }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     fun findById(id: String): Announcement? = all.value.firstOrNull { it.id == id }
 }

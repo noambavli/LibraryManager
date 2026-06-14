@@ -32,9 +32,17 @@ class AnnouncementsManagementViewModel(app: Application) : AndroidViewModel(app)
             .map { list -> list.sortedByDescending { it.createdAt } }
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    val announcementsLoaded: StateFlow<Boolean> =
+        container.announcementStore.loaded
+            .onStart { container.announcementStore.loadFromDisk() }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     val catalog: StateFlow<List<Book>> =
         container.repository.observeAll()
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val catalogLoaded: StateFlow<Boolean> = container.repository.observeCatalogLoaded()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     val booksById: StateFlow<Map<String, Book>> =
         catalog.map { books -> books.associateBy { it.id } }

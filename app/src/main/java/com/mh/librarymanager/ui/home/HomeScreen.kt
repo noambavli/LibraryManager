@@ -34,12 +34,12 @@ import com.mh.librarymanager.domain.Announcement
 import com.mh.librarymanager.domain.Book
 import com.mh.librarymanager.domain.CustomColor
 import com.mh.librarymanager.ui.announcements.AnnouncementsHomeSection
+import com.mh.librarymanager.ui.components.AppLoadingContent
 import com.mh.librarymanager.ui.components.AppActionTile
 import com.mh.librarymanager.ui.components.AppBrandHeader
 import com.mh.librarymanager.ui.components.AppColors
 import com.mh.librarymanager.ui.components.AppHeroButton
 import com.mh.librarymanager.ui.components.AppScreenBackground
-import com.mh.librarymanager.ui.components.AppSectionPanel
 import com.mh.librarymanager.ui.components.resolveBookColorStyle
 
 /**
@@ -50,6 +50,7 @@ import com.mh.librarymanager.ui.components.resolveBookColorStyle
 @Composable
 fun HomeScreen(
     recentlyAdded: List<Book>,
+    catalogLoaded: Boolean,
     customColors: List<CustomColor>,
     announcements: List<Announcement>,
     onOpenSearch: () -> Unit,
@@ -94,7 +95,12 @@ fun HomeScreen(
                     onOpenManagement = onOpenManagement,
                 )
 
-                if (announcements.isNotEmpty() || recentlyAdded.isNotEmpty()) {
+                if (!catalogLoaded) {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    HomeFeedPanel(title = stringResource(R.string.home_whats_new)) {
+                        AppLoadingContent(modifier = Modifier.fillMaxSize())
+                    }
+                } else if (announcements.isNotEmpty() || recentlyAdded.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(24.dp))
                     FeedPanelsRow(
                         announcements = announcements,
@@ -105,14 +111,11 @@ fun HomeScreen(
                     )
                 } else {
                     Spacer(modifier = Modifier.height(24.dp))
-                    AppSectionPanel(title = stringResource(R.string.home_whats_new)) {
-                        Text(
-                            text = stringResource(R.string.home_whats_new_empty),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = AppColors.TextMuted,
-                            modifier = Modifier.padding(vertical = 4.dp),
-                        )
-                    }
+                    WhatsNewSection(
+                        books = recentlyAdded,
+                        customColors = customColors,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
         }
@@ -188,7 +191,6 @@ private fun FeedPanelsRow(
                         onOpenAnnouncement = onOpenAnnouncement,
                         onOpenAll = onOpenAllAnnouncements,
                         modifier = Modifier.weight(1f),
-                        compact = true,
                     )
                 }
                 WhatsNewSection(
@@ -205,7 +207,6 @@ private fun FeedPanelsRow(
                         onOpenAnnouncement = onOpenAnnouncement,
                         onOpenAll = onOpenAllAnnouncements,
                         modifier = Modifier.fillMaxWidth(),
-                        compact = true,
                     )
                 }
                 WhatsNewSection(
@@ -224,20 +225,29 @@ private fun WhatsNewSection(
     customColors: List<CustomColor>,
     modifier: Modifier = Modifier,
 ) {
-    AppSectionPanel(
+    val visibleBooks = books.take(HomeFeedLayout.MaxBooks)
+
+    HomeFeedPanel(
         title = stringResource(R.string.home_whats_new),
         modifier = modifier,
     ) {
-        if (books.isEmpty()) {
-            Text(
-                text = stringResource(R.string.home_whats_new_empty),
-                style = MaterialTheme.typography.bodySmall,
-                color = AppColors.TextMuted,
-                modifier = Modifier.padding(vertical = 2.dp),
-            )
+        if (visibleBooks.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Text(
+                    text = stringResource(R.string.home_whats_new_empty),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = AppColors.TextMuted,
+                )
+            }
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                books.forEach { book ->
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Top),
+            ) {
+                visibleBooks.forEach { book ->
                     RecentBookRow(book = book, customColors = customColors)
                 }
             }
@@ -283,7 +293,7 @@ private fun RecentBookRow(
                     style = MaterialTheme.typography.bodyMedium,
                     color = AppColors.TextPrimary,
                     fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (book.writer.isNotBlank()) {

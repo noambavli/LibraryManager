@@ -32,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,6 +69,7 @@ fun SearchScreen(
     val focusedField by viewModel.focusedField.collectAsStateWithLifecycle()
     val results by viewModel.results.collectAsStateWithLifecycle()
     val catalogSize by viewModel.catalogSize.collectAsStateWithLifecycle()
+    val catalogLoaded by viewModel.catalogLoaded.collectAsStateWithLifecycle()
     val customColors by viewModel.customColors.collectAsStateWithLifecycle()
     val booksById by viewModel.booksById.collectAsStateWithLifecycle()
     val shortcuts by viewModel.shortcuts.collectAsStateWithLifecycle()
@@ -110,7 +112,9 @@ fun SearchScreen(
                     .weight(1f)
                     .fillMaxHeight(),
                 results = results,
+                scrollResetKey = fieldValues.queryScrollKey(),
                 catalogSize = catalogSize,
+                catalogLoaded = catalogLoaded,
                 queryIsEmpty = fieldValues.values.all { it.text.isBlank() },
                 customColors = customColors,
                 booksById = booksById,
@@ -277,11 +281,17 @@ private fun ShortcutTags(
 }
 
 @Composable
+private fun Map<SearchField, androidx.compose.ui.text.input.TextFieldValue>.queryScrollKey(): String =
+    SearchField.entries.joinToString("|") { field -> this[field]?.text.orEmpty() }
+
+@Composable
 private fun ResultsPane(
     modifier: Modifier,
     results: List<
             Book>,
+    scrollResetKey: String,
     catalogSize: Int,
+    catalogLoaded: Boolean,
     queryIsEmpty: Boolean,
     customColors: List<CustomColor>,
     booksById: Map<String, Book>,
@@ -289,6 +299,11 @@ private fun ResultsPane(
     onOpenBookLocation: (String) -> Unit,
 ) {
     val listState = rememberLazyListState()
+    LaunchedEffect(scrollResetKey, results) {
+        if (results.isNotEmpty()) {
+            listState.scrollToItem(0)
+        }
+    }
     Column(
         modifier = modifier
             .pointerInput(Unit) {
@@ -299,6 +314,7 @@ private fun ResultsPane(
         ResultsHeader(
             count = results.size,
             catalogSize = catalogSize,
+            catalogLoaded = catalogLoaded,
             queryIsEmpty = queryIsEmpty,
         )
         Spacer(modifier = Modifier.height(10.dp))
@@ -306,7 +322,7 @@ private fun ResultsPane(
         Spacer(modifier = Modifier.height(10.dp))
 
         when {
-            catalogSize == 0 -> CenteredHint(
+            !catalogLoaded -> CenteredHint(
                 primary = stringResource(R.string.results_loading),
                 secondary = null,
                 showSpinner = true,
@@ -342,10 +358,11 @@ private fun ResultsPane(
 private fun ResultsHeader(
     count: Int,
     catalogSize: Int,
+    catalogLoaded: Boolean,
     queryIsEmpty: Boolean,
 ) {
     val text = when {
-        catalogSize == 0 -> stringResource(R.string.results_loading)
+        !catalogLoaded -> stringResource(R.string.results_loading)
         queryIsEmpty && count == 0 -> stringResource(R.string.results_idle)
         else -> stringResource(R.string.results_total, count, catalogSize)
     }

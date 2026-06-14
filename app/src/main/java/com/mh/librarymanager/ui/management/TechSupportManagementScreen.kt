@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
+import com.mh.librarymanager.ui.components.AppLoadingContent
 import com.mh.librarymanager.ui.components.AppScreenBackground
 import com.mh.librarymanager.ui.components.ManagementHeader
 import com.mh.librarymanager.domain.TechSupportRequest
@@ -52,6 +53,7 @@ fun TechSupportManagementScreen(
     onLogout: () -> Unit,
 ) {
     val requests by viewModel.requests.collectAsStateWithLifecycle()
+    val loaded by viewModel.loaded.collectAsStateWithLifecycle()
     var deleteCandidate by remember { mutableStateOf<TechSupportRequest?>(null) }
 
     val cs = MaterialTheme.colorScheme
@@ -65,28 +67,28 @@ fun TechSupportManagementScreen(
 
         HorizontalDivider(color = cs.outlineVariant)
 
-        if (requests.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        when {
+            !loaded -> AppLoadingContent()
+            requests.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = stringResource(R.string.tech_support_empty),
                     style = MaterialTheme.typography.titleMedium,
                     color = cs.onSurfaceVariant,
                 )
             }
-            return@Column
-        }
-
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            items(requests, key = { it.id }) { request ->
-                TechSupportCard(
-                    request = request,
-                    onDelete = { deleteCandidate = request },
-                )
+            else -> LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                items(requests, key = { it.id }) { request ->
+                    TechSupportCard(
+                        request = request,
+                        onDelete = { deleteCandidate = request },
+                    )
+                }
             }
+        }
         }
     }
 

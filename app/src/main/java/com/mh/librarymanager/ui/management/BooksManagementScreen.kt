@@ -29,6 +29,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +48,7 @@ import com.mh.librarymanager.domain.Book
 import com.mh.librarymanager.domain.linkedParent
 import com.mh.librarymanager.domain.CustomColor
 import com.mh.librarymanager.ui.components.BookCard
+import com.mh.librarymanager.ui.components.AppLoadingContent
 import com.mh.librarymanager.ui.components.AppHorizontalDivider
 import com.mh.librarymanager.ui.components.AppPaneDivider
 import com.mh.librarymanager.ui.components.AppScreenBackground
@@ -74,6 +76,7 @@ fun BooksManagementScreen(
     val focusedField by viewModel.focusedField.collectAsStateWithLifecycle()
     val results by viewModel.results.collectAsStateWithLifecycle()
     val catalogSize by viewModel.catalogSize.collectAsStateWithLifecycle()
+    val catalogLoaded by viewModel.catalogLoaded.collectAsStateWithLifecycle()
     val customColors by viewModel.customColors.collectAsStateWithLifecycle()
     val booksById by viewModel.booksById.collectAsStateWithLifecycle()
 
@@ -105,7 +108,9 @@ fun BooksManagementScreen(
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 viewModel = viewModel,
                 results = results,
+                scrollResetKey = fieldValues.queryScrollKey(),
                 catalogSize = catalogSize,
+                catalogLoaded = catalogLoaded,
                 queryIsEmpty = fieldValues.values.all { it.text.isBlank() },
                 customColors = customColors,
                 booksById = booksById,
@@ -215,12 +220,17 @@ private fun SearchFieldsGrid(
     }
 }
 
+private fun Map<SearchField, androidx.compose.ui.text.input.TextFieldValue>.queryScrollKey(): String =
+    SearchField.entries.joinToString("|") { field -> this[field]?.text.orEmpty() }
+
 @Composable
 private fun ResultsPane(
     modifier: Modifier,
     viewModel: BooksManagementViewModel,
     results: List<Book>,
+    scrollResetKey: String,
     catalogSize: Int,
+    catalogLoaded: Boolean,
     queryIsEmpty: Boolean,
     customColors: List<CustomColor>,
     booksById: Map<String, Book>,
@@ -229,13 +239,18 @@ private fun ResultsPane(
 ) {
     val cs = MaterialTheme.colorScheme
     val listState = rememberLazyListState()
+    LaunchedEffect(scrollResetKey, results) {
+        if (results.isNotEmpty()) {
+            listState.scrollToItem(0)
+        }
+    }
     val scope = rememberCoroutineScope()
     var deleteCandidate by remember { mutableStateOf<Book?>(null) }
 
     Column(modifier = modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
         Text(
             text = when {
-                catalogSize == 0 -> stringResource(R.string.results_loading)
+                !catalogLoaded -> stringResource(R.string.results_loading)
                 queryIsEmpty -> stringResource(R.string.results_total, results.size, catalogSize)
                 else -> stringResource(R.string.results_total, results.size, catalogSize)
             },
@@ -247,16 +262,16 @@ private fun ResultsPane(
         HorizontalDivider(color = cs.outlineVariant)
         Spacer(modifier = Modifier.height(10.dp))
 
-        if (results.isEmpty() && catalogSize > 0) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        when {
+            !catalogLoaded -> AppLoadingContent()
+            results.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = stringResource(R.string.results_empty),
                     style = MaterialTheme.typography.titleMedium,
                     color = cs.onSurfaceVariant,
                 )
             }
-        } else {
-            LazyColumn(
+            else -> LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 state = listState,
                 verticalArrangement = Arrangement.spacedBy(8.dp),

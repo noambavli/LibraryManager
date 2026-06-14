@@ -37,6 +37,7 @@ fun AnnouncementDetailScreen(
     onOpenBookLocation: (String) -> Unit = {},
 ) {
     val all by viewModel.all.collectAsStateWithLifecycle()
+    val loaded by viewModel.loaded.collectAsStateWithLifecycle()
     val announcement = all.firstOrNull { it.id == announcementId }
     val isExpired = announcement != null && !announcement.isActive()
 
@@ -44,37 +45,45 @@ fun AnnouncementDetailScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             PublicBackBar(onBack = onBack)
 
-            if (announcement == null) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            when {
+                !loaded && announcement == null -> Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(R.string.results_loading),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = AppColors.TextMuted,
+                    )
+                }
+                announcement == null -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         text = stringResource(R.string.announcement_missing),
                         style = MaterialTheme.typography.titleMedium,
                         color = AppColors.TextMuted,
                     )
                 }
-                return@Column
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 32.dp, vertical = 24.dp),
-            ) {
-                if (isExpired) {
-                    Text(
-                        text = stringResource(R.string.announcement_expired_notice),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = AppColors.TextMuted,
-                        modifier = Modifier.padding(bottom = 12.dp),
+                else -> Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 32.dp, vertical = 24.dp),
+                ) {
+                    if (isExpired) {
+                        Text(
+                            text = stringResource(R.string.announcement_expired_notice),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AppColors.TextMuted,
+                            modifier = Modifier.padding(bottom = 12.dp),
+                        )
+                    }
+                    AnnouncementFullView(
+                        announcement = announcement,
+                        booksById = booksById,
+                        customColors = customColors,
+                        onOpenBookLocation = onOpenBookLocation,
                     )
                 }
-                AnnouncementFullView(
-                    announcement = announcement,
-                    booksById = booksById,
-                    customColors = customColors,
-                    onOpenBookLocation = onOpenBookLocation,
-                )
             }
         }
     }

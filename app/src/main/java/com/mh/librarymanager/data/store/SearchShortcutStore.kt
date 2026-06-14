@@ -26,12 +26,13 @@ class SearchShortcutStore(private val context: Context) {
     private val _shortcuts = MutableStateFlow<List<String>>(emptyList())
     val shortcuts: StateFlow<List<String>> = _shortcuts.asStateFlow()
 
-    @Volatile private var loaded = false
+    private val loadState = StoreLoadState()
+    val loaded: StateFlow<Boolean> = loadState.loaded
 
     suspend fun loadFromDisk() {
-        loadFromDiskOnce(loadedFlag = { loaded }, lock = this) {
+        loadFromDiskOnce(loadedFlag = loadState::isLoaded, lock = this) {
             _shortcuts.value = if (file.exists()) readFile(file) else emptyList()
-            loaded = true
+            loadState.markLoaded()
         }
     }
 

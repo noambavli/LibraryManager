@@ -28,6 +28,11 @@ class ShortcutsManagementViewModel(app: Application) : AndroidViewModel(app) {
             .onStart { container.shortcutStore.loadFromDisk() }
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    val loaded: StateFlow<Boolean> =
+        container.shortcutStore.loaded
+            .onStart { container.shortcutStore.loadFromDisk() }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     suspend fun add(word: String): SearchShortcutStore.AddResult =
         withContext(Dispatchers.IO) { container.shortcutStore.add(word) }
 

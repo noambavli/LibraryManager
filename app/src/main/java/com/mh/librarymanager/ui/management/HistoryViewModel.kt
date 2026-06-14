@@ -10,7 +10,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
 
@@ -33,6 +35,12 @@ class HistoryViewModel(app: Application) : AndroidViewModel(app) {
     private val catalog: StateFlow<List<Book>> =
         container.repository.observeAll()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val dataLoaded: StateFlow<Boolean> = combine(
+        container.repository.observeCatalogLoaded(),
+        container.repository.observeAuditLoaded(),
+    ) { catalogLoaded, auditLoaded -> catalogLoaded && auditLoaded }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     val rows: StateFlow<List<HistoryRow>> = combine(audit, catalog) { events, books ->
         val byId = books.associateBy { it.id }

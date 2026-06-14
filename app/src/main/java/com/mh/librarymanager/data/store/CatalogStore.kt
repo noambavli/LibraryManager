@@ -48,16 +48,18 @@ class CatalogStore(private val context: Context) {
     private val _colors = MutableStateFlow<List<CustomColor>>(emptyList())
     val colors: StateFlow<List<CustomColor>> = _colors.asStateFlow()
 
-    @Volatile private var booksLoaded = false
+    private val booksLoadState = StoreLoadState()
+    val booksLoaded: StateFlow<Boolean> = booksLoadState.loaded
+
     @Volatile private var paletteLoaded = false
 
     suspend fun loadFromDisk() {
-        if (!booksLoaded) {
+        if (!booksLoadState.isLoaded()) {
             withContext(Dispatchers.IO) {
                 synchronized(this@CatalogStore) {
-                    if (!booksLoaded) {
+                    if (!booksLoadState.isLoaded()) {
                         _books.value = if (file.exists()) readBooks(file) else emptyList()
-                        booksLoaded = true
+                        booksLoadState.markLoaded()
                     }
                 }
             }
@@ -82,7 +84,7 @@ class CatalogStore(private val context: Context) {
     suspend fun replaceAll(books: List<Book>) {
         writeBooks(file, books)
         _books.value = books
-        booksLoaded = true
+        booksLoadState.markLoaded()
     }
 
     suspend fun upsert(book: Book) {

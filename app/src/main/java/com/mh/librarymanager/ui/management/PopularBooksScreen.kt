@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
 import com.mh.librarymanager.domain.linkedParent
+import com.mh.librarymanager.ui.components.AppLoadingContent
 import com.mh.librarymanager.ui.components.AppColors
 import com.mh.librarymanager.ui.components.AppScreenBackground
 import com.mh.librarymanager.ui.components.BookCard
@@ -40,6 +41,7 @@ fun PopularBooksScreen(
     onLogout: () -> Unit,
 ) {
     val ratings by viewModel.ratings.collectAsStateWithLifecycle()
+    val dataLoaded by viewModel.dataLoaded.collectAsStateWithLifecycle()
     val customColors by viewModel.customColors.collectAsStateWithLifecycle()
     val booksById = ratings.mapNotNull { it.book?.let { book -> book.id to book } }.toMap()
 
@@ -57,28 +59,27 @@ fun PopularBooksScreen(
                     .padding(horizontal = 18.dp, vertical = 12.dp),
             )
 
-            if (ratings.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            when {
+                !dataLoaded -> AppLoadingContent()
+                ratings.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         text = stringResource(R.string.popular_books_empty),
                         style = MaterialTheme.typography.titleMedium,
                         color = AppColors.TextMuted,
                     )
                 }
-                return@Column
-            }
-
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                items(ratings, key = { it.bookId }) { rating ->
-                    PopularBookCard(
-                        rating = rating,
-                        customColors = customColors,
-                        booksById = booksById,
-                    )
+                else -> LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(ratings, key = { it.bookId }) { rating ->
+                        PopularBookCard(
+                            rating = rating,
+                            customColors = customColors,
+                            booksById = booksById,
+                        )
+                    }
                 }
             }
         }

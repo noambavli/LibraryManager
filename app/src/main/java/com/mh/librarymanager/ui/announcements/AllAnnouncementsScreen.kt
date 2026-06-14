@@ -38,6 +38,7 @@ fun AllAnnouncementsScreen(
     onOpenBookLocation: (String) -> Unit = {},
 ) {
     val active by viewModel.active.collectAsStateWithLifecycle()
+    val loaded by viewModel.loaded.collectAsStateWithLifecycle()
 
     AppScreenBackground {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -48,31 +49,36 @@ fun AllAnnouncementsScreen(
                 modifier = Modifier.padding(horizontal = 32.dp, vertical = 18.dp),
             )
 
-            if (active.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            when {
+                !loaded -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    androidx.compose.material3.Text(
+                        text = stringResource(R.string.results_loading),
+                        style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                        color = AppColors.TextMuted,
+                    )
+                }
+                active.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     androidx.compose.material3.Text(
                         text = stringResource(R.string.announcements_empty),
                         style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
                         color = AppColors.TextMuted,
                     )
                 }
-                return@Column
-            }
-
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                items(active, key = { it.id }) { announcement ->
-                    AppContentCard(modifier = Modifier.fillMaxWidth()) {
-                        AnnouncementFullView(
-                            announcement = announcement,
-                            booksById = booksById,
-                            customColors = customColors,
-                            modifier = Modifier.fillMaxWidth().padding(20.dp),
-                            onOpenBookLocation = onOpenBookLocation,
-                        )
+                else -> LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    items(active, key = { it.id }) { announcement ->
+                        AppContentCard(modifier = Modifier.fillMaxWidth()) {
+                            AnnouncementFullView(
+                                announcement = announcement,
+                                booksById = booksById,
+                                customColors = customColors,
+                                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                                onOpenBookLocation = onOpenBookLocation,
+                            )
+                        }
                     }
                 }
             }

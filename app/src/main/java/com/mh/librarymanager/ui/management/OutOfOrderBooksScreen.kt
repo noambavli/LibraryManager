@@ -41,6 +41,7 @@ import com.mh.librarymanager.domain.CustomColor
 import com.mh.librarymanager.domain.OutOfOrderBook
 import com.mh.librarymanager.domain.OutOfOrderFilter
 import com.mh.librarymanager.domain.linkedParent
+import com.mh.librarymanager.ui.components.AppLoadingContent
 import com.mh.librarymanager.ui.components.AppScreenBackground
 import com.mh.librarymanager.ui.components.ManagementHeader
 import com.mh.librarymanager.ui.components.BookCard
@@ -56,6 +57,7 @@ fun OutOfOrderBooksScreen(
 ) {
     val allEntries by viewModel.outOfOrderBooks.collectAsStateWithLifecycle()
     val entries by viewModel.filteredOutOfOrderBooks.collectAsStateWithLifecycle()
+    val catalogLoaded by viewModel.catalogLoaded.collectAsStateWithLifecycle()
     val activeFilter by viewModel.outOfOrderFilter.collectAsStateWithLifecycle()
     val activeIssueFilter by viewModel.outOfOrderIssueFilter.collectAsStateWithLifecycle()
     val filterCounts by viewModel.outOfOrderFilterCounts.collectAsStateWithLifecycle()
@@ -76,9 +78,10 @@ fun OutOfOrderBooksScreen(
             totalCount = allEntries.size,
             shownCount = entries.size,
             filter = activeFilter,
+            catalogLoaded = catalogLoaded,
         )
 
-        if (allEntries.isNotEmpty()) {
+        if (catalogLoaded && allEntries.isNotEmpty()) {
             FilterRow(
                 active = activeFilter,
                 counts = filterCounts,
@@ -95,6 +98,7 @@ fun OutOfOrderBooksScreen(
         }
 
         when {
+            !catalogLoaded -> AppLoadingContent()
             allEntries.isEmpty() -> EmptyAllGood()
             entries.isEmpty() -> EmptyFilter(activeFilter, activeIssueFilter)
             else -> LazyColumn(
@@ -122,15 +126,21 @@ private fun SummaryBanner(
     totalCount: Int,
     shownCount: Int,
     filter: OutOfOrderFilter,
+    catalogLoaded: Boolean,
 ) {
     val cs = MaterialTheme.colorScheme
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = if (totalCount > 0) Color(0xFFFFF8E1) else cs.primaryContainer.copy(alpha = 0.35f),
+        color = when {
+            !catalogLoaded -> cs.surfaceVariant.copy(alpha = 0.35f)
+            totalCount > 0 -> Color(0xFFFFF8E1)
+            else -> cs.primaryContainer.copy(alpha = 0.35f)
+        },
     ) {
         Column(modifier = Modifier.padding(horizontal = 22.dp, vertical = 14.dp)) {
             Text(
                 text = when {
+                    !catalogLoaded -> stringResource(R.string.results_loading)
                     totalCount == 0 -> stringResource(R.string.out_of_order_summary_ok)
                     filter == OutOfOrderFilter.ALL ->
                         stringResource(R.string.out_of_order_summary_count, totalCount)
@@ -142,13 +152,21 @@ private fun SummaryBanner(
                 },
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = if (totalCount > 0) Color(0xFF92400E) else cs.onPrimaryContainer,
+                color = when {
+                    !catalogLoaded -> cs.onSurfaceVariant
+                    totalCount > 0 -> Color(0xFF92400E)
+                    else -> cs.onPrimaryContainer
+                },
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = stringResource(R.string.out_of_order_summary_hint),
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (totalCount > 0) Color(0xFFB45309) else cs.onSurfaceVariant,
+                color = when {
+                    !catalogLoaded -> cs.onSurfaceVariant
+                    totalCount > 0 -> Color(0xFFB45309)
+                    else -> cs.onSurfaceVariant
+                },
             )
         }
     }

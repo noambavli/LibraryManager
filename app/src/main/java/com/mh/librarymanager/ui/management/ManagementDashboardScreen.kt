@@ -34,6 +34,7 @@ private data class DashboardEntry(
 @Composable
 fun ManagementDashboardScreen(
     outOfOrderCount: Int,
+    catalogLoaded: Boolean,
     onOpenBooks: () -> Unit,
     onOpenOutOfOrder: () -> Unit,
     onOpenHistory: () -> Unit,
@@ -66,6 +67,7 @@ fun ManagementDashboardScreen(
 
                 DashboardGrid(
                     outOfOrderCount = outOfOrderCount,
+                    catalogLoaded = catalogLoaded,
                     onOpenBooks = onOpenBooks,
                     onOpenOutOfOrder = onOpenOutOfOrder,
                     onOpenHistory = onOpenHistory,
@@ -85,6 +87,7 @@ fun ManagementDashboardScreen(
 @Composable
 private fun DashboardGrid(
     outOfOrderCount: Int,
+    catalogLoaded: Boolean,
     onOpenBooks: () -> Unit,
     onOpenOutOfOrder: () -> Unit,
     onOpenHistory: () -> Unit,
@@ -105,12 +108,17 @@ private fun DashboardGrid(
         ),
         DashboardEntry(
             stringResource(R.string.management_out_of_order),
-            if (outOfOrderCount > 0) {
-                stringResource(R.string.management_out_of_order_subtitle_count, outOfOrderCount)
-            } else {
-                stringResource(R.string.management_out_of_order_subtitle_ok)
+            when {
+                !catalogLoaded -> stringResource(R.string.results_loading)
+                outOfOrderCount > 0 ->
+                    stringResource(R.string.management_out_of_order_subtitle_count, outOfOrderCount)
+                else -> stringResource(R.string.management_out_of_order_subtitle_ok)
             },
-            if (outOfOrderCount > 0) AppColors.Warning else AppColors.Accent,
+            when {
+                !catalogLoaded -> AppColors.AccentMuted
+                outOfOrderCount > 0 -> AppColors.Warning
+                else -> AppColors.Accent
+            },
             onOpenOutOfOrder,
         ),
         DashboardEntry(

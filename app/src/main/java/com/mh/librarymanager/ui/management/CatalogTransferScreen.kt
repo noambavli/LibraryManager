@@ -50,6 +50,7 @@ fun CatalogTransferScreen(
 ) {
     val status by viewModel.status.collectAsStateWithLifecycle()
     val dashboard by viewModel.dashboard.collectAsStateWithLifecycle()
+    val catalogLoaded by viewModel.catalogLoaded.collectAsStateWithLifecycle()
     val preview by viewModel.preview.collectAsStateWithLifecycle()
     val importHistory by viewModel.importHistory.collectAsStateWithLifecycle()
 
@@ -105,6 +106,7 @@ fun CatalogTransferScreen(
             ) {
                 SimpleInfoCard(
                     bookCount = dashboard.bookCount,
+                    catalogLoaded = catalogLoaded,
                     lastFile = dashboard.lastImport.let {
                         if (it.hasData && it.added > 0) {
                             stringResource(R.string.catalog_transfer_last_file, it.added)
@@ -413,7 +415,7 @@ private fun formatImportWhen(ms: Long): String =
     if (ms > 0L) IMPORT_WHEN_FMT.format(java.util.Date(ms)) else "—"
 
 @Composable
-private fun SimpleInfoCard(bookCount: Int, lastFile: String) {
+private fun SimpleInfoCard(bookCount: Int, catalogLoaded: Boolean, lastFile: String) {
     val cs = MaterialTheme.colorScheme
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -423,7 +425,11 @@ private fun SimpleInfoCard(bookCount: Int, lastFile: String) {
     ) {
         Column(modifier = Modifier.padding(22.dp)) {
             Text(
-                text = stringResource(R.string.catalog_transfer_book_count, bookCount),
+                text = if (catalogLoaded) {
+                    stringResource(R.string.catalog_transfer_book_count, bookCount)
+                } else {
+                    stringResource(R.string.results_loading)
+                },
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
             )

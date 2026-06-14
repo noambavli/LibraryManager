@@ -3,8 +3,8 @@ package com.mh.librarymanager.ui.announcements
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -14,6 +14,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -27,6 +29,8 @@ import com.mh.librarymanager.domain.CustomColor
 import com.mh.librarymanager.domain.linkedParent
 import com.mh.librarymanager.ui.components.AppColors
 import com.mh.librarymanager.ui.components.BookCard
+import com.mh.librarymanager.ui.home.HomeFeedLayout
+import com.mh.librarymanager.ui.home.HomeFeedPanel
 
 /** A description is "long" (and gets a "full announcement" link) past this length. */
 private const val LONG_DESCRIPTION_CHARS = 160
@@ -35,8 +39,8 @@ fun Announcement.isLong(): Boolean =
     description.length > LONG_DESCRIPTION_CHARS || linkedBookIds.isNotEmpty()
 
 /**
- * Home-page announcements strip: a header, up to [maxVisible] compact cards,
- * and a small "see all" button.
+ * Home-page announcements panel — same fixed height as the catalog "what's new"
+ * panel. Shows as many announcements as fit; long single entries are truncated.
  */
 @Composable
 fun AnnouncementsHomeSection(
@@ -44,58 +48,34 @@ fun AnnouncementsHomeSection(
     onOpenAnnouncement: (String) -> Unit,
     onOpenAll: () -> Unit,
     modifier: Modifier = Modifier,
-    maxVisible: Int = 3,
-    compact: Boolean = false,
 ) {
     if (announcements.isEmpty()) return
-    val cs = MaterialTheme.colorScheme
-    val visible = announcements.take(maxVisible)
+    val slots = remember(announcements) { HomeFeedLayout.planAnnouncements(announcements) }
 
-    val panelModifier = modifier.fillMaxWidth()
-
-    Surface(
-        modifier = panelModifier,
-        color = if (compact) AppColors.Panel else cs.surface,
-        shape = RoundedCornerShape(if (compact) 14.dp else 0.dp),
-        border = if (compact) BorderStroke(1.dp, AppColors.Border) else null,
-        shadowElevation = if (compact) 1.dp else 0.dp,
+    HomeFeedPanel(
+        title = stringResource(R.string.announcements_home_title),
+        modifier = modifier,
+        footer = {
+            TextButton(onClick = onOpenAll) {
+                Text(
+                    text = stringResource(R.string.announcements_see_all),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = AppColors.Accent,
+                )
+            }
+        },
     ) {
         Column(
-            modifier = Modifier.padding(
-                horizontal = if (compact) 14.dp else 0.dp,
-                vertical = if (compact) 12.dp else 0.dp,
-            ),
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Top),
         ) {
-            Text(
-                text = stringResource(R.string.announcements_home_title),
-                style = MaterialTheme.typography.titleSmall,
-                color = if (compact) AppColors.TextSecondary else cs.onBackground,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                visible.forEach { announcement ->
-                    AnnouncementCompactCard(
-                        announcement = announcement,
-                        onOpenFull = { onOpenAnnouncement(announcement.id) },
-                        compact = compact,
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onOpenAll) {
-                    Text(
-                        text = stringResource(R.string.announcements_see_all),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (compact) AppColors.Accent else cs.primary,
-                    )
-                }
+            slots.forEach { slot ->
+                AnnouncementCompactCard(
+                    announcement = slot.announcement,
+                    descriptionMaxLines = slot.descriptionMaxLines,
+                    onOpenFull = { onOpenAnnouncement(slot.announcement.id) },
+                )
             }
         }
     }
@@ -104,33 +84,31 @@ fun AnnouncementsHomeSection(
 @Composable
 private fun AnnouncementCompactCard(
     announcement: Announcement,
+    descriptionMaxLines: Int,
     onOpenFull: () -> Unit,
-    compact: Boolean = false,
 ) {
-    val cs = MaterialTheme.colorScheme
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = if (compact) Color.White else cs.surface,
-        shape = RoundedCornerShape(if (compact) 10.dp else 14.dp),
-        border = BorderStroke(1.dp, if (compact) AppColors.BorderLight else cs.outlineVariant),
-        shadowElevation = if (compact) 0.dp else 1.dp,
+        color = Color.White,
+        shape = RoundedCornerShape(10.dp),
+        border = BorderStroke(1.dp, AppColors.BorderLight),
     ) {
-        Column(modifier = Modifier.padding(if (compact) 10.dp else 16.dp)) {
+        Column(modifier = Modifier.padding(10.dp)) {
             Text(
                 text = announcement.title.ifBlank { "—" },
-                style = if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleLarge,
-                color = if (compact) AppColors.TextPrimary else cs.onSurface,
+                style = MaterialTheme.typography.bodyMedium,
+                color = AppColors.TextPrimary,
                 fontWeight = FontWeight.SemiBold,
-                maxLines = if (compact) 1 else 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (announcement.description.isNotBlank()) {
-                Spacer(modifier = Modifier.height(if (compact) 3.dp else 6.dp))
+            if (announcement.description.isNotBlank() && descriptionMaxLines > 0) {
+                Spacer(modifier = Modifier.height(3.dp))
                 Text(
                     text = announcement.description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (compact) AppColors.TextMuted else cs.onSurfaceVariant,
-                    maxLines = if (compact) 2 else 3,
+                    color = AppColors.TextMuted,
+                    maxLines = descriptionMaxLines,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
@@ -143,7 +121,7 @@ private fun AnnouncementCompactCard(
                         text = stringResource(R.string.announcement_full),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (compact) AppColors.Accent else cs.primary,
+                        color = AppColors.Accent,
                     )
                 }
             }

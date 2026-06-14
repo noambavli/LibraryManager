@@ -42,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
+import com.mh.librarymanager.ui.components.AppLoadingContent
 import com.mh.librarymanager.ui.components.AppScreenBackground
 import com.mh.librarymanager.ui.components.ManagementHeader
 import com.mh.librarymanager.domain.AuditEvent
@@ -68,6 +69,7 @@ fun HistoryScreen(
     onLogout: () -> Unit,
 ) {
     val rows by viewModel.rows.collectAsStateWithLifecycle()
+    val dataLoaded by viewModel.dataLoaded.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var transientMessage by remember { mutableStateOf<String?>(null) }
 
@@ -90,62 +92,63 @@ fun HistoryScreen(
             onLogout = onLogout,
         )
 
-        if (rows.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        when {
+            !dataLoaded -> AppLoadingContent()
+            rows.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = stringResource(R.string.history_empty),
                     style = MaterialTheme.typography.titleMedium,
                     color = cs.onSurfaceVariant,
                 )
             }
-            return@Column
-        }
+            else -> {
+                val listState = rememberLazyListState()
+                val grouped = remember(rows) { groupByDay(rows) }
 
-        val listState = rememberLazyListState()
-        val grouped = remember(rows) { groupByDay(rows) }
+                Box(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        state = listState,
+                        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        grouped.forEach { (label, items) ->
+                            item(key = "day-$label") { DayHeader(label) }
+                            items(items, key = { it.event.id }) { row ->
+                                HistoryRowCard(
+                                    row = row,
+                                    onRestoreDeleted = { ev ->
+                                        scope.launch {
+                                            val outcome = viewModel.restoreDeleted(ev)
+                                            transientMessage = if (outcome == RestoreOutcome.Ok) {
+                                                successText
+                                            } else {
+                                                conflictText
+                                            }
+                                        }
+                                    },
+                                    onRestoreUpdate = { ev ->
+                                        scope.launch {
+                                            val outcome = viewModel.restoreUpdate(ev)
+                                            transientMessage = if (outcome == RestoreOutcome.Ok) {
+                                                successText
+                                            } else {
+                                                conflictText
+                                            }
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                    }
 
-        Box(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                state = listState,
-                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                grouped.forEach { (label, items) ->
-                    item(key = "day-$label") { DayHeader(label) }
-                    items(items, key = { it.event.id }) { row ->
-                        HistoryRowCard(
-                            row = row,
-                            onRestoreDeleted = { ev ->
-                                scope.launch {
-                                    val outcome = viewModel.restoreDeleted(ev)
-                                    transientMessage = if (outcome == RestoreOutcome.Ok) {
-                                        successText
-                                    } else {
-                                        conflictText
-                                    }
-                                }
-                            },
-                            onRestoreUpdate = { ev ->
-                                scope.launch {
-                                    val outcome = viewModel.restoreUpdate(ev)
-                                    transientMessage = if (outcome == RestoreOutcome.Ok) {
-                                        successText
-                                    } else {
-                                        conflictText
-                                    }
-                                }
-                            },
+                    if (transientMessage != null) {
+                        Snackbar(
+                            message = transientMessage!!,
+                            modifier = Modifier.align(Alignment.BottomCenter),
                         )
                     }
                 }
-            }
-
-            if (transientMessage != null) {
-                Snackbar(
-                    message = transientMessage!!,
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                )
             }
         }
         }

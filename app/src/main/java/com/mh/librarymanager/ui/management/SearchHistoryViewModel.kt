@@ -50,6 +50,11 @@ class SearchHistoryViewModel(app: Application) : AndroidViewModel(app) {
             .map { entries -> rankPopularSearches(entries) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val loaded: StateFlow<Boolean> =
+        container.searchHistoryStore.loaded
+            .onStart { container.searchHistoryStore.loadFromDisk() }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     suspend fun delete(id: String) {
         withContext(Dispatchers.IO) {
             container.searchHistoryStore.remove(id)

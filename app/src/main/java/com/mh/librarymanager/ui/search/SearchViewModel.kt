@@ -38,7 +38,7 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
     companion object {
         /** 30 days, matching the "What's new" home-screen recency window. */
         const val RECENT_WINDOW_MS: Long = 30L * 24L * 60L * 60L * 1000L
-        const val RECENTLY_ADDED_LIMIT: Int = 4
+        const val RECENTLY_ADDED_LIMIT: Int = 3
     }
 
     private val container = LibraryApp.from(app)
@@ -55,6 +55,9 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
 
     private val catalog: StateFlow<List<Book>> = container.repository.observeAll()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val catalogLoaded: StateFlow<Boolean> = container.repository.observeCatalogLoaded()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     private val engine: StateFlow<SearchEngine> = catalog
         .map { books -> SearchEngine(books) }

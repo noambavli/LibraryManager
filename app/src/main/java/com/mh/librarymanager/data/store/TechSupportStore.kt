@@ -26,14 +26,13 @@ class TechSupportStore(private val context: Context) {
     private val _requests = MutableStateFlow<List<TechSupportRequest>>(emptyList())
     val requests: StateFlow<List<TechSupportRequest>> = _requests.asStateFlow()
 
-    @Volatile private var loaded = false
+    private val loadState = StoreLoadState()
+    val loaded: StateFlow<Boolean> = loadState.loaded
 
     suspend fun loadFromDisk() {
-        if (loaded) return
-        synchronized(this) {
-            if (loaded) return
+        loadFromDiskOnce(loadedFlag = loadState::isLoaded, lock = this) {
             _requests.value = if (file.exists()) readFile(file) else emptyList()
-            loaded = true
+            loadState.markLoaded()
         }
     }
 

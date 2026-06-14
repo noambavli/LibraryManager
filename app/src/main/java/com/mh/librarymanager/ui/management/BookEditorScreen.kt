@@ -54,6 +54,7 @@ import com.mh.librarymanager.domain.Book
 import com.mh.librarymanager.domain.BookPlace
 import com.mh.librarymanager.domain.BookState
 import com.mh.librarymanager.domain.CustomColor
+import com.mh.librarymanager.ui.components.AppLoadingContent
 import com.mh.librarymanager.ui.components.AppColors
 import com.mh.librarymanager.ui.components.AppPaneDivider
 import com.mh.librarymanager.ui.components.AppScreenBackground
@@ -150,6 +151,7 @@ fun BookEditorScreen(
     onLogout: () -> Unit,
 ) {
     val catalog by viewModel.catalog.collectAsStateWithLifecycle()
+    val catalogLoaded by viewModel.catalogLoaded.collectAsStateWithLifecycle()
     val customColors by viewModel.customColors.collectAsStateWithLifecycle()
     val parentNameLookup by viewModel.parentNameLookup.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -229,6 +231,23 @@ fun BookEditorScreen(
     BackHandler(enabled = true) { attemptExit(onBack) }
 
     SuppressPlatformKeyboardEffect()
+
+    if (bookId != null && !catalogLoaded) {
+        AppScreenBackground {
+            Column(modifier = Modifier.fillMaxSize()) {
+                EditorHeader(
+                    isNew = false,
+                    onBack = { attemptExit(onBack) },
+                    onLogout = { attemptExit(onLogout) },
+                    onSave = {},
+                    onDelete = {},
+                    canDelete = false,
+                )
+                AppLoadingContent()
+            }
+        }
+        return
+    }
 
     fun setText(field: EditField, value: TextFieldValue) {
         fieldValues = fieldValues.toMutableMap().also { it[field] = value }

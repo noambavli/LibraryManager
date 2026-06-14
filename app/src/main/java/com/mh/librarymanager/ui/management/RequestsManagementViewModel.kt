@@ -53,6 +53,11 @@ class RequestsManagementViewModel(app: Application) : AndroidViewModel(app) {
             }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
+    val loaded: StateFlow<Boolean> =
+        container.requestStore.loaded
+            .onStart { container.requestStore.loadFromDisk() }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     fun setFilter(status: RequestStatus?) {
         _filter.value = status
     }

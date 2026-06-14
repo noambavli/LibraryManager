@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
+import com.mh.librarymanager.ui.components.AppLoadingContent
 import com.mh.librarymanager.ui.components.AppScreenBackground
 import com.mh.librarymanager.ui.components.ManagementHeader
 import com.mh.librarymanager.domain.PublicRequest
@@ -62,6 +63,7 @@ fun RequestsManagementScreen(
     onLogout: () -> Unit,
 ) {
     val requests by viewModel.requests.collectAsStateWithLifecycle()
+    val loaded by viewModel.loaded.collectAsStateWithLifecycle()
     val counts by viewModel.counts.collectAsStateWithLifecycle()
     val activeFilter by viewModel.filter.collectAsStateWithLifecycle()
     var deleteCandidate by remember { mutableStateOf<PublicRequest?>(null) }
@@ -83,44 +85,44 @@ fun RequestsManagementScreen(
 
         HorizontalDivider(color = cs.outlineVariant)
 
-        if (requests.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        when {
+            !loaded -> AppLoadingContent()
+            requests.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = stringResource(R.string.requests_empty),
                     style = MaterialTheme.typography.titleMedium,
                     color = cs.onSurfaceVariant,
                 )
             }
-            return@Column
-        }
-
-        val listState = rememberLazyListState()
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            state = listState,
-            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            items(requests, key = { it.id }) { request ->
-                RequestCard(
-                    request = request,
-                    onSetStatus = { status -> viewModel.updateStatus(request.id, status) },
-                    onDelete = { deleteCandidate = request },
-                )
+            else -> {
+                val listState = rememberLazyListState()
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = listState,
+                    contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(requests, key = { it.id }) { request ->
+                        RequestCard(
+                            request = request,
+                            onSetStatus = { status -> viewModel.updateStatus(request.id, status) },
+                            onDelete = { deleteCandidate = request },
+                        )
+                    }
+                }
             }
         }
-    }
 
-    deleteCandidate?.let { candidate ->
-        ConfirmRequestDeleteDialog(
-            request = candidate,
-            onDismiss = { deleteCandidate = null },
-            onConfirm = {
-                viewModel.delete(candidate.id)
-                deleteCandidate = null
-            },
-        )
-    }
+        deleteCandidate?.let { candidate ->
+            ConfirmRequestDeleteDialog(
+                request = candidate,
+                onDismiss = { deleteCandidate = null },
+                onConfirm = {
+                    viewModel.delete(candidate.id)
+                    deleteCandidate = null
+                },
+            )
+        }
     }
 }
 

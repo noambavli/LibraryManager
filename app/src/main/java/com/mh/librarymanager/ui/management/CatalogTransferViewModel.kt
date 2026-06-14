@@ -113,6 +113,9 @@ class CatalogTransferViewModel(app: Application) : AndroidViewModel(app) {
             ),
         )
 
+    val catalogLoaded: StateFlow<Boolean> = container.repository.observeCatalogLoaded()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     fun loadPreview(uri: Uri) {
         _status.value = Status.Working
         _preview.value = null
