@@ -37,9 +37,9 @@
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-            <!-- PC LibraryTool: am start -a IMPORT_CATALOG (foreground import). -->
+            <!-- PC ExcelTool: am start -a IMPORT_EXCEL (foreground import). -->
             <intent-filter>
-                <action android:name="com.mh.librarymanager.IMPORT_CATALOG" />
+                <action android:name="com.mh.librarymanager.IMPORT_EXCEL" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
@@ -75,12 +75,12 @@
             </intent-filter>
         </receiver>
 
-        <!-- PC LibraryTool: adb push catalog.civ + broadcast to import silently. -->
+        <!-- PC ExcelTool: adb push books-import.xlsx + broadcast to stage import. -->
         <receiver
-            android:name=".CatalogImportReceiver"
+            android:name=".ExcelImportReceiver"
             android:exported="true">
             <intent-filter>
-                <action android:name="com.mh.librarymanager.IMPORT_CATALOG" />
+                <action android:name="com.mh.librarymanager.IMPORT_EXCEL" />
             </intent-filter>
         </receiver>
 

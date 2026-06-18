@@ -1,6 +1,5 @@
 # PyInstaller spec — builds a single-file Windows .exe.
 # CI: GitHub Actions workflow build-windows-exe.yml
-# Local fallback: build_windows.bat
 
 block_cipher = None
 
@@ -13,15 +12,15 @@ a = Analysis(
         "library_tool",
         "library_tool.app",
         "library_tool.session",
-        "library_tool.civ",
         "library_tool.converter",
         "library_tool.validation",
         "library_tool.backups",
-        "library_tool.transfer",
         "library_tool.adb_transfer",
         "library_tool.xlsx_reader",
+        "library_tool.xlsx_writer",
         "library_tool.hebrew",
         "library_tool.model",
+        "library_tool.exports",
         "tkinter",
         "tkinter.ttk",
         "tkinter.filedialog",
@@ -46,7 +45,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name="LibraryTool",
+    name="ExcelTool",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

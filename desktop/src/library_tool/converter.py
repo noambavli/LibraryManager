@@ -158,3 +158,26 @@ def convert_rows(rows: List[List[str]], now_ms: Optional[int] = None) -> Convert
         header_map=header_map,
         missing_fields=missing,
     )
+
+
+BOOK_HEADERS = [
+    "שם הספר", "ענינים", "המחבר", "מספר", "אות", "צבע", "קטגוריה", "תת קטגוריה", "הערות",
+]
+
+
+def books_to_rows(books: List[Book]) -> List[List[str]]:
+    rows = [BOOK_HEADERS]
+    for book in books:
+        sub = book.subcategories[0] if book.subcategories else ""
+        rows.append([
+            book.name,
+            book.topics,
+            book.writer,
+            book.displayNumber,
+            book.letter,
+            book.color,
+            book.category,
+            sub,
+            book.notes,
+        ])
+    return rows

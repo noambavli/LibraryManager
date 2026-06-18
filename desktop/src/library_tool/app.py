@@ -4,7 +4,7 @@ A single window organised as a guided flow:
 
     1. Import a catalog .xlsx        →  loads + converts + validates
     2. Review warnings / duplicates  →  a findings table with counts
-    3. Export to the tablet (USB-C)  →  verified .civ write
+    3. Send Excel to the tablet (USB-C)  →  merge import on confirm
     plus a safety panel: restore last import and restore any backup.
 
 Long operations run on a worker thread; progress and completion are marshalled
@@ -23,9 +23,10 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from typing import Callable, Optional
 
-from . import __version__, backups
-from . import adb_transfer, civ
+from . import __version__, adb_transfer, backups
 from .session import AbortError, AbortFlag, Session
+from .converter import books_to_rows
+from .xlsx_writer import write_xlsx
 from .validation import ERROR, INFO, WARNING
 
 _SEVERITY_TAG = {ERROR: "error", WARNING: "warning", INFO: "info"}
@@ -45,7 +46,7 @@ class LibraryToolApp:
         self._busy = False
         self._tablet_ready = False
 
-        root.title(f"LibraryTool {__version__} — Catalog ↔ Tablet")
+        root.title(f"ExcelTool {__version__} — Excel ↔ Tablet")
         root.geometry("960x680")
         root.minsize(820, 600)
 
@@ -79,7 +80,7 @@ class LibraryToolApp:
         ttk.Label(top, text="Library Catalog Manager", style="Title.TLabel").pack(anchor="w")
         ttk.Label(
             top,
-            text="Offline · import Excel → send .civ to tablet over USB-C → confirm on tablet",
+            text="Offline · import Excel → send .xlsx to tablet over USB-C → confirm on tablet",
             style="Sub.TLabel",
         ).pack(anchor="w")
 
@@ -125,21 +126,16 @@ class LibraryToolApp:
         )
         self.btn_import.pack(side="left")
 
-        self.btn_load_civ = ttk.Button(
-            row1, text="Open existing .civ…", command=self.on_load_civ,
+        self.btn_save = ttk.Button(
+            row1, text="Save .xlsx locally…", command=self.on_save_local, state="disabled",
         )
-        self.btn_load_civ.pack(side="left", padx=(8, 0))
+        self.btn_save.pack(side="left", padx=(8, 0))
 
         self.btn_export = ttk.Button(
             row1, text="2 · Send to tablet…", style="Accent.TButton",
             command=self.on_send_to_tablet, state="disabled",
         )
         self.btn_export.pack(side="right")
-
-        self.btn_save = ttk.Button(
-            row1, text="Save .civ locally…", command=self.on_save_local, state="disabled",
-        )
-        self.btn_save.pack(side="right", padx=(0, 8))
 
         # Safety row.
         row2 = ttk.Frame(frame)
@@ -227,7 +223,7 @@ class LibraryToolApp:
     def _set_busy(self, busy: bool) -> None:
         self._busy = busy
         state = "disabled" if busy else "normal"
-        for b in (self.btn_import, self.btn_load_civ, self.btn_restore_backup):
+        for b in (self.btn_import, self.btn_restore_backup):
             b.config(state=state)
         self.btn_abort.config(state="normal" if busy else "disabled")
         if not busy:
@@ -410,33 +406,18 @@ class LibraryToolApp:
 
         self._run_worker(work, done, progress_label="Importing…")
 
-    def on_load_civ(self) -> None:
-        path = filedialog.askopenfilename(
-            title="Open a .civ catalog (e.g. read back from the tablet)",
-            filetypes=[("Tablet catalog", "*.civ"), ("All files", "*.*")],
-        )
-        if not path:
-            return
-        try:
-            n = self.session.load_civ(path)
-        except Exception as exc:
-            messagebox.showerror("Could not open .civ", str(exc))
-            return
-        self._show_report(self.session.last_report)
-        self.footer_var.set(f"Loaded {n} books from {os.path.basename(path)}.")
-        self._refresh_status()
-
     def on_save_local(self) -> None:
+        initial = os.path.basename(self.session.source_path or "books.xlsx")
         path = filedialog.asksaveasfilename(
-            title="Save tablet catalog",
-            defaultextension=".civ",
-            initialfile=self.session.suggested_export_filename(),
-            filetypes=[("Tablet catalog", "*.civ")],
+            title="Save Excel workbook",
+            defaultextension=".xlsx",
+            initialfile=initial,
+            filetypes=[("Excel workbook", "*.xlsx")],
         )
         if not path:
             return
         try:
-            self.session.save_civ(path)
+            write_xlsx(path, books_to_rows(self.session.books))
         except Exception as exc:
             messagebox.showerror("Save failed", str(exc))
             return
@@ -445,9 +426,7 @@ class LibraryToolApp:
         messagebox.showinfo(
             "Saved",
             f"Saved {len(self.session.books)} books to:\n{path}\n\n"
-            f"Prefer step 2 (Send to tablet) for automatic transfer.\n"
-            f"Manual fallback: copy {fname} to the tablet, then "
-            f"Management → Sync → pick the file.",
+            f"Prefer step 2 (Send to tablet) for automatic transfer.",
         )
 
     def on_send_to_tablet(self) -> None:
@@ -469,7 +448,7 @@ class LibraryToolApp:
             "Send to tablet",
             f"Connect the tablet with USB-C, then click Yes.\n\n"
             f"You chose: {src}\n"
-            f"This send creates file: {batch}.civ\n"
+            f"This send creates file: {batch}.xlsx\n"
             f"Books to send: {n}\n\n"
             f"A confirmation dialog will appear on the tablet — approve it to add new books.\n"
             f"(Only adds new books; existing catalog is kept.)\n\n"
@@ -485,19 +464,19 @@ class LibraryToolApp:
             count = result.imported_count
             line = result.result_line or ""
             if line.startswith("ERR:cancelled"):
-                msg = f"Send cancelled on the tablet ({batch}.civ was not merged)."
+                msg = f"Send cancelled on the tablet ({batch}.xlsx was not merged)."
             elif line.startswith("ERR:confirm_timeout"):
                 msg = (
-                    f"Sent {batch}.civ — tablet did not confirm in time. "
+                    f"Sent {batch}.xlsx — tablet did not confirm in time. "
                     "Open the tablet app and approve the dialog, or use Management → Sync."
                 )
             elif count is not None:
                 msg = (
-                    f"Done. Sent {batch}.civ — {count} new books merged "
+                    f"Done. Sent {batch}.xlsx — {count} new books merged "
                     "(existing books were kept)."
                 )
             else:
-                msg = f"Sent {batch}.civ — confirm on the tablet to finish."
+                msg = f"Sent {batch}.xlsx — confirm on the tablet to finish."
             self.footer_var.set(msg)
             self._refresh_status()
             src = os.path.basename(self.session.source_path or "") or "catalog"
@@ -510,12 +489,10 @@ class LibraryToolApp:
                     "Tablet sync",
                     f"{msg}\n\n"
                     f"Excel on PC: {src}\n"
-                    f"Batch file: {batch}.civ\n"
+                    f"Batch file: {batch}.xlsx\n"
                     f"PC archive: {exports_dir()}\n"
                     f"Device: {result.device.model} ({result.device.serial})\n\n"
-                    f"To rebuild after a wipe: import 1.civ, 2.civ … in order "
-                    f"(Management → Sync), or use the PC archives above.\n"
-                    f"If the dialog was missed: Management → Sync → pick {batch}.civ",
+                    f"If the dialog was missed: approve the import when the tablet shows it.",
                 )
 
         def error(exc):

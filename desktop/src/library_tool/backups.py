@@ -1,17 +1,4 @@
-"""Backups, restore points, and the delete-all safety net.
-
-Every operation that changes the working catalog first snapshots the previous
-state into a timestamped backup, so:
-
-  * **Restore after import** — if the user imports a new sheet and hasn't made
-    further changes, they can revert to exactly what was there before.
-  * **Delete-all is reversible** — "delete everything" really writes an empty
-    catalog, but the pre-delete state is snapshotted and can be restored.
-
-Backups live in a per-user app-data folder (so they survive even if the working
-folder is cleaned up) and are pruned to a sane maximum. Each backup carries a
-small JSON sidecar describing what it was (kind, book count, source).
-"""
+"""Backups and restore points for the working Excel catalog."""
 
 from __future__ import annotations
 
@@ -23,18 +10,19 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional
 
-from . import APP_NAME, civ
+from . import APP_NAME
+from .model import Book
 
 MAX_BACKUPS = 50
+BACKUP_EXTENSION = ".json"
 
-KIND_IMPORT = "import"          # snapshot of catalog *before* an import replaced it
-KIND_EXPORT = "export"          # snapshot taken right before exporting to a tablet
-KIND_DELETE_ALL = "delete_all"  # snapshot taken before wiping everything
-KIND_MANUAL = "manual"          # user-requested checkpoint
+KIND_IMPORT = "import"
+KIND_EXPORT = "export"
+KIND_DELETE_ALL = "delete_all"
+KIND_MANUAL = "manual"
 
 
 def app_data_dir() -> str:
-    """A writable, per-user data directory that works on Windows, macOS, Linux."""
     if os.name == "nt":
         base = os.environ.get("APPDATA") or os.path.expanduser("~")
     elif sys.platform == "darwin":
@@ -75,19 +63,29 @@ class BackupEntry:
         return f"{self.when} · {nice_kind} · {self.book_count} books"
 
 
-def create_backup(books: List, kind: str, source: str = "") -> BackupEntry:
-    """Snapshot ``books`` as a timestamped backup and return its entry."""
+def _write_backup_file(path: str, books: List[Book]) -> None:
+    payload = {"books": [book.to_json() for book in books]}
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, ensure_ascii=False, indent=2)
+
+
+def _read_backup_file(path: str) -> List[Book]:
+    with open(path, "r", encoding="utf-8") as fh:
+        payload = json.load(fh)
+    return [Book.from_json(item) for item in payload.get("books", [])]
+
+
+def create_backup(books: List[Book], kind: str, source: str = "") -> BackupEntry:
     ts = int(time.time() * 1000)
     stamp = datetime.fromtimestamp(ts / 1000).strftime("%Y%m%d-%H%M%S")
-    fname = f"{stamp}-{kind}{civ.CIV_EXTENSION}"
+    fname = f"{stamp}-{kind}{BACKUP_EXTENSION}"
     target = os.path.join(backups_dir(), fname)
-    # Avoid clobbering if two backups land in the same second.
     n = 1
     while os.path.exists(target):
-        target = os.path.join(backups_dir(), f"{stamp}-{kind}-{n}{civ.CIV_EXTENSION}")
+        target = os.path.join(backups_dir(), f"{stamp}-{kind}-{n}{BACKUP_EXTENSION}")
         n += 1
 
-    civ.write_file(target, books, consume_counter=False)
+    _write_backup_file(target, books)
     meta = {
         "timestamp": ts,
         "kind": kind,
@@ -110,11 +108,10 @@ def create_backup(books: List, kind: str, source: str = "") -> BackupEntry:
 
 
 def list_backups() -> List[BackupEntry]:
-    """All backups, newest first."""
     out: List[BackupEntry] = []
     d = backups_dir()
     for name in os.listdir(d):
-        if not name.endswith(civ.CIV_EXTENSION):
+        if not name.endswith(BACKUP_EXTENSION):
             continue
         path = os.path.join(d, name)
         meta_path = path + ".meta.json"
@@ -137,9 +134,8 @@ def list_backups() -> List[BackupEntry]:
     return out
 
 
-def restore_backup(entry: BackupEntry):
-    """Load the books stored in a backup."""
-    return civ.read_file(entry.path).books
+def restore_backup(entry: BackupEntry) -> List[Book]:
+    return _read_backup_file(entry.path)
 
 
 def latest_backup() -> Optional[BackupEntry]:

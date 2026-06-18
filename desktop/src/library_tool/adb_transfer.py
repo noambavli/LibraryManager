@@ -3,8 +3,8 @@
 Flow (same pattern as the app's APK update):
   1. Detect adb + a connected tablet
   2. Best-effort enable USB file-transfer mode on the device
-  3. Push catalog.civ to /data/local/tmp/catalog.civ
-  4. Broadcast IMPORT_CATALOG to wake the tablet app
+  3. Push books-import.xlsx to /data/local/tmp/books-import.xlsx
+  4. Broadcast IMPORT_EXCEL to wake the tablet app
   5. Read catalog-import-result.txt — PENDING while waiting for on-tablet
      confirmation, then OK (merged) or ERR (cancelled / failed)
 
@@ -24,8 +24,8 @@ import time
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-REMOTE_CIV_TMP = "/data/local/tmp/catalog.civ"
-REMOTE_CIV_DOWNLOAD = "/sdcard/Download/catalog.civ"
+REMOTE_XLSX_TMP = "/data/local/tmp/books-import.xlsx"
+REMOTE_XLSX_DOWNLOAD = "/sdcard/Download/books-import.xlsx"
 REMOTE_RESULT_TMP = "/data/local/tmp/catalog-import-result.txt"
 REMOTE_RESULT = "/sdcard/Download/catalog-import-result.txt"
 REMOTE_RESULT_APP = (
@@ -35,8 +35,8 @@ REMOTE_RESULT_APP = (
 REMOTE_RESULTS = [REMOTE_RESULT_APP, REMOTE_RESULT_TMP, REMOTE_RESULT]
 RESULT_PROGRESS = "RUNNING"
 CONFIRM_TIMEOUT_SEC = 600
-IMPORT_ACTION = "com.mh.librarymanager.IMPORT_CATALOG"
-IMPORT_RECEIVER = "com.mh.librarymanager/.CatalogImportReceiver"
+IMPORT_ACTION = "com.mh.librarymanager.IMPORT_EXCEL"
+IMPORT_RECEIVER = "com.mh.librarymanager/.ExcelImportReceiver"
 PACKAGE = "com.mh.librarymanager"
 
 
@@ -319,9 +319,9 @@ def _is_progress_result(line: str) -> bool:
     return stripped == RESULT_PROGRESS or stripped.startswith("PENDING:")
 
 
-def _import_timeout_sec(local_civ: str) -> int:
-    """Scale wait time with catalog size — large merges can take over a minute."""
-    size = os.path.getsize(local_civ)
+def _import_timeout_sec(local_xlsx: str) -> int:
+    """Scale wait time with workbook size — large merges can take over a minute."""
+    size = os.path.getsize(local_xlsx)
     return min(300, 90 + (size // 102_400) * 10)
 
 
@@ -373,7 +373,7 @@ def _parse_logcat_import(logcat: str) -> str:
 def _read_result_logcat(adb: str, serial: str, *, since: str = "") -> str:
     code, out, _ = _run(
         adb,
-        ["-s", serial, "logcat", "-d", "-s", "CatalogImport:I", "CatalogImport:E"],
+        ["-s", serial, "logcat", "-d", "-s", "ExcelImport:I", "ExcelImport:E"],
         timeout=15,
     )
     if code != 0 or not out.strip():
@@ -446,29 +446,28 @@ def _trigger_import(adb: str, serial: str) -> None:
 def push_and_import(
     adb: str,
     serial: str,
-    local_civ: str,
+    local_xlsx: str,
     *,
-    download_name: str = "catalog.civ",
+    download_name: str = "books-import.xlsx",
 ) -> AdbSendResult:
-    """Push catalog to tmp for import and copy a numbered archive into Download."""
+    """Push workbook to tmp for import and copy a numbered archive into Download."""
     prepare_usb(adb, serial)
 
     for path in REMOTE_RESULTS:
         _run(adb, ["-s", serial, "shell", "rm", "-f", path], timeout=15)
 
     code, _, err = _run(
-        adb, ["-s", serial, "push", local_civ, REMOTE_CIV_TMP], timeout=180,
+        adb, ["-s", serial, "push", local_xlsx, REMOTE_XLSX_TMP], timeout=180,
     )
     if code != 0:
         raise IOError(f"adb push failed: {err or 'unknown error'}")
 
-    _verify_remote_file(adb, serial, local_civ, REMOTE_CIV_TMP)
+    _verify_remote_file(adb, serial, local_xlsx, REMOTE_XLSX_TMP)
 
-    # Best-effort copy into public Download under the batch name (1.civ, 2.civ …).
     remote_download = f"/sdcard/Download/{download_name}"
     _run(
         adb,
-        ["-s", serial, "shell", "cp", REMOTE_CIV_TMP, remote_download],
+        ["-s", serial, "shell", "cp", REMOTE_XLSX_TMP, remote_download],
         timeout=30,
     )
     _run(
@@ -481,7 +480,7 @@ def push_and_import(
         timeout=15,
     )
 
-    digest = _local_sha256(local_civ)
+    digest = _local_sha256(local_xlsx)
 
     # PC can write to tmp via shell — seed RUNNING so we know adb can read this path.
     _run(
@@ -497,13 +496,13 @@ def push_and_import(
     _run(adb, ["-s", serial, "logcat", "-c"], timeout=10)
     _, logcat_baseline, _ = _run(
         adb,
-        ["-s", serial, "logcat", "-d", "-s", "CatalogImport:I", "CatalogImport:E"],
+        ["-s", serial, "logcat", "-d", "-s", "ExcelImport:I", "ExcelImport:E"],
         timeout=15,
     )
 
     _trigger_import(adb, serial)
 
-    timeout_sec = _import_timeout_sec(local_civ)
+    timeout_sec = _import_timeout_sec(local_xlsx)
     result_line = _wait_for_result(
         adb, serial, timeout_sec=timeout_sec, logcat_baseline=logcat_baseline,
     )
@@ -518,8 +517,8 @@ def push_and_import(
 
     return AdbSendResult(
         device=DeviceInfo(serial=serial, model=""),
-        local_path=local_civ,
-        remote_path=REMOTE_CIV_TMP,
+        local_path=local_xlsx,
+        remote_path=REMOTE_XLSX_TMP,
         sha256=digest,
         imported_count=imported,
         result_line=result_line,
@@ -620,18 +619,16 @@ def _parse_import_count(line: str) -> Optional[int]:
 
 
 def send_books(
-    write_fn,
     books,
     source_file: str = "",
     batch_number: Optional[int] = None,
 ) -> AdbSendResult:
-    """High-level: find adb + device, archive .civ, push, wait for tablet confirm."""
-    from . import civ as civ_mod
+    """High-level: find adb + device, archive .xlsx, push, wait for tablet confirm."""
+    from .converter import books_to_rows
     from .export_counter import commit_batch_number, peek_next_batch_number
-    from .exports import path_for_batch
+    from .exports import export_filename, path_for_batch
+    from .xlsx_writer import write_xlsx
 
-    # Avoid kill-server on every send — that was not in the working "fix file import" flow
-    # and can disrupt a stable USB session mid-transfer.
     diag = diagnose(restart_server=False)
     if not diag.adb_path:
         raise FileNotFoundError(diag.error or "adb not found")
@@ -647,17 +644,8 @@ def send_books(
     adb = diag.adb_path
     batch = batch_number if batch_number is not None else peek_next_batch_number()
     archive_path = path_for_batch(batch)
-    # The counter only advances on a confirmed send, so any file already sitting
-    # at this (un-committed) batch number is a leftover from an earlier attempt
-    # that was cancelled/timed out — safe to overwrite, never a committed batch.
-    write_fn(
-        archive_path,
-        books,
-        source_file,
-        batch_number=batch,
-        consume_counter=False,
-    )
-    download_name = civ_mod.export_filename(batch)
+    write_xlsx(archive_path, books_to_rows(books))
+    download_name = export_filename(batch)
     result = push_and_import(
         adb, device.serial, archive_path, download_name=download_name,
     )

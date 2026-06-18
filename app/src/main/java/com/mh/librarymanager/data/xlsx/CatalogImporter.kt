@@ -69,7 +69,11 @@ class CatalogImporter(
         val totalAfter: Int,
     )
 
-    private data class ParsedRows(val books: List<Book>, val blankRows: Int)
+    /** Parse rows from a workbook stream without writing to the catalog. */
+    fun parseBooksFromStream(stream: InputStream): ParsedRows =
+        parseRows(XlsxReader.readFirstSheet(stream))
+
+    data class ParsedRows(val books: List<Book>, val blankRows: Int)
 
     private fun parseRows(rows: List<List<String>>): ParsedRows {
         if (rows.isEmpty()) return ParsedRows(emptyList(), 0)

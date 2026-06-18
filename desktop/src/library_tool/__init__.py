@@ -1,18 +1,9 @@
-"""LibraryTool — offline Windows companion for the LibraryManager tablet.
+"""LibraryTool — offline Windows Excel companion for the LibraryManager tablet.
 
-Imports the library catalog from a pre-defined .xlsx workbook, converts it into
-the tablet-compatible .civ format (a byte-for-byte copy of the tablet's
-``catalog.json`` version 4 document), validates it for duplicates and future
-problems, and exports it safely to the tablet over USB-C.
-
-The whole package is standard-library only so it packages into a single,
-fully-offline Windows .exe with no third-party runtime dependencies.
+Imports a library catalog from `.xlsx`, validates it, and sends it to the tablet
+over USB (adb) for merge import — the same Excel format as the tablet Windows Tool.
 """
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 
-# Must match CatalogStore.CATALOG_FORMAT_VERSION on the tablet. Bump only when
-# the tablet's persisted book schema changes.
-CATALOG_FORMAT_VERSION = 4
-
-APP_NAME = "LibraryTool"
+APP_NAME = "ExcelTool"
