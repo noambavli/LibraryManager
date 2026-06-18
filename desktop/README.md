@@ -1,8 +1,6 @@
-# LibraryTool — Windows catalog manager for LibraryManager tablets
+# ExcelTool — Windows Excel manager for LibraryManager tablets
 
-Offline Windows program that imports a library `.xlsx`, converts it to the
-tablet's `.civ` format (catalog.json v4), validates duplicates and problems,
-and guides staff through copying the file to the tablet.
+Offline Windows program that imports a library `.xlsx`, validates duplicates and problems, and sends the workbook to the tablet over USB (adb) for **merge import** — the same Excel format as the tablet **כלי Windows** screen.
 
 Companion to the **LibraryManager** Android app in this repo.
 
@@ -11,9 +9,9 @@ Companion to the **LibraryManager** Android app in this repo.
 ## Build the `.exe` (GitHub Actions — recommended)
 
 1. Push this repo to GitHub.
-2. Go to **Actions** → **Build LibraryTool Windows .exe** → **Run workflow**.
-3. Download **`LibraryTool-windows`** from the run's **Artifacts**.
-4. Copy `LibraryTool.exe` to a USB stick for customers. No Python needed to run it.
+2. Go to **Actions** → **Build ExcelTool Windows .exe** → **Run workflow**.
+3. Download **`ExcelTool-windows`** from the run's **Artifacts**.
+4. Copy the whole `package/` folder to a USB stick (includes `ExcelTool.exe` + `adb/`).
 
 ---
 
@@ -23,73 +21,44 @@ Companion to the **LibraryManager** Android app in this repo.
 build_windows.bat
 ```
 
-Output: `dist\LibraryTool.exe`
-
-Requires Python 3.8+ with internet once (to fetch PyInstaller).
+Output: `dist\ExcelTool.exe`
 
 ---
 
 ## Customer workflow (Windows)
 
-See **`CUSTOMER_GUIDE_WINDOWS.txt`** on the USB stick next to `LibraryTool.exe`.
+1. **ExcelTool** → Import `.xlsx` → Review warnings
+2. **Send to tablet** (USB connected, adb authorized)
+3. On tablet: confirm the import dialog when it appears (adds new books only)
 
-Summary:
-
-1. **LibraryTool** → Import `.xlsx` → Review warnings
-2. Export → **Save to Desktop** → `catalog.civ` is written and verified
-3. Connect tablet (USB, choose **File transfer**)
-4. Drag `catalog.civ` into the tablet's **Download** folder in File Explorer
-5. On tablet: **ניהול** → **ייבוא קטלוג מהמחשב** → pick `catalog.civ` → confirm
+Manual fallback: copy a numbered archive (`1.xlsx`, `2.xlsx`…) from the PC exports folder to the tablet Downloads, then **ניהול → כלי Windows → ייבוא ספרים**.
 
 ---
 
 ## Excel format
 
-Header row with these columns (Hebrew or English, any order):
+Same headers as the tablet Windows Tool / bundled catalog:
 
 | Field | Headers |
-|---|---|
-| Name | `שם הספר`, `שם`, `name` |
-| Author | `המחבר`, `מחבר`, `writer`, `author` |
-| Number | `מספר`, `number` |
-| Letter | `אות`, `letter` |
-| Color | `צבע`, `color` |
-| Category | `קטגוריה`, `category` |
-| Subcategory | `תת קטגוריה`, `subcategory` |
-| Topics | `ענינים`, `עניינים`, `topics` |
-| Notes | `הערות`, `הערה`, `notes` |
+|-------|---------|
+| Name | שם הספר, שם, name |
+| Topics | ענינים, topics |
+| Author | המחבר, מחבר, writer |
+| Number | מספר, number |
+| Letter | אות, letter |
+| Color | צבע, color |
+| Category | קטגוריה, category |
+| Subcategory | תת קטגוריה, subcategory |
+| Notes | הערות, notes |
 
-Generate sample workbooks:
-
-```bat
-python tools\make_user_xlsx.py
-```
-
-→ `sample\catalog_template.xlsx` (empty template) and `sample\catalog_example.xlsx`.
+Import **merges** — existing identical rows are skipped.
 
 ---
 
 ## Tests
 
 ```bat
-python -m pip install pytest
 python -m pytest -q
 ```
 
-31 tests cover xlsx import, `.civ` format, validation, and the full session flow.
-
----
-
-## Layout
-
-```
-desktop/
-├── src/library_tool/     application source (stdlib only)
-├── tests/                pytest suite
-├── tools/make_user_xlsx.py
-├── launcher.py           PyInstaller entry point
-├── librarytool.spec
-├── build_windows.bat     local Windows build
-├── CUSTOMER_GUIDE_WINDOWS.txt
-└── .github/workflows/build-windows-exe.yml  (in repo root)
-```
+22 tests cover xlsx import, validation, adb helpers, and session flow.

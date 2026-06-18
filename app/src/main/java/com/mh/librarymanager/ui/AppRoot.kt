@@ -35,10 +35,7 @@ import com.mh.librarymanager.ui.announcements.AnnouncementsViewModel
 import com.mh.librarymanager.ui.management.AnnouncementEditorScreen
 import com.mh.librarymanager.ui.management.AnnouncementsManagementScreen
 import com.mh.librarymanager.ui.management.AnnouncementsManagementViewModel
-import com.mh.librarymanager.ui.management.CatalogTransferScreen
-import com.mh.librarymanager.ui.management.CatalogTransferViewModel
 import com.mh.librarymanager.ui.management.ImportConfirmDialog
-import com.mh.librarymanager.ui.management.ImportSummaryScreen
 import com.mh.librarymanager.ui.management.ManagementDashboardScreen
 import com.mh.librarymanager.ui.management.OutOfOrderBooksScreen
 import com.mh.librarymanager.ui.management.ManagementSession
@@ -55,7 +52,6 @@ import com.mh.librarymanager.ui.management.ShortcutsManagementScreen
 import com.mh.librarymanager.ui.management.ShortcutsManagementViewModel
 import com.mh.librarymanager.ui.management.TechSupportManagementScreen
 import com.mh.librarymanager.ui.management.TechSupportManagementViewModel
-import com.mh.librarymanager.ui.management.WindowsBackupOverlay
 import com.mh.librarymanager.ui.management.WindowsToolScreen
 import com.mh.librarymanager.ui.management.WindowsToolViewModel
 import com.mh.librarymanager.ui.requests.PublicRequestScreen
@@ -94,7 +90,6 @@ fun AppRoot(
     searchMatchingsManagementViewModel: SearchMatchingsManagementViewModel,
     techSupportViewModel: TechSupportViewModel,
     techSupportManagementViewModel: TechSupportManagementViewModel,
-    catalogTransferViewModel: CatalogTransferViewModel,
     windowsToolViewModel: WindowsToolViewModel,
     managementSession: ManagementSession,
     onRegisterBackHandler: (handler: (() -> Boolean)) -> Unit,
@@ -113,12 +108,10 @@ fun AppRoot(
     val searchMatchingsManagementVm: SearchMatchingsManagementViewModel = searchMatchingsManagementViewModel
     val techSupportVm: TechSupportViewModel = techSupportViewModel
     val techSupportManagementVm: TechSupportManagementViewModel = techSupportManagementViewModel
-    val catalogTransferVm: CatalogTransferViewModel = catalogTransferViewModel
     val windowsToolVm: WindowsToolViewModel = windowsToolViewModel
     val session: ManagementSession = managementSession
-    val adbPending by catalogTransferVm.adbPending.collectAsStateWithLifecycle()
-    val adbConfirming by catalogTransferVm.adbConfirming.collectAsStateWithLifecycle()
-    val backupState by windowsToolVm.backupState.collectAsStateWithLifecycle()
+    val adbPending by windowsToolVm.adbPending.collectAsStateWithLifecycle()
+    val adbConfirming by windowsToolVm.adbConfirming.collectAsStateWithLifecycle()
     fun returnToAttract() {
         session.logout()
         searchVm.finalizePublicSearchSession()
@@ -126,7 +119,7 @@ fun AppRoot(
     }
 
     LaunchedEffect(Unit) {
-        catalogTransferVm.refreshAdbPending()
+        windowsToolVm.refreshAdbPending()
     }
 
     SideEffect {
@@ -291,7 +284,6 @@ fun AppRoot(
                     onOpenShortcuts = { nav.push(AppScreen.ManagementShortcuts) },
                     onOpenMatchings = { nav.push(AppScreen.ManagementMatchings) },
                     onOpenTechSupport = { nav.push(AppScreen.ManagementTechSupport) },
-                    onOpenCatalogTransfer = { nav.push(AppScreen.ManagementCatalogTransfer) },
                     onOpenWindowsTool = { nav.push(AppScreen.ManagementWindowsTool) },
                     onLogout = {
                         session.logout()
@@ -304,30 +296,6 @@ fun AppRoot(
                 WindowsToolScreen(
                     viewModel = windowsToolVm,
                     session = session,
-                    onBack = { nav.pop() },
-                    onLogout = {
-                        session.logout()
-                        nav.resetTo(AppScreen.Attract)
-                    },
-                )
-            }
-
-            AppScreen.ManagementCatalogTransfer -> ManagementGuard(session = session, nav = nav) {
-                CatalogTransferScreen(
-                    viewModel = catalogTransferVm,
-                    session = session,
-                    onBack = { nav.pop() },
-                    onLogout = {
-                        session.logout()
-                        nav.resetTo(AppScreen.Attract)
-                    },
-                    onOpenSummary = { nav.push(AppScreen.ManagementImportSummary) },
-                )
-            }
-
-            AppScreen.ManagementImportSummary -> ManagementGuard(session = session, nav = nav) {
-                ImportSummaryScreen(
-                    viewModel = catalogTransferVm,
                     onBack = { nav.pop() },
                     onLogout = {
                         session.logout()
@@ -481,20 +449,14 @@ fun AppRoot(
         adbPending?.let { preview ->
             ImportConfirmDialog(
                 preview = preview,
-                title = stringResource(R.string.catalog_transfer_adb_confirm_title),
-                fileLabel = preview.meta?.fileLabel(),
-                onCancel = { catalogTransferVm.cancelAdbPending() },
-                onConfirm = { catalogTransferVm.confirmAdbPending() },
+                title = stringResource(R.string.excel_import_adb_confirm_title),
+                fileLabel = preview.fileLabel(),
+                onCancel = { windowsToolVm.cancelAdbPending() },
+                onConfirm = { windowsToolVm.confirmAdbPending() },
                 confirmEnabled = !adbConfirming,
             )
         }
 
-        // Auto-backup overlay shown when the tablet is plugged into a PC.
-        WindowsBackupOverlay(
-            state = backupState,
-            onCancel = { windowsToolVm.cancelBackup() },
-            onContinue = { windowsToolVm.dismissBackup() },
-        )
     }
 }
 
@@ -511,9 +473,7 @@ private fun AppScreen.tracksPublicIdle(): Boolean = when (this) {
     AppScreen.ManagementShortcuts,
     AppScreen.ManagementMatchings,
     AppScreen.ManagementTechSupport,
-    AppScreen.ManagementCatalogTransfer,
     AppScreen.ManagementWindowsTool,
-    AppScreen.ManagementImportSummary,
     is AppScreen.BookEditor -> false
     else -> true
 }

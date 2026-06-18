@@ -119,7 +119,7 @@
     <string name="management_catalog_transfer">סנכרון מהמחשב</string>
     <string name="management_catalog_transfer_subtitle">אישור ייבוא וצפייה בסיכום</string>
     <string name="management_windows_tool">כלי Windows</string>
-    <string name="management_windows_tool_subtitle">גיבוי, ייבוא וייצוא (אקסל) מול המחשב</string>
+    <string name="management_windows_tool_subtitle">גיבוי, ייבוא/ייצוא אקסל, וחיבור למחשב (ExcelTool)</string>
 
     <!-- Out-of-order books (missing / swapped letter &amp; number) -->
     <string name="out_of_order_title">ספרים לא מסודרים</string>
@@ -382,8 +382,14 @@
     <string name="kiosk_setup_command">חבר את הטאבלט במצב פיתוח והרץ:\nadb shell dpm set-device-owner com.mh.librarymanager/.KioskDeviceAdminReceiver</string>
 
     <!-- Windows Tool (backup + xlsx import/export) -->
+    <string name="excel_import_adb_confirm_title">קובץ אקסל הגיע מהמחשב — לאשר הוספה?</string>
+    <string name="excel_import_chosen_file">בחרתם: קובץ %1$s</string>
+    <string name="excel_import_confirm_preview">יתווספו %1$d חדשים · %2$d כבר קיימים · מ‑%3$d ל‑%4$d סה״כ.</string>
+    <string name="excel_import_confirm_safety">נשמר גיבוי מלא לפני הייבוא — אפשר לשחזר מכלי Windows.</string>
+    <string name="excel_import_confirm_ok">הוסף</string>
+
     <string name="windows_tool_title">כלי Windows</string>
-    <string name="windows_tool_intro">כאן מנהלים את החיבור למחשב: גיבוי מלא של כל נתוני האפליקציה, וייבוא/ייצוא של ספרים, קיצורים והתאמות כקובצי אקסל. בכל ייבוא נשמר אוטומטית גיבוי מלא לפני השינוי, כך שתמיד אפשר לחזור אחורה.</string>
+    <string name="windows_tool_intro">כאן מנהלים את החיבור למחשב: גיבוי מלא של כל נתוני האפליקציה (כולל קיצורים), וייבוא/ייצוא של ספרים והתאמות כקובצי אקסל. בכל ייבוא נשמר אוטומטית גיבוי מלא לפני השינוי, כך שתמיד אפשר לחזור אחורה.</string>
 
     <string name="windows_tool_backup_section">גיבוי מלא</string>
     <string name="windows_tool_backup_desc">יוצר קובץ zip בתיקיית Download של הטאבלט (נראה מהמחשב). הקובץ כולל את כל הנתונים — ספרים, קיצורים, התאמות, בקשות, תמיכה והודעות — גם בפורמט קריא לצפייה וגם בפורמט שניתן לשחזר ממנו בדיוק.</string>
@@ -395,13 +401,18 @@
 
     <string name="windows_tool_books_section">ספרים</string>
     <string name="windows_tool_books_format">עמודות: שם הספר · ענינים · המחבר · מספר · אות · צבע · קטגוריה · תת קטגוריה · הערות. השורה הראשונה היא כותרות.\n\nייבוא מוסיף רק ספרים חדשים. אם שם + מחבר + אות + מספר + קטגוריה וכו\' תואמים לספר שכבר על הטאבלט — השורה תדולג (לא שגיאה). ייצוא ואז ייבוא של אותו קובץ = 0 חדשים.</string>
-    <string name="windows_tool_shortcuts_section">קיצורי חיפוש</string>
-    <string name="windows_tool_shortcuts_format">עמודה אחת בשם ״קיצור״ — כל שורה היא תגית חיפוש מהיר אחת (עד 7).</string>
     <string name="windows_tool_matchings_section">התאמות חיפוש (מילים נרדפות)</string>
-    <string name="windows_tool_matchings_format">עמודות: קיצור · מילים · כיוון. ב״מילים״ ניתן לרשום כמה מילים מלאות מופרדות בפסיק. ״כיוון״: דו-כיווני או חד-כיווני (ברירת מחדל: דו-כיווני).</string>
+    <string name="windows_tool_matchings_format">עמודות: קיצור · מילים · כיוון. ב״מילים״ ניתן לרשום כמה מילים מלאות מופרדות בפסיק. ״כיוון״: דו-כיווני או חד-כיווני (ברירת מחדל: דו-כיווני).\n\nייבוא מוסיף קיצורים חדשים ומעדכן מילים/כיוון לקיצור שכבר קיים. שורות זהות ללא שינוי — ללא פעולה.</string>
 
     <string name="windows_tool_export">ייצוא לאקסל</string>
     <string name="windows_tool_import">ייבוא מאקסל</string>
+    <string name="windows_tool_export_success">הייצוא הושלם בהצלחה! נשמרו %1$d שורות בקובץ %2$s בתיקיית Download.</string>
+    <string name="windows_tool_export_success_path">הייצוא הושלם בהצלחה! נשמרו %1$d שורות ב-%2$s</string>
+    <string name="windows_tool_export_empty">הייצוא הושלם — הקובץ %1$s נשמר (אין שורות לייצוא).</string>
+    <string name="windows_tool_busy">לא ניתן כעת — המתינו לסיום הפעולה הקודמת.</string>
+    <string name="windows_tool_backup_required_failed">הפעולה בוטלה — הגיבוי לפני השינוי נכשל: %1$s. לא בוצע שינוי.</string>
+    <string name="windows_tool_backup_cancelled_before_op">הגיבוי בוטל</string>
+    <string name="windows_tool_backup_unknown_failure">שגיאה לא ידועה</string>
 
     <string name="windows_tool_restore_section">שחזור מגיבוי</string>
     <string name="windows_tool_restore_desc">בחרו קובץ גיבוי zip כדי להחזיר את כל נתוני האפליקציה למצב שנשמר. פעולה זו מחליפה את כל הנתונים הקיימים.</string>
@@ -413,8 +424,27 @@
 
     <string name="windows_tool_import_confirm_title">לאשר ייבוא?</string>
     <string name="windows_tool_import_books_confirm">ייבוא הספרים יוסיף רק ספרים חדשים — שורות שכבר קיימות בקטלוג (אותו תוכן) ידולגו. גיבוי מלא יישמר אוטומטית לפני הייבוא. להמשיך?</string>
-    <string name="windows_tool_import_shortcuts_confirm">ייבוא הקיצורים יחליף את הקיצורים הקיימים. גיבוי מלא יישמר לפני הייבוא. להמשיך?</string>
-    <string name="windows_tool_import_matchings_confirm">ייבוא ההתאמות יחליף את ההתאמות הקיימות. גיבוי מלא יישמר לפני הייבוא. להמשיך?</string>
+    <string name="windows_tool_import_matchings_confirm">ייבוא ההתאמות יוסיף קיצורים חדשים ויעדכן מילים/כיוון לקיצורים שכבר קיימים. גיבוי מלא יישמר אוטומטית לפני הייבוא. להמשיך?</string>
+
+    <string name="windows_tool_danger_section">מחיקה מלאה</string>
+    <string name="windows_tool_danger_desc">מחיקת כל הספרים או כל קיצורי החיפוש. לפני המחיקה נשמר אוטומטית גיבוי מלא — ניתן לשחזר ממנו. נדרש אישור מוקלד.</string>
+    <string name="windows_tool_delete_all_books">מחק את כל הספרים</string>
+    <string name="windows_tool_delete_all_shortcuts">מחק את כל קיצורי החיפוש</string>
+    <string name="windows_tool_delete_books_confirm_title">מחיקת כל הספרים</string>
+    <string name="windows_tool_delete_books_confirm_body">כל הספרים בקטלוג יימחקו לצמיתות. לפני המחיקה יישמר גיבוי מלא אוטומטית. הקלידו ״מחק ספרים״ לאישור.</string>
+    <string name="windows_tool_delete_books_phrase">מחק ספרים</string>
+    <string name="windows_tool_delete_books_ok">מחק הכל</string>
+    <string name="windows_tool_delete_books_done">נמחקו %1$d ספרים. נשמר גיבוי מלא לפני המחיקה — ניתן לשחזר מכלי Windows.</string>
+    <string name="windows_tool_delete_books_empty">אין ספרים למחיקה.</string>
+    <string name="windows_tool_delete_shortcuts_confirm_title">מחיקת כל קיצורי החיפוש</string>
+    <string name="windows_tool_delete_shortcuts_confirm_body">כל קיצורי החיפוש (התגיות מעל שדה החיפוש) יימחקו. לפני המחיקה יישמר גיבוי מלא אוטומטית. הקלידו ״מחק קיצורים״ לאישור.</string>
+    <string name="windows_tool_delete_shortcuts_phrase">מחק קיצורים</string>
+    <string name="windows_tool_delete_shortcuts_ok">מחק הכל</string>
+    <string name="windows_tool_delete_shortcuts_done">נמחקו %1$d קיצורי חיפוש. נשמר גיבוי מלא לפני המחיקה — ניתן לשחזר מכלי Windows.</string>
+    <string name="windows_tool_delete_shortcuts_empty">אין קיצורי חיפוש למחיקה.</string>
+    <string name="windows_tool_delete_working_backup">יוצר גיבוי מלא לפני המחיקה…</string>
+    <string name="windows_tool_delete_books_working">מוחק את כל הספרים…</string>
+    <string name="windows_tool_delete_shortcuts_working">מוחק את כל קיצורי החיפוש…</string>
 
     <string name="windows_tool_dismiss">סגור</string>
 

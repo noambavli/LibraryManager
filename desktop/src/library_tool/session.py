@@ -1,19 +1,4 @@
-"""The application session: the single source of truth the GUI drives.
-
-Holds the working catalog in memory and brokers every state change through the
-safety layer (backups, atomic writes, validation). The GUI never touches files
-directly — it calls these methods, which are deliberately small, synchronous,
-and exception-safe so they can run on a background thread with the GUI showing
-progress.
-
-Safety guarantees enforced here:
-  * Importing first snapshots the catalog being replaced (restore-after-import).
-  * The "dirty" flag tracks whether anything changed since the last import, so
-    the GUI can offer a clean restore only when it's truly safe.
-  * Delete-all snapshots before wiping and is therefore always reversible.
-  * An ``AbortFlag`` lets any long operation be cancelled at a safe checkpoint
-    without leaving partial state.
-"""
+"""The application session: the single source of truth the GUI drives."""
 
 from __future__ import annotations
 
@@ -21,7 +6,7 @@ import threading
 from dataclasses import dataclass, field
 from typing import Callable, List, Optional
 
-from . import adb_transfer, backups, civ, transfer, validation
+from . import adb_transfer, backups, validation
 from .export_counter import peek_next_batch_number
 from .converter import ConvertResult, convert_rows
 from .model import Book
@@ -33,8 +18,6 @@ class AbortError(Exception):
 
 
 class AbortFlag:
-    """A thread-safe, resettable cancellation flag."""
-
     def __init__(self) -> None:
         self._event = threading.Event()
 
@@ -72,13 +55,9 @@ class Session:
         self.books: List[Book] = []
         self.source_path: Optional[str] = None
         self.last_sent_batch: Optional[int] = None
-        # True once the working set has been changed since the last import,
-        # which is when a "clean restore to pre-import" is no longer guaranteed.
         self.dirty: bool = False
         self.last_import_restore: Optional[backups.BackupEntry] = None
         self.last_report: Optional[validation.ValidationReport] = None
-
-    # -- Import -------------------------------------------------------------
 
     def import_xlsx(
         self,
@@ -86,11 +65,6 @@ class Session:
         progress: ProgressFn = _noop_progress,
         abort: Optional[AbortFlag] = None,
     ) -> ImportOutcome:
-        """Read + convert + validate an xlsx, replacing the working catalog.
-
-        The previous catalog is snapshotted first so the user can restore it if
-        the new import was a mistake (and nothing has changed since).
-        """
         abort = abort or AbortFlag()
 
         progress("Snapshotting current catalog…", 0.05)
@@ -113,7 +87,6 @@ class Session:
         report = validation.validate(result.books, skipped=result.skipped)
         abort.check()
 
-        # Commit to working state only after all the risky work succeeded.
         self.books = result.books
         self.source_path = path
         self.dirty = False
@@ -123,11 +96,7 @@ class Session:
         progress("Done.", 1.0)
         return ImportOutcome(result, report, restore_point)
 
-    # -- Restore ------------------------------------------------------------
-
     def can_restore_import(self) -> bool:
-        """A clean restore to the pre-import state is offered only when we have a
-        restore point and nothing has been changed since the import."""
         return self.last_import_restore is not None and not self.dirty
 
     def restore_import(self) -> int:
@@ -144,85 +113,25 @@ class Session:
         self.last_report = validation.validate(self.books)
         return len(self.books)
 
-    # -- Delete all ---------------------------------------------------------
-
-    def delete_all(self) -> backups.BackupEntry:
-        """Wipe the working catalog. Always snapshots first, so it's reversible.
-
-        Returns the backup so the caller can offer an immediate undo.
-        """
-        snapshot = backups.create_backup(
-            self.books, backups.KIND_DELETE_ALL, source=self.source_path or ""
-        )
-        self.books = []
-        self.dirty = True
-        self.last_report = validation.validate(self.books)
-        return snapshot
-
-    # -- Load an existing .civ (e.g. read back from the tablet) -------------
-
-    def load_civ(self, path: str) -> int:
-        doc = civ.read_file(path)
-        self.books = doc.books
-        self.source_path = path
-        self.dirty = False
-        self.last_import_restore = None
-        self.last_report = validation.validate(self.books)
-        return len(self.books)
-
-    # -- Export -------------------------------------------------------------
-
     def validate_current(self) -> validation.ValidationReport:
         report = validation.validate(self.books)
         self.last_report = report
         return report
 
-    def export(
-        self,
-        dest_path: str,
-        filename: str = "catalog.civ",
-        progress: ProgressFn = _noop_progress,
-        abort: Optional[AbortFlag] = None,
-    ) -> transfer.ExportResult:
-        abort = abort or AbortFlag()
-        progress("Snapshotting before export…", 0.2)
-        backups.create_backup(self.books, backups.KIND_EXPORT, source=dest_path)
-        abort.check()
-        progress("Writing and verifying .civ on the tablet…", 0.6)
-        result = transfer.export_to(self.books, dest_path, filename)
-        abort.check()
-        progress("Verified.", 1.0)
-        return result
-
-    def save_civ(self, path: str) -> str:
-        """Save the working catalog to a local .civ file (no transfer)."""
-        return civ.write_file(
-            path,
-            self.books,
-            source_file=self.source_path or "",
-            batch_number=0,
-            consume_counter=False,
-        )
-
-    def suggested_export_filename(self) -> str:
-        return civ.export_filename()
-
     def next_send_batch(self) -> int:
         return peek_next_batch_number()
 
     def tablet_pick_hint(self) -> str:
-        """Short reminder of the confirm-on-tablet flow."""
         if self.last_sent_batch is not None:
             batch = self.last_sent_batch
             return (
-                f"Last send: {batch}.civ (saved on PC + tablet Download). "
-                f"Confirm on tablet when prompted. "
-                f"Rebuild: import 1.civ, 2.civ … in order via Sync."
+                f"Last send: {batch}.xlsx (saved on PC + tablet Download). "
+                f"Confirm on the tablet when prompted."
             )
         if self.books:
             n = self.next_send_batch()
             return (
-                f"After Send: file {n}.civ is archived (never overwritten). "
+                f"After Send: file {n}.xlsx is archived (never overwritten). "
                 f"Confirm on the tablet. USB must stay connected."
             )
         return "Step 1: import Excel · Step 2: Send to tablet (USB connected)"
@@ -232,15 +141,13 @@ class Session:
         progress: ProgressFn = _noop_progress,
         abort: Optional[AbortFlag] = None,
     ) -> adb_transfer.AdbSendResult:
-        """Push catalog.civ to the tablet via adb and wait for on-tablet confirmation."""
         abort = abort or AbortFlag()
         progress("Looking for tablet (adb)…", 0.1)
         abort.check()
         batch = peek_next_batch_number()
-        progress("Sending catalog to tablet…", 0.4)
+        progress("Sending Excel to tablet…", 0.4)
         progress("Waiting for confirmation on the tablet…", 0.55)
         result = adb_transfer.send_books(
-            civ.write_file,
             self.books,
             source_file=self.source_path or "",
             batch_number=batch,
@@ -253,7 +160,7 @@ class Session:
         elif line.startswith("ERR:cancelled"):
             progress("Cancelled on the tablet.", 1.0)
         elif line.startswith("ERR:confirm_timeout"):
-            progress("Tablet did not confirm in time — approve on tablet or use Sync.", 1.0)
+            progress("Tablet did not confirm in time — approve on tablet.", 1.0)
         else:
             progress("Send finished.", 1.0)
         return result

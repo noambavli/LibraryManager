@@ -23,11 +23,11 @@ def test_is_progress_result():
 
 
 def test_import_timeout_scales_with_size(tmp_path):
-    small = tmp_path / "small.civ"
+    small = tmp_path / "small.xlsx"
     small.write_text("{}", encoding="utf-8")
     assert _import_timeout_sec(str(small)) == 90
 
-    large = tmp_path / "large.civ"
+    large = tmp_path / "large.xlsx"
     large.write_bytes(b"x" * 512_000)
     assert _import_timeout_sec(str(large)) == 140
 

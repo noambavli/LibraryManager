@@ -19,12 +19,11 @@ import com.mh.librarymanager.ui.AppRoot
 import com.mh.librarymanager.ui.announcements.AnnouncementsViewModel
 import com.mh.librarymanager.ui.management.AnnouncementsManagementViewModel
 import com.mh.librarymanager.ui.management.BooksManagementViewModel
-import com.mh.librarymanager.ui.management.CatalogTransferViewModel
 import com.mh.librarymanager.ui.management.HistoryViewModel
-import com.mh.librarymanager.ui.management.PopularBooksViewModel
-import com.mh.librarymanager.ui.management.SearchHistoryViewModel
 import com.mh.librarymanager.ui.management.ManagementSession
+import com.mh.librarymanager.ui.management.PopularBooksViewModel
 import com.mh.librarymanager.ui.management.RequestsManagementViewModel
+import com.mh.librarymanager.ui.management.SearchHistoryViewModel
 import com.mh.librarymanager.ui.management.SearchMatchingsManagementViewModel
 import com.mh.librarymanager.ui.management.ShortcutsManagementViewModel
 import com.mh.librarymanager.ui.management.TechSupportManagementViewModel
@@ -50,7 +49,6 @@ class MainActivity : ComponentActivity() {
     private val searchMatchingsManagementViewModel: SearchMatchingsManagementViewModel by viewModels()
     private val techSupportViewModel: TechSupportViewModel by viewModels()
     private val techSupportManagementViewModel: TechSupportManagementViewModel by viewModels()
-    private val catalogTransferViewModel: CatalogTransferViewModel by viewModels()
     private val windowsToolViewModel: WindowsToolViewModel by viewModels()
     private val managementSession: ManagementSession by viewModels()
 
@@ -94,7 +92,6 @@ class MainActivity : ComponentActivity() {
                     searchMatchingsManagementViewModel = searchMatchingsManagementViewModel,
                     techSupportViewModel = techSupportViewModel,
                     techSupportManagementViewModel = techSupportManagementViewModel,
-                    catalogTransferViewModel = catalogTransferViewModel,
                     windowsToolViewModel = windowsToolViewModel,
                     managementSession = managementSession,
                     onRegisterBackHandler = { handler ->
@@ -144,13 +141,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleImportIntent(intent: android.content.Intent?) {
-        if (intent?.action != CatalogImportReceiver.ACTION) return
+        if (intent?.action != ExcelImportReceiver.ACTION &&
+            intent?.action != "com.mh.librarymanager.IMPORT_CATALOG"
+        ) return
         intent.action = null
         lifecycleScope.launch {
-            // Staging runs in [CatalogImportReceiver] only. The activity's job is
-            // to surface the confirmation dialog — never re-stage here (that
-            // caused loops and double-tap races that overwrote OK with ERR).
-            catalogTransferViewModel.onAdbImportStaged()
+            windowsToolViewModel.onAdbImportStaged()
         }
     }
 

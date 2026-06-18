@@ -45,7 +45,6 @@ fun ManagementDashboardScreen(
     onOpenShortcuts: () -> Unit,
     onOpenMatchings: () -> Unit,
     onOpenTechSupport: () -> Unit,
-    onOpenCatalogTransfer: () -> Unit,
     onOpenWindowsTool: () -> Unit,
     onLogout: () -> Unit,
 ) {
@@ -80,7 +79,6 @@ fun ManagementDashboardScreen(
                     onOpenShortcuts = onOpenShortcuts,
                     onOpenMatchings = onOpenMatchings,
                     onOpenTechSupport = onOpenTechSupport,
-                    onOpenCatalogTransfer = onOpenCatalogTransfer,
                     onOpenWindowsTool = onOpenWindowsTool,
                 )
             }
@@ -102,7 +100,6 @@ private fun DashboardGrid(
     onOpenShortcuts: () -> Unit,
     onOpenMatchings: () -> Unit,
     onOpenTechSupport: () -> Unit,
-    onOpenCatalogTransfer: () -> Unit,
     onOpenWindowsTool: () -> Unit,
 ) {
     val tiles = listOf(
@@ -174,12 +171,6 @@ private fun DashboardGrid(
             stringResource(R.string.management_tech_support_subtitle),
             AppColors.Accent,
             onOpenTechSupport,
-        ),
-        DashboardEntry(
-            stringResource(R.string.management_catalog_transfer),
-            stringResource(R.string.management_catalog_transfer_subtitle),
-            AppColors.Accent,
-            onOpenCatalogTransfer,
         ),
         DashboardEntry(
             stringResource(R.string.management_windows_tool),

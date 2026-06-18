@@ -40,14 +40,8 @@ sealed interface AppScreen {
     data object ManagementMatchings : AppScreen
     data object ManagementTechSupport : AppScreen
 
-    /** Windows Tool — backup + xlsx import/export of books, shortcuts, matchings. */
+    /** Windows Tool — backup + xlsx import/export on tablet + PC adb push. */
     data object ManagementWindowsTool : AppScreen
-
-    /** Catalog import from PC (.civ file via Storage Access Framework). */
-    data object ManagementCatalogTransfer : AppScreen
-
-    /** Summary of the most recent catalog merge from the PC. */
-    data object ManagementImportSummary : AppScreen
 
     /** Book editor — `bookId == null` means "create a brand new book". */
     data class BookEditor(val bookId: String?) : AppScreen

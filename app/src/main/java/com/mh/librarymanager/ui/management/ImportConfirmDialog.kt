@@ -12,15 +12,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.mh.librarymanager.R
-import com.mh.librarymanager.data.civ.CivCatalogIO
+import com.mh.librarymanager.data.excel.ExcelImportIO
 
 @Composable
 fun ImportConfirmDialog(
-    preview: CivCatalogIO.ImportPreview,
+    preview: ExcelImportIO.ImportPreview,
     onCancel: () -> Unit,
     onConfirm: () -> Unit,
-    title: String = stringResource(R.string.catalog_transfer_confirm_title),
-    fileLabel: String? = preview.meta?.fileLabel(),
+    title: String = stringResource(R.string.excel_import_adb_confirm_title),
+    fileLabel: String? = preview.fileLabel(),
     showSafetyNote: Boolean = true,
     confirmEnabled: Boolean = true,
 ) {
@@ -34,11 +34,11 @@ fun ImportConfirmDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (fileLabel != null) {
-                    Text(stringResource(R.string.catalog_transfer_chosen_file, fileLabel))
+                    Text(stringResource(R.string.excel_import_chosen_file, fileLabel))
                 }
                 Text(
                     stringResource(
-                        R.string.catalog_transfer_confirm_preview,
+                        R.string.excel_import_confirm_preview,
                         preview.addedCount,
                         preview.skippedCount,
                         preview.currentCount,
@@ -47,7 +47,7 @@ fun ImportConfirmDialog(
                 )
                 if (showSafetyNote) {
                     Text(
-                        text = stringResource(R.string.catalog_transfer_confirm_safety),
+                        text = stringResource(R.string.excel_import_confirm_safety),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
@@ -55,7 +55,7 @@ fun ImportConfirmDialog(
         },
         confirmButton = {
             Button(onClick = onConfirm, enabled = confirmEnabled) {
-                Text(stringResource(R.string.catalog_transfer_confirm_ok))
+                Text(stringResource(R.string.excel_import_confirm_ok))
             }
         },
         dismissButton = {

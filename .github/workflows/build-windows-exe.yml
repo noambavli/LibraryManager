@@ -1,4 +1,4 @@
-name: Build LibraryTool Windows .exe
+name: Build ExcelTool Windows .exe
 
 on:
   workflow_dispatch:
@@ -42,7 +42,7 @@ jobs:
           Invoke-WebRequest -Uri $url -OutFile platform-tools.zip
           Expand-Archive -Path platform-tools.zip -DestinationPath .
           New-Item -ItemType Directory -Force -Path package | Out-Null
-          Copy-Item dist/LibraryTool.exe package/
+          Copy-Item dist/ExcelTool.exe package/
           New-Item -ItemType Directory -Force -Path package/adb | Out-Null
           Copy-Item platform-tools/adb.exe package/adb/
           Copy-Item platform-tools/AdbWinApi.dll package/adb/
@@ -59,15 +59,15 @@ jobs:
       - name: Verify build output
         shell: pwsh
         run: |
-          if (-not (Test-Path "package/LibraryTool.exe")) { throw "Missing LibraryTool.exe" }
+          if (-not (Test-Path "package/ExcelTool.exe")) { throw "Missing ExcelTool.exe" }
           if (-not (Test-Path "package/adb/adb.exe")) { throw "Missing adb.exe" }
-          $size = (Get-Item "package/LibraryTool.exe").Length
-          Write-Host "LibraryTool.exe size: $size bytes"
+          $size = (Get-Item "package/ExcelTool.exe").Length
+          Write-Host "ExcelTool.exe size: $size bytes"
 
       - name: Upload package
         uses: actions/upload-artifact@v4
         with:
-          name: LibraryTool-windows
+          name: ExcelTool-windows
           path: desktop/package/
           retention-days: 90
           if-no-files-found: error
