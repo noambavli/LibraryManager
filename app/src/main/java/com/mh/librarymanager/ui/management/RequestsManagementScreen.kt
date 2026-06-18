@@ -112,18 +112,18 @@ fun RequestsManagementScreen(
                 }
             }
         }
-    }
-    }
 
-    deleteCandidate?.let { candidate ->
-        ConfirmRequestDeleteDialog(
-            request = candidate,
-            onDismiss = { deleteCandidate = null },
-            onConfirm = {
-                viewModel.delete(candidate.id)
-                deleteCandidate = null
-            },
-        )
+        deleteCandidate?.let { candidate ->
+            ConfirmRequestDeleteDialog(
+                request = candidate,
+                onDismiss = { deleteCandidate = null },
+                onConfirm = {
+                    viewModel.delete(candidate.id)
+                    deleteCandidate = null
+                },
+            )
+        }
+        }
     }
 }
 
