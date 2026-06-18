@@ -26,11 +26,13 @@ class MatchingsImportIO(
         private const val TAG = "MatchingsImport"
         const val MAX_BYTES: Long = 64L * 1024L * 1024L
         const val PENDING_FILE_NAME = "matchings-import-pending.xlsx"
-        const val INCOMING_CANONICAL_NAME = "matchings-import.xlsx"
+        val INCOMING_CANONICAL_NAME = "matchings-import.xlsx"
         val INCOMING_PATHS = listOf(
             "/data/local/tmp/$INCOMING_CANONICAL_NAME",
             "/sdcard/Download/$INCOMING_CANONICAL_NAME",
         )
+        /** Fallback when the PC archived copy is present but tmp was cleared. */
+        private const val DOWNLOAD_DIR = "/sdcard/Download"
         const val RESULT_FILE_NAME = "matchings-import-result.txt"
         const val RESULT_PROGRESS = "RUNNING"
         const val RESULT_PATH = "/sdcard/Download/$RESULT_FILE_NAME"
@@ -90,7 +92,7 @@ class MatchingsImportIO(
                         try { pendingFile.delete() } catch (_: Exception) {}
                 }
             }
-            val incoming = INCOMING_PATHS.map { File(it) }.firstOrNull { it.isFile && it.canRead() }
+            val incoming = findIncomingFile()
                 ?: return@withContext ImportResult.Invalid(
                     "No $INCOMING_CANONICAL_NAME found. Expected one of: ${INCOMING_PATHS.joinToString()}",
                 )
@@ -225,6 +227,18 @@ class MatchingsImportIO(
         } catch (e: Exception) {
             Log.w(TAG, "Could not publish $displayName to Downloads", e)
         }
+    }
+
+    private fun findIncomingFile(): File? {
+        for (path in INCOMING_PATHS) {
+            val f = File(path)
+            if (f.isFile && f.canRead()) return f
+        }
+        val download = File(DOWNLOAD_DIR)
+        if (!download.isDirectory) return null
+        return download.listFiles()
+            ?.filter { it.isFile && it.name.startsWith("matchings-") && it.name.endsWith(".xlsx") }
+            ?.maxByOrNull { it.lastModified() }
     }
 
     private fun deleteIncomingFiles() {

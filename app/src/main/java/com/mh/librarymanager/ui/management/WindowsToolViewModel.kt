@@ -18,6 +18,7 @@ import com.mh.librarymanager.data.xlsx.WindowsToolCodec
 import com.mh.librarymanager.data.xlsx.XlsxReader
 import com.mh.librarymanager.data.xlsx.XlsxWriter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -266,14 +267,30 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refreshAdbPending() {
         viewModelScope.launch {
-            when (val outcome = excelIo.loadPendingPreview()) {
-                is ExcelImportIO.PreviewOutcome.Ready -> _adbPending.value = outcome.preview
-                is ExcelImportIO.PreviewOutcome.Failed -> _adbPending.value = null
-            }
+            refreshAdbPendingInternal(retries = 0)
         }
     }
 
-    fun onAdbImportStaged() = refreshAdbPending()
+    fun onAdbImportStaged() {
+        viewModelScope.launch {
+            refreshAdbPendingInternal(retries = 8)
+        }
+    }
+
+    private suspend fun refreshAdbPendingInternal(retries: Int) {
+        repeat(retries + 1) { attempt ->
+            when (val outcome = excelIo.loadPendingPreview()) {
+                is ExcelImportIO.PreviewOutcome.Ready -> {
+                    _adbPending.value = outcome.preview
+                    return
+                }
+                is ExcelImportIO.PreviewOutcome.Failed -> {
+                    if (attempt < retries) delay(350)
+                    else _adbPending.value = null
+                }
+            }
+        }
+    }
 
     fun confirmAdbPending() {
         if (_adbConfirming.value) return
@@ -339,16 +356,31 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refreshAdbMatchingsPending() {
         viewModelScope.launch {
-            when (val outcome = matchingsIo.loadPendingPreview()) {
-                is MatchingsImportIO.PreviewOutcome.Ready ->
-                    _adbMatchingsPending.value = outcome.preview
-                is MatchingsImportIO.PreviewOutcome.Failed ->
-                    _adbMatchingsPending.value = null
-            }
+            refreshAdbMatchingsPendingInternal(retries = 0)
         }
     }
 
-    fun onAdbMatchingsImportStaged() = refreshAdbMatchingsPending()
+    /** Called when PC adb push wakes the app — retry briefly if staging is still in flight. */
+    fun onAdbMatchingsImportStaged() {
+        viewModelScope.launch {
+            refreshAdbMatchingsPendingInternal(retries = 8)
+        }
+    }
+
+    private suspend fun refreshAdbMatchingsPendingInternal(retries: Int) {
+        repeat(retries + 1) { attempt ->
+            when (val outcome = matchingsIo.loadPendingPreview()) {
+                is MatchingsImportIO.PreviewOutcome.Ready -> {
+                    _adbMatchingsPending.value = outcome.preview
+                    return
+                }
+                is MatchingsImportIO.PreviewOutcome.Failed -> {
+                    if (attempt < retries) delay(350)
+                    else _adbMatchingsPending.value = null
+                }
+            }
+        }
+    }
 
     fun confirmAdbMatchingsPending() {
         if (_adbMatchingsConfirming.value) return

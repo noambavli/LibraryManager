@@ -124,6 +124,7 @@ fun AppRoot(
 
     LaunchedEffect(Unit) {
         windowsToolVm.refreshAdbPending()
+        windowsToolVm.refreshAdbMatchingsPending()
     }
 
     SideEffect {

@@ -149,8 +149,17 @@ class MainActivity : ComponentActivity() {
         intent.action = null
         lifecycleScope.launch {
             when (action) {
-                MatchingsImportReceiver.ACTION -> windowsToolViewModel.onAdbMatchingsImportStaged()
-                else -> windowsToolViewModel.onAdbImportStaged()
+                MatchingsImportReceiver.ACTION -> {
+                    // Stage the pushed workbook (idempotent) then surface the confirm dialog.
+                    // Running here avoids a race where the broadcast receiver has not finished
+                    // before this activity refresh runs.
+                    MatchingsImportRunner.run(this@MainActivity)
+                    windowsToolViewModel.onAdbMatchingsImportStaged()
+                }
+                else -> {
+                    ExcelImportRunner.run(this@MainActivity)
+                    windowsToolViewModel.onAdbImportStaged()
+                }
             }
         }
     }
