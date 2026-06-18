@@ -437,31 +437,6 @@ fun AppContentCard(
 }
 
 @Composable
-fun AppLoadingContent(
-    modifier: Modifier = Modifier,
-    message: String = stringResource(R.string.results_loading),
-) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(36.dp),
-                color = MaterialTheme.colorScheme.primary,
-                strokeWidth = 3.dp,
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = message,
-                style = MaterialTheme.typography.titleMedium,
-                color = AppColors.TextMuted,
-            )
-        }
-    }
-}
-
-@Composable
 fun AppDashboardTopBar(
     onLogout: () -> Unit,
     modifier: Modifier = Modifier,

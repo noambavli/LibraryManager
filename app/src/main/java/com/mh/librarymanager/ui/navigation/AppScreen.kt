@@ -37,7 +37,11 @@ sealed interface AppScreen {
     data object ManagementAnnouncements : AppScreen
     data object AnnouncementEditor : AppScreen
     data object ManagementShortcuts : AppScreen
+    data object ManagementMatchings : AppScreen
     data object ManagementTechSupport : AppScreen
+
+    /** Windows Tool — backup + xlsx import/export of books, shortcuts, matchings. */
+    data object ManagementWindowsTool : AppScreen
 
     /** Catalog import from PC (.civ file via Storage Access Framework). */
     data object ManagementCatalogTransfer : AppScreen

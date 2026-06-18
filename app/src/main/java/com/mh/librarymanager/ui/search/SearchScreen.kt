@@ -31,7 +31,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -76,19 +75,12 @@ fun SearchScreen(
 
     SuppressPlatformKeyboardEffect()
 
-    DisposableEffect(Unit) {
-        onDispose { viewModel.finalizePublicSearchSession() }
-    }
-
     val commitSearch = { viewModel.commitSearchToHistory(results.size) }
 
     AppScreenBackground {
         Column(modifier = Modifier.fillMaxSize()) {
             if (onBack != null) {
-                PublicBackBar(onBack = {
-                    commitSearch()
-                    onBack()
-                })
+                PublicBackBar(onBack = onBack)
             }
             Row(modifier = Modifier.fillMaxSize()) {
             SearchPane(
@@ -176,7 +168,7 @@ private fun SearchPane(
             onKey = onKey,
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(0.52f)
+                .weight(0.58f)
                 .fillMaxHeight(),
         )
     }

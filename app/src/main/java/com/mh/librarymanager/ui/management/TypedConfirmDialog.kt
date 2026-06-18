@@ -92,7 +92,7 @@ fun TypedConfirmDialog(
                 Spacer(modifier = Modifier.height(14.dp))
                 HebrewKeyboard(
                     onKey = ::handleKey,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 220.dp).height(240.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 260.dp).height(300.dp),
                 )
                 Spacer(modifier = Modifier.height(14.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {

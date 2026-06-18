@@ -25,8 +25,10 @@ import com.mh.librarymanager.ui.management.PopularBooksViewModel
 import com.mh.librarymanager.ui.management.SearchHistoryViewModel
 import com.mh.librarymanager.ui.management.ManagementSession
 import com.mh.librarymanager.ui.management.RequestsManagementViewModel
+import com.mh.librarymanager.ui.management.SearchMatchingsManagementViewModel
 import com.mh.librarymanager.ui.management.ShortcutsManagementViewModel
 import com.mh.librarymanager.ui.management.TechSupportManagementViewModel
+import com.mh.librarymanager.ui.management.WindowsToolViewModel
 import com.mh.librarymanager.ui.requests.PublicRequestViewModel
 import com.mh.librarymanager.ui.support.TechSupportViewModel
 import com.mh.librarymanager.ui.search.SearchViewModel
@@ -45,9 +47,11 @@ class MainActivity : ComponentActivity() {
     private val announcementsViewModel: AnnouncementsViewModel by viewModels()
     private val announcementsManagementViewModel: AnnouncementsManagementViewModel by viewModels()
     private val shortcutsManagementViewModel: ShortcutsManagementViewModel by viewModels()
+    private val searchMatchingsManagementViewModel: SearchMatchingsManagementViewModel by viewModels()
     private val techSupportViewModel: TechSupportViewModel by viewModels()
     private val techSupportManagementViewModel: TechSupportManagementViewModel by viewModels()
     private val catalogTransferViewModel: CatalogTransferViewModel by viewModels()
+    private val windowsToolViewModel: WindowsToolViewModel by viewModels()
     private val managementSession: ManagementSession by viewModels()
 
     /**
@@ -87,9 +91,11 @@ class MainActivity : ComponentActivity() {
                     announcementsViewModel = announcementsViewModel,
                     announcementsManagementViewModel = announcementsManagementViewModel,
                     shortcutsManagementViewModel = shortcutsManagementViewModel,
+                    searchMatchingsManagementViewModel = searchMatchingsManagementViewModel,
                     techSupportViewModel = techSupportViewModel,
                     techSupportManagementViewModel = techSupportManagementViewModel,
                     catalogTransferViewModel = catalogTransferViewModel,
+                    windowsToolViewModel = windowsToolViewModel,
                     managementSession = managementSession,
                     onRegisterBackHandler = { handler ->
                         composeBackHandler = handler

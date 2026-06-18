@@ -43,8 +43,10 @@ fun ManagementDashboardScreen(
     onOpenRequests: () -> Unit,
     onOpenAnnouncements: () -> Unit,
     onOpenShortcuts: () -> Unit,
+    onOpenMatchings: () -> Unit,
     onOpenTechSupport: () -> Unit,
     onOpenCatalogTransfer: () -> Unit,
+    onOpenWindowsTool: () -> Unit,
     onLogout: () -> Unit,
 ) {
     AppScreenBackground {
@@ -76,8 +78,10 @@ fun ManagementDashboardScreen(
                     onOpenRequests = onOpenRequests,
                     onOpenAnnouncements = onOpenAnnouncements,
                     onOpenShortcuts = onOpenShortcuts,
+                    onOpenMatchings = onOpenMatchings,
                     onOpenTechSupport = onOpenTechSupport,
                     onOpenCatalogTransfer = onOpenCatalogTransfer,
+                    onOpenWindowsTool = onOpenWindowsTool,
                 )
             }
         }
@@ -96,8 +100,10 @@ private fun DashboardGrid(
     onOpenRequests: () -> Unit,
     onOpenAnnouncements: () -> Unit,
     onOpenShortcuts: () -> Unit,
+    onOpenMatchings: () -> Unit,
     onOpenTechSupport: () -> Unit,
     onOpenCatalogTransfer: () -> Unit,
+    onOpenWindowsTool: () -> Unit,
 ) {
     val tiles = listOf(
         DashboardEntry(
@@ -140,6 +146,12 @@ private fun DashboardGrid(
             onOpenShortcuts,
         ),
         DashboardEntry(
+            stringResource(R.string.management_matchings),
+            stringResource(R.string.management_matchings_subtitle),
+            AppColors.Accent,
+            onOpenMatchings,
+        ),
+        DashboardEntry(
             stringResource(R.string.management_search_history),
             stringResource(R.string.management_search_history_subtitle),
             AppColors.Accent,
@@ -168,6 +180,12 @@ private fun DashboardGrid(
             stringResource(R.string.management_catalog_transfer_subtitle),
             AppColors.Accent,
             onOpenCatalogTransfer,
+        ),
+        DashboardEntry(
+            stringResource(R.string.management_windows_tool),
+            stringResource(R.string.management_windows_tool_subtitle),
+            AppColors.Accent,
+            onOpenWindowsTool,
         ),
     )
 

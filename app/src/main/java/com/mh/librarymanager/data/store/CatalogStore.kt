@@ -76,6 +76,18 @@ class CatalogStore(private val context: Context) {
         }
     }
 
+    /** Force a re-read of both the catalog and palette (e.g. after a restore). */
+    suspend fun reloadFromDisk() {
+        withContext(Dispatchers.IO) {
+            synchronized(this@CatalogStore) {
+                _books.value = if (file.exists()) readBooks(file) else emptyList()
+                booksLoadState.markLoaded()
+                _colors.value = if (paletteFile.exists()) readPalette(paletteFile) else emptyList()
+                paletteLoaded = true
+            }
+        }
+    }
+
     suspend fun count(): Int {
         loadFromDisk()
         return _books.value.size

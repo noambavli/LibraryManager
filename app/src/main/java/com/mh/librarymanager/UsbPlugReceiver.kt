@@ -17,6 +17,26 @@ class UsbPlugReceiver : BroadcastReceiver() {
         if (!connected) return
         Log.i(TAG, "USB connected — applying maintenance USB defaults")
         UsbMaintenance.applyUsbDefaults(context)
+
+        // Trigger an automatic full backup when this looks like a real data
+        // link to a PC (MTP/adb/configured) rather than a dumb charger. When
+        // none of those signals are present we still proceed (some OEMs omit
+        // them); the BackupManager itself debounces and skips when there is
+        // nothing to save.
+        if (looksLikeDataConnection(intent)) {
+            try {
+                LibraryApp.from(context).backupManager.onUsbConnected()
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not start auto-backup", e)
+            }
+        }
+    }
+
+    private fun looksLikeDataConnection(intent: Intent): Boolean {
+        val dataSignals = listOf("configured", "mtp", "ptp", "adb", "host_connected")
+        val present = dataSignals.filter { intent.hasExtra(it) }
+        if (present.isEmpty()) return true // No info — don't block a genuine connect.
+        return present.any { intent.getBooleanExtra(it, false) }
     }
 
     companion object {

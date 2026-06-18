@@ -68,7 +68,7 @@ fun AnnouncementsHomeSection(
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Top),
+            verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.Top),
         ) {
             slots.forEach { slot ->
                 AnnouncementCompactCard(
@@ -93,7 +93,7 @@ private fun AnnouncementCompactCard(
         shape = RoundedCornerShape(10.dp),
         border = BorderStroke(1.dp, AppColors.BorderLight),
     ) {
-        Column(modifier = Modifier.padding(10.dp)) {
+        Column(modifier = Modifier.padding(8.dp)) {
             Text(
                 text = announcement.title.ifBlank { "—" },
                 style = MaterialTheme.typography.bodyMedium,
@@ -103,7 +103,7 @@ private fun AnnouncementCompactCard(
                 overflow = TextOverflow.Ellipsis,
             )
             if (announcement.description.isNotBlank() && descriptionMaxLines > 0) {
-                Spacer(modifier = Modifier.height(3.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = announcement.description,
                     style = MaterialTheme.typography.bodySmall,

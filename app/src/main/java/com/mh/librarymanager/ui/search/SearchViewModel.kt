@@ -11,6 +11,7 @@ import com.mh.librarymanager.domain.CustomColor
 import com.mh.librarymanager.domain.SearchHistoryEntry
 import com.mh.librarymanager.search.SearchEngine
 import com.mh.librarymanager.search.SearchQuery
+import com.mh.librarymanager.search.SearchSynonyms
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,10 +60,14 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
     val catalogLoaded: StateFlow<Boolean> = container.repository.observeCatalogLoaded()
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
-    private val engine: StateFlow<SearchEngine> = catalog
-        .map { books -> SearchEngine(books) }
+    private val engine: StateFlow<SearchEngine> = combine(
+        catalog,
+        container.matchingStore.matchings.onStart { container.matchingStore.loadFromDisk() },
+    ) { books, rules ->
+        SearchEngine(books, SearchSynonyms.from(rules))
+    }
         .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchEngine(emptyList()))
+        .stateIn(viewModelScope, SharingStarted.Eagerly, SearchEngine(emptyList()))
 
     val catalogSize: StateFlow<Int> = engine.map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
@@ -112,6 +117,7 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         ensureCatalogLoaded()
+        ensureMatchingsLoaded()
     }
 
     fun setValue(field: SearchField, value: TextFieldValue) {
@@ -180,6 +186,12 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
     private fun ensureCatalogLoaded() {
         viewModelScope.launch {
             withContext(Dispatchers.IO) { container.repository.count() }
+        }
+    }
+
+    private fun ensureMatchingsLoaded() {
+        viewModelScope.launch(Dispatchers.IO) {
+            container.matchingStore.loadFromDisk()
         }
     }
 }

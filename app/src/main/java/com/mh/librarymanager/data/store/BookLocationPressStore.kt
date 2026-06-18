@@ -43,6 +43,17 @@ class BookLocationPressStore(private val context: Context) {
         }
     }
 
+    /** Force a re-read from disk, e.g. after a backup restore overwrote the file. */
+    suspend fun reloadFromDisk() {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            synchronized(this@BookLocationPressStore) {
+                val raw = if (file.exists()) readFile(file) else emptyList()
+                _entries.value = prune(raw)
+                loadState.markLoaded()
+            }
+        }
+    }
+
     suspend fun recordPress(bookId: String) {
         if (bookId.isBlank()) return
         loadFromDisk()

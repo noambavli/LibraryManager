@@ -49,10 +49,15 @@ import com.mh.librarymanager.ui.management.RequestsManagementScreen
 import com.mh.librarymanager.ui.management.RequestsManagementViewModel
 import com.mh.librarymanager.ui.management.SearchHistoryScreen
 import com.mh.librarymanager.ui.management.SearchHistoryViewModel
+import com.mh.librarymanager.ui.management.SearchMatchingsManagementScreen
+import com.mh.librarymanager.ui.management.SearchMatchingsManagementViewModel
 import com.mh.librarymanager.ui.management.ShortcutsManagementScreen
 import com.mh.librarymanager.ui.management.ShortcutsManagementViewModel
 import com.mh.librarymanager.ui.management.TechSupportManagementScreen
 import com.mh.librarymanager.ui.management.TechSupportManagementViewModel
+import com.mh.librarymanager.ui.management.WindowsBackupOverlay
+import com.mh.librarymanager.ui.management.WindowsToolScreen
+import com.mh.librarymanager.ui.management.WindowsToolViewModel
 import com.mh.librarymanager.ui.requests.PublicRequestScreen
 import com.mh.librarymanager.ui.requests.PublicRequestViewModel
 import com.mh.librarymanager.ui.support.TechSupportScreen
@@ -86,9 +91,11 @@ fun AppRoot(
     announcementsViewModel: AnnouncementsViewModel,
     announcementsManagementViewModel: AnnouncementsManagementViewModel,
     shortcutsManagementViewModel: ShortcutsManagementViewModel,
+    searchMatchingsManagementViewModel: SearchMatchingsManagementViewModel,
     techSupportViewModel: TechSupportViewModel,
     techSupportManagementViewModel: TechSupportManagementViewModel,
     catalogTransferViewModel: CatalogTransferViewModel,
+    windowsToolViewModel: WindowsToolViewModel,
     managementSession: ManagementSession,
     onRegisterBackHandler: (handler: (() -> Boolean)) -> Unit,
 ) {
@@ -103,12 +110,15 @@ fun AppRoot(
     val announcementsVm: AnnouncementsViewModel = announcementsViewModel
     val announcementsManagementVm: AnnouncementsManagementViewModel = announcementsManagementViewModel
     val shortcutsManagementVm: ShortcutsManagementViewModel = shortcutsManagementViewModel
+    val searchMatchingsManagementVm: SearchMatchingsManagementViewModel = searchMatchingsManagementViewModel
     val techSupportVm: TechSupportViewModel = techSupportViewModel
     val techSupportManagementVm: TechSupportManagementViewModel = techSupportManagementViewModel
     val catalogTransferVm: CatalogTransferViewModel = catalogTransferViewModel
+    val windowsToolVm: WindowsToolViewModel = windowsToolViewModel
     val session: ManagementSession = managementSession
     val adbPending by catalogTransferVm.adbPending.collectAsStateWithLifecycle()
     val adbConfirming by catalogTransferVm.adbConfirming.collectAsStateWithLifecycle()
+    val backupState by windowsToolVm.backupState.collectAsStateWithLifecycle()
     fun returnToAttract() {
         session.logout()
         searchVm.finalizePublicSearchSession()
@@ -123,6 +133,9 @@ fun AppRoot(
         onRegisterBackHandler {
             // Pop within the app stack if we can; otherwise swallow the press
             // (kiosk must not escape to the launcher).
+            if (nav.current is AppScreen.Search) {
+                searchVm.finalizePublicSearchSession()
+            }
             nav.pop()
         }
     }
@@ -216,7 +229,10 @@ fun AppRoot(
 
             AppScreen.Search -> SearchScreen(
                 viewModel = searchVm,
-                onBack = { nav.pop() },
+                onBack = {
+                    searchVm.finalizePublicSearchSession()
+                    nav.pop()
+                },
                 onOpenBookLocation = openBookLocation,
             )
 
@@ -273,8 +289,22 @@ fun AppRoot(
                     onOpenRequests = { nav.push(AppScreen.ManagementRequests) },
                     onOpenAnnouncements = { nav.push(AppScreen.ManagementAnnouncements) },
                     onOpenShortcuts = { nav.push(AppScreen.ManagementShortcuts) },
+                    onOpenMatchings = { nav.push(AppScreen.ManagementMatchings) },
                     onOpenTechSupport = { nav.push(AppScreen.ManagementTechSupport) },
                     onOpenCatalogTransfer = { nav.push(AppScreen.ManagementCatalogTransfer) },
+                    onOpenWindowsTool = { nav.push(AppScreen.ManagementWindowsTool) },
+                    onLogout = {
+                        session.logout()
+                        nav.resetTo(AppScreen.Attract)
+                    },
+                )
+            }
+
+            AppScreen.ManagementWindowsTool -> ManagementGuard(session = session, nav = nav) {
+                WindowsToolScreen(
+                    viewModel = windowsToolVm,
+                    session = session,
+                    onBack = { nav.pop() },
                     onLogout = {
                         session.logout()
                         nav.resetTo(AppScreen.Attract)
@@ -344,6 +374,17 @@ fun AppRoot(
             AppScreen.ManagementShortcuts -> ManagementGuard(session = session, nav = nav) {
                 ShortcutsManagementScreen(
                     viewModel = shortcutsManagementVm,
+                    onBack = { nav.pop() },
+                    onLogout = {
+                        session.logout()
+                        nav.resetTo(AppScreen.Attract)
+                    },
+                )
+            }
+
+            AppScreen.ManagementMatchings -> ManagementGuard(session = session, nav = nav) {
+                SearchMatchingsManagementScreen(
+                    viewModel = searchMatchingsManagementVm,
                     onBack = { nav.pop() },
                     onLogout = {
                         session.logout()
@@ -447,6 +488,13 @@ fun AppRoot(
                 confirmEnabled = !adbConfirming,
             )
         }
+
+        // Auto-backup overlay shown when the tablet is plugged into a PC.
+        WindowsBackupOverlay(
+            state = backupState,
+            onCancel = { windowsToolVm.cancelBackup() },
+            onContinue = { windowsToolVm.dismissBackup() },
+        )
     }
 }
 
@@ -461,8 +509,10 @@ private fun AppScreen.tracksPublicIdle(): Boolean = when (this) {
     AppScreen.ManagementAnnouncements,
     AppScreen.AnnouncementEditor,
     AppScreen.ManagementShortcuts,
+    AppScreen.ManagementMatchings,
     AppScreen.ManagementTechSupport,
     AppScreen.ManagementCatalogTransfer,
+    AppScreen.ManagementWindowsTool,
     AppScreen.ManagementImportSummary,
     is AppScreen.BookEditor -> false
     else -> true

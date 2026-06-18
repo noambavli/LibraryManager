@@ -484,7 +484,7 @@ private fun BookPickerDialog(
                 Spacer(modifier = Modifier.height(10.dp))
                 HebrewKeyboard(
                     onKey = ::handleKey,
-                    modifier = Modifier.fillMaxWidth().height(220.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 260.dp).height(280.dp),
                 )
                 Spacer(modifier = Modifier.height(10.dp))
 

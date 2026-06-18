@@ -112,7 +112,6 @@ fun AnnouncementsManagementScreen(
             },
         )
     }
-    }
 }
 
 @Composable

@@ -68,6 +68,8 @@
     <string name="book_location_map_button">מפה</string>
     <string name="book_location_title">מיקום הספר</string>
     <string name="book_location_missing">הספר לא נמצא.</string>
+    <string name="book_location_no_map">מפת מיקום אינה זמינה לחדר זה.</string>
+    <string name="book_location_section_unknown">הספר אינו משויך לאזור במפה (בדקו צבע, אות ומספר).</string>
     <string name="book_state_available">זמין</string>
     <string name="book_state_unavailable">לא זמין</string>
     <string name="book_state_in_repair">בתיקון</string>
@@ -110,10 +112,14 @@
     <string name="management_announcements_subtitle">הוספה ומחיקה של הודעות לציבור</string>
     <string name="management_shortcuts">ניהול קיצורי חיפוש</string>
     <string name="management_shortcuts_subtitle">הוספה ומחיקה של תגיות חיפוש מהיר</string>
+    <string name="management_matchings">ניהול התאמות חיפוש</string>
+    <string name="management_matchings_subtitle">קיצורים, ראשי תיבות ומילים נרדפות</string>
     <string name="management_tech_support">בקשות תמיכה טכנית</string>
     <string name="management_tech_support_subtitle">דיווחי תקלות מהציבור</string>
     <string name="management_catalog_transfer">סנכרון מהמחשב</string>
     <string name="management_catalog_transfer_subtitle">אישור ייבוא וצפייה בסיכום</string>
+    <string name="management_windows_tool">כלי Windows</string>
+    <string name="management_windows_tool_subtitle">גיבוי, ייבוא וייצוא (אקסל) מול המחשב</string>
 
     <!-- Out-of-order books (missing / swapped letter &amp; number) -->
     <string name="out_of_order_title">ספרים לא מסודרים</string>
@@ -214,6 +220,30 @@
     <string name="shortcut_limit_reached">ניתן להוסיף עד %1$d קיצורים.</string>
     <string name="shortcut_duplicate">הקיצור כבר קיים.</string>
     <string name="shortcut_blank">יש להזין מילת חיפוש.</string>
+
+    <!-- Search matchings (synonyms) management -->
+    <string name="matchings_management_title">ניהול התאמות חיפוש</string>
+    <string name="matchings_management_subtitle">קישרו קיצור או ראשי תיבות (כמו ״פי׳״ או ״רמב״ם״) למילים המלאות. חיפוש של אחד הצדדים ימצא גם את הצד השני.</string>
+    <string name="matchings_empty">אין עדיין התאמות. הוסיפו התאמה ראשונה.</string>
+    <string name="matchings_count">%1$d התאמות</string>
+    <string name="matching_add">הוספת התאמה</string>
+    <string name="matching_edit_title">עריכת התאמה</string>
+    <string name="matching_field_shortcut">קיצור</string>
+    <string name="matching_words_label">מילים תואמות (לפי סדר עדיפות)</string>
+    <string name="matching_field_word">מילה תואמת</string>
+    <string name="matching_add_word">הוספת מילה</string>
+    <string name="matching_no_words">עדיין לא נוספו מילים תואמות.</string>
+    <string name="matching_direction_bidirectional">דו־כיווני</string>
+    <string name="matching_direction_words_to_shortcut">חד־כיווני</string>
+    <string name="matching_direction_hint_bidirectional">חיפוש הקיצור מוצא את המילים, וחיפוש המילים מוצא את הקיצור.</string>
+    <string name="matching_direction_hint_words_to_shortcut">חיפוש המילים מוצא את הקיצור בלבד.</string>
+    <string name="matching_blank_shortcut">יש להזין קיצור.</string>
+    <string name="matching_no_words_error">יש להוסיף לפחות מילה תואמת אחת.</string>
+    <string name="matching_limit_reached">ניתן להוסיף עד %1$d התאמות.</string>
+    <string name="matching_confirm_delete">למחוק את ההתאמה?</string>
+    <string name="matching_word_move_up">העברה למעלה</string>
+    <string name="matching_word_move_down">העברה למטה</string>
+    <string name="matching_word_remove">הסרת מילה</string>
 
     <!-- Announcements management -->
     <string name="announcements_management_title">ניהול הודעות</string>
@@ -350,6 +380,51 @@
     <string name="kiosk_active">מצב קיוסק פעיל</string>
     <string name="kiosk_setup_required">לא הוגדר Device Owner — האפליקציה רצה במצב רגיל</string>
     <string name="kiosk_setup_command">חבר את הטאבלט במצב פיתוח והרץ:\nadb shell dpm set-device-owner com.mh.librarymanager/.KioskDeviceAdminReceiver</string>
+
+    <!-- Windows Tool (backup + xlsx import/export) -->
+    <string name="windows_tool_title">כלי Windows</string>
+    <string name="windows_tool_intro">כאן מנהלים את החיבור למחשב: גיבוי מלא של כל נתוני האפליקציה, וייבוא/ייצוא של ספרים, קיצורים והתאמות כקובצי אקסל. בכל ייבוא נשמר אוטומטית גיבוי מלא לפני השינוי, כך שתמיד אפשר לחזור אחורה.</string>
+
+    <string name="windows_tool_backup_section">גיבוי מלא</string>
+    <string name="windows_tool_backup_desc">יוצר קובץ zip בתיקיית Download של הטאבלט (נראה מהמחשב). הקובץ כולל את כל הנתונים — ספרים, קיצורים, התאמות, בקשות, תמיכה והודעות — גם בפורמט קריא לצפייה וגם בפורמט שניתן לשחזר ממנו בדיוק.</string>
+    <string name="windows_tool_backup_now">צור גיבוי עכשיו</string>
+    <string name="windows_tool_backup_last">גיבוי אחרון: %1$s</string>
+    <string name="windows_tool_backup_never">עדיין לא נוצר גיבוי</string>
+    <string name="windows_tool_backup_done">הגיבוי נשמר: %1$s (בתיקיית Download)</string>
+    <string name="windows_tool_backup_failed">הגיבוי נכשל: %1$s</string>
+
+    <string name="windows_tool_books_section">ספרים</string>
+    <string name="windows_tool_books_format">עמודות: שם הספר · ענינים · המחבר · מספר · אות · צבע · קטגוריה · תת קטגוריה · הערות. השורה הראשונה היא כותרות.\n\nייבוא מוסיף רק ספרים חדשים. אם שם + מחבר + אות + מספר + קטגוריה וכו\' תואמים לספר שכבר על הטאבלט — השורה תדולג (לא שגיאה). ייצוא ואז ייבוא של אותו קובץ = 0 חדשים.</string>
+    <string name="windows_tool_shortcuts_section">קיצורי חיפוש</string>
+    <string name="windows_tool_shortcuts_format">עמודה אחת בשם ״קיצור״ — כל שורה היא תגית חיפוש מהיר אחת (עד 7).</string>
+    <string name="windows_tool_matchings_section">התאמות חיפוש (מילים נרדפות)</string>
+    <string name="windows_tool_matchings_format">עמודות: קיצור · מילים · כיוון. ב״מילים״ ניתן לרשום כמה מילים מלאות מופרדות בפסיק. ״כיוון״: דו-כיווני או חד-כיווני (ברירת מחדל: דו-כיווני).</string>
+
+    <string name="windows_tool_export">ייצוא לאקסל</string>
+    <string name="windows_tool_import">ייבוא מאקסל</string>
+
+    <string name="windows_tool_restore_section">שחזור מגיבוי</string>
+    <string name="windows_tool_restore_desc">בחרו קובץ גיבוי zip כדי להחזיר את כל נתוני האפליקציה למצב שנשמר. פעולה זו מחליפה את כל הנתונים הקיימים.</string>
+    <string name="windows_tool_restore_button">שחזור מקובץ גיבוי…</string>
+    <string name="windows_tool_restore_confirm_title">שחזור מגיבוי</string>
+    <string name="windows_tool_restore_confirm_body">השחזור יחליף את כל נתוני האפליקציה (ספרים, קיצורים, בקשות, תמיכה, הודעות ועוד) בנתונים מתוך הגיבוי. הקלידו ״שחזר״ לאישור.</string>
+    <string name="windows_tool_restore_phrase">שחזר</string>
+    <string name="windows_tool_restore_ok">שחזר</string>
+
+    <string name="windows_tool_import_confirm_title">לאשר ייבוא?</string>
+    <string name="windows_tool_import_books_confirm">ייבוא הספרים יוסיף רק ספרים חדשים — שורות שכבר קיימות בקטלוג (אותו תוכן) ידולגו. גיבוי מלא יישמר אוטומטית לפני הייבוא. להמשיך?</string>
+    <string name="windows_tool_import_shortcuts_confirm">ייבוא הקיצורים יחליף את הקיצורים הקיימים. גיבוי מלא יישמר לפני הייבוא. להמשיך?</string>
+    <string name="windows_tool_import_matchings_confirm">ייבוא ההתאמות יחליף את ההתאמות הקיימות. גיבוי מלא יישמר לפני הייבוא. להמשיך?</string>
+
+    <string name="windows_tool_dismiss">סגור</string>
+
+    <string name="windows_tool_usb_backup_title">מבצע גיבוי אוטומטי</string>
+    <string name="windows_tool_usb_backup_body">זוהה חיבור למחשב. מתבצע גיבוי מלא של כל נתוני האפליקציה. ניתן להמשיך רק לאחר סיום הגיבוי — מומלץ להמתין.</string>
+    <string name="windows_tool_usb_backup_cancel">בטל גיבוי (לא מומלץ)</string>
+    <string name="windows_tool_usb_backup_done">הגיבוי הושלם ונשמר: %1$s</string>
+    <string name="windows_tool_usb_backup_failed">הגיבוי נכשל: %1$s</string>
+    <string name="windows_tool_usb_backup_cancelled">הגיבוי בוטל. מומלץ ליצור גיבוי לפני ביצוע שינויים.</string>
+    <string name="windows_tool_usb_backup_continue">המשך</string>
 
     <!-- PC authorize maintenance (technician only) -->
     <string name="pc_authorize_title">תחזוקה: אישור מחשב Windows</string>

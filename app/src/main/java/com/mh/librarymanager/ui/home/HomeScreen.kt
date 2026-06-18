@@ -245,7 +245,7 @@ private fun WhatsNewSection(
         } else {
             Column(
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Top),
+                verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.Top),
             ) {
                 visibleBooks.forEach { book ->
                     RecentBookRow(book = book, customColors = customColors)
@@ -268,7 +268,7 @@ private fun RecentBookRow(
         border = BorderStroke(1.dp, AppColors.BorderLight),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (book.color.isNotBlank()) {

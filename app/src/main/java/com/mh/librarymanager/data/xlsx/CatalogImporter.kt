@@ -12,14 +12,10 @@ import java.util.Locale
 /**
  * Imports a catalog xlsx into the database.
  *
- * The mapping is **driven by the header row**, not column position, so the
- * upstream sheet can move columns around without breaking us. Each known
- * Hebrew header is matched after Hebrew normalisation (nikud / final letters
- * are forgiven). Unknown columns are ignored.
- *
- * Every imported row becomes version 1 of a new logical book. Re-running the
- * import replaces everything — versioning across runs will be layered in once
- * the catalog gets an authoritative external id.
+ * The mapping is **driven by the header row**, not column position. Two modes:
+ *  * [importFromStream] — replaces the whole catalog (bundled seed xlsx only).
+ *  * [mergeFromStream] — adds new books and skips rows whose content already
+ *    exists on the tablet (same dedup as `.civ` sync).
  */
 class CatalogImporter(
     private val context: Context,
@@ -32,19 +28,56 @@ class CatalogImporter(
         }
     }
 
+    /** Replace the entire catalog — used only for the bundled seed import. */
     suspend fun importFromStream(stream: InputStream): ImportResult {
-        val rows = XlsxReader.readFirstSheet(stream)
-        if (rows.isEmpty()) {
+        val parsed = parseRows(XlsxReader.readFirstSheet(stream))
+        if (parsed.books.isEmpty()) {
             repository.replaceAll(emptyList())
-            return ImportResult(0, 0)
+            return ImportResult(added = 0, duplicates = 0, blankRows = parsed.blankRows, totalAfter = 0)
         }
+        repository.replaceAll(parsed.books)
+        return ImportResult(
+            added = parsed.books.size,
+            duplicates = 0,
+            blankRows = parsed.blankRows,
+            totalAfter = parsed.books.size,
+        )
+    }
 
+    /** Merge new rows into the existing catalog; duplicates are skipped. */
+    suspend fun mergeFromStream(stream: InputStream): ImportResult {
+        val parsed = parseRows(XlsxReader.readFirstSheet(stream))
+        if (parsed.books.isEmpty()) {
+            val count = repository.count()
+            return ImportResult(added = 0, duplicates = 0, blankRows = parsed.blankRows, totalAfter = count)
+        }
+        val outcome = repository.mergeImport(parsed.books)
+        return ImportResult(
+            added = outcome.result.added,
+            duplicates = outcome.result.skipped,
+            blankRows = parsed.blankRows,
+            totalAfter = outcome.result.totalAfter,
+        )
+    }
+
+    data class ImportResult(
+        val added: Int,
+        /** Rows whose content already matches a book on the tablet (or a duplicate row in the file). */
+        val duplicates: Int,
+        /** Empty / padding rows in the sheet. */
+        val blankRows: Int,
+        val totalAfter: Int,
+    )
+
+    private data class ParsedRows(val books: List<Book>, val blankRows: Int)
+
+    private fun parseRows(rows: List<List<String>>): ParsedRows {
+        if (rows.isEmpty()) return ParsedRows(emptyList(), 0)
         val header = rows.first()
         val map = HeaderMap.from(header)
-
         val now = System.currentTimeMillis()
         val books = ArrayList<Book>(rows.size - 1)
-        var skipped = 0
+        var blankRows = 0
 
         for (i in 1 until rows.size) {
             val row = rows[i]
@@ -59,12 +92,11 @@ class CatalogImporter(
             val notes = map[row, HeaderKey.NOTES]
 
             if (name.isEmpty() && topics.isEmpty() && writer.isEmpty() && number.isEmpty()) {
-                skipped++
+                blankRows++
                 continue
             }
 
             val id = "book-${i.toString().padStart(6, '0')}"
-            val systemNumber = i.toString().padStart(4, '0')
             books += Book(
                 id = id,
                 logicalBookId = id,
@@ -73,7 +105,7 @@ class CatalogImporter(
                 name = name,
                 topics = topics,
                 writer = writer,
-                bookNumber = systemNumber,
+                bookNumber = i.toString().padStart(4, '0'),
                 displayNumber = number,
                 letter = letter,
                 color = color,
@@ -88,12 +120,8 @@ class CatalogImporter(
                 updatedAt = now,
             )
         }
-
-        repository.replaceAll(books)
-        return ImportResult(imported = books.size, skipped = skipped)
+        return ParsedRows(books, blankRows)
     }
-
-    data class ImportResult(val imported: Int, val skipped: Int)
 
     private enum class HeaderKey { NAME, TOPICS, WRITER, NUMBER, LETTER, COLOR, CATEGORY, SUBCATEGORY, NOTES }
 

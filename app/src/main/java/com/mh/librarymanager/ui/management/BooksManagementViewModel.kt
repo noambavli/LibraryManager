@@ -14,6 +14,7 @@ import com.mh.librarymanager.domain.OutOfOrderBook
 import com.mh.librarymanager.domain.OutOfOrderFilter
 import com.mh.librarymanager.search.SearchEngine
 import com.mh.librarymanager.search.SearchQuery
+import com.mh.librarymanager.search.SearchSynonyms
 import com.mh.librarymanager.ui.search.KeyAction
 import com.mh.librarymanager.ui.search.SearchField
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -64,10 +66,14 @@ class BooksManagementViewModel(app: Application) : AndroidViewModel(app) {
     val catalogLoaded: StateFlow<Boolean> = container.repository.observeCatalogLoaded()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
-    private val engine: StateFlow<SearchEngine> = catalog
-        .map { books -> SearchEngine(books) }
+    private val engine: StateFlow<SearchEngine> = combine(
+        catalog,
+        container.matchingStore.matchings.onStart { container.matchingStore.loadFromDisk() },
+    ) { books, rules ->
+        SearchEngine(books, SearchSynonyms.from(rules))
+    }
         .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchEngine(emptyList()))
+        .stateIn(viewModelScope, SharingStarted.Eagerly, SearchEngine(emptyList()))
 
     val parentNameLookup: StateFlow<Map<String, String>> = catalog
         .map { books -> books.associate { it.id to it.name } }
@@ -126,6 +132,12 @@ class BooksManagementViewModel(app: Application) : AndroidViewModel(app) {
     ) { eng, values -> eng.search(values.toQuery()) }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    init {
+        viewModelScope.launch(Dispatchers.IO) {
+            container.matchingStore.loadFromDisk()
+        }
+    }
 
     fun setValue(field: SearchField, value: TextFieldValue) {
         _fieldValues.value = _fieldValues.value.toMutableMap().also { it[field] = value }

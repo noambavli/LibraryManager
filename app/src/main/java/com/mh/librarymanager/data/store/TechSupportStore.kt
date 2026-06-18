@@ -36,6 +36,16 @@ class TechSupportStore(private val context: Context) {
         }
     }
 
+    /** Force a re-read from disk, e.g. after a backup restore overwrote the file. */
+    suspend fun reloadFromDisk() {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            synchronized(this@TechSupportStore) {
+                _requests.value = if (file.exists()) readFile(file) else emptyList()
+                loadState.markLoaded()
+            }
+        }
+    }
+
     suspend fun add(request: TechSupportRequest) {
         loadFromDisk()
         val next = (_requests.value + request).takeLast(MAX_ENTRIES)

@@ -176,6 +176,11 @@ class CivCatalogIO(
     @Volatile
     private var historyCache: List<ImportSummaryDetail>? = null
 
+    /** Drop the cached import history so the next read re-loads it from disk. */
+    fun invalidateHistoryCache() {
+        synchronized(this) { historyCache = null }
+    }
+
     /** All recorded imports, newest first. */
     fun importHistory(): List<ImportSummaryDetail> {
         ensureHistoryLoaded()

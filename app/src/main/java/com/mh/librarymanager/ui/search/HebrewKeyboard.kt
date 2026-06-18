@@ -46,18 +46,18 @@ fun HebrewKeyboard(
             color = MaterialTheme.colorScheme.surfaceVariant,
             tonalElevation = 1.dp,
         ) {
-            BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(6.dp)) {
-                val gap = if (maxWidth < 520.dp) 5.dp else 6.dp
+            BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+                val gap = if (maxWidth < 520.dp) 6.dp else 8.dp
                 val keyTextSize = when {
-                    maxHeight < 220.dp -> 14.sp
-                    maxHeight < 320.dp -> 16.sp
-                    maxWidth < 500.dp -> 17.sp
-                    else -> 18.sp
+                    maxHeight < 240.dp -> 16.sp
+                    maxHeight < 340.dp -> 18.sp
+                    maxWidth < 500.dp -> 19.sp
+                    else -> 21.sp
                 }
                 val actionTextSize = when {
-                    maxHeight < 220.dp -> 11.sp
-                    maxHeight < 320.dp -> 12.sp
-                    else -> 13.sp
+                    maxHeight < 240.dp -> 13.sp
+                    maxHeight < 340.dp -> 14.sp
+                    else -> 15.sp
                 }
                 Column(
                     modifier = Modifier.fillMaxSize(),
@@ -128,7 +128,7 @@ private fun KeyRow(
     Box(modifier = modifier) {
         Row(
             modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
             content = content,
         )
@@ -180,7 +180,7 @@ private fun RowScope.KeyButton(
             .fillMaxSize(),
         color = bg,
         contentColor = fg,
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(12.dp),
         tonalElevation = if (accent) 0.dp else 0.dp,
         shadowElevation = 1.dp,
         border = androidx.compose.foundation.BorderStroke(1.dp, outline),
@@ -188,7 +188,7 @@ private fun RowScope.KeyButton(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .clip(RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(12.dp))
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center,
         ) {

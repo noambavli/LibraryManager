@@ -47,6 +47,16 @@ class AuditStore(private val context: Context) {
         }
     }
 
+    /** Force a re-read from disk, e.g. after a backup restore overwrote the file. */
+    suspend fun reloadFromDisk() {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            synchronized(this@AuditStore) {
+                _events.value = if (file.exists()) readFile(file) else emptyList()
+                loadState.markLoaded()
+            }
+        }
+    }
+
     suspend fun append(event: AuditEvent) {
         loadFromDisk()
         val next = (_events.value + event)

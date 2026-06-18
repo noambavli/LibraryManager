@@ -163,7 +163,7 @@ private fun SearchPane(
             onKey = onKey,
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(0.52f)
+                .weight(0.58f)
                 .fillMaxHeight(),
         )
     }

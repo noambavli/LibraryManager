@@ -102,7 +102,6 @@ fun TechSupportManagementScreen(
             },
         )
     }
-    }
 }
 
 @Composable
