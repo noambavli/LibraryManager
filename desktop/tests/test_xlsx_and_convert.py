@@ -10,6 +10,13 @@ from library_tool.xlsx_reader import column_index, read_first_sheet
 HEADER = ["שם הספר", "המחבר", "מספר", "אות", "צבע", "קטגוריה", "תת קטגוריה", "ענינים", "הערות"]
 
 
+def test_packaged_xlsx_writer_importable():
+    """Guard: app.py imports this module — it must ship inside ExcelTool.exe."""
+    from library_tool.xlsx_writer import write_xlsx as pkg_write
+
+    assert callable(pkg_write)
+
+
 def test_column_index():
     assert column_index("A1") == 0
     assert column_index("B3") == 1

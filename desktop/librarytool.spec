@@ -1,26 +1,18 @@
 # PyInstaller spec — builds a single-file Windows .exe.
 # CI: GitHub Actions workflow build-windows-exe.yml
 
+from PyInstaller.utils.hooks import collect_submodules
+
 block_cipher = None
+
+_library_tool_modules = collect_submodules("library_tool")
 
 a = Analysis(
     ["launcher.py"],
     pathex=["src"],
     binaries=[],
     datas=[],
-    hiddenimports=[
-        "library_tool",
-        "library_tool.app",
-        "library_tool.session",
-        "library_tool.converter",
-        "library_tool.validation",
-        "library_tool.backups",
-        "library_tool.adb_transfer",
-        "library_tool.xlsx_reader",
-        "library_tool.xlsx_writer",
-        "library_tool.hebrew",
-        "library_tool.model",
-        "library_tool.exports",
+    hiddenimports=_library_tool_modules + [
         "tkinter",
         "tkinter.ttk",
         "tkinter.filedialog",
