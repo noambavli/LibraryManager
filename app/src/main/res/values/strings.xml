@@ -430,24 +430,24 @@
     <string name="windows_tool_import_matchings_confirm">ייבוא ההתאמות יוסיף קיצורים חדשים ויעדכן מילים/כיוון לקיצורים שכבר קיימים. גיבוי מלא יישמר אוטומטית לפני הייבוא. להמשיך?</string>
 
     <string name="windows_tool_danger_section">מחיקה מלאה</string>
-    <string name="windows_tool_danger_desc">מחיקת כל הספרים או כל קיצורי החיפוש. לפני המחיקה נשמר אוטומטית גיבוי מלא — ניתן לשחזר ממנו. נדרש אישור מוקלד.</string>
+    <string name="windows_tool_danger_desc">מחיקת כל הספרים או כל התאמות החיפוש. לפני המחיקה נשמר אוטומטית גיבוי מלא — ניתן לשחזר ממנו. נדרש אישור מוקלד.</string>
     <string name="windows_tool_delete_all_books">מחק את כל הספרים</string>
-    <string name="windows_tool_delete_all_shortcuts">מחק את כל קיצורי החיפוש</string>
+    <string name="windows_tool_delete_all_matchings">מחק את כל התאמות החיפוש</string>
     <string name="windows_tool_delete_books_confirm_title">מחיקת כל הספרים</string>
     <string name="windows_tool_delete_books_confirm_body">כל הספרים בקטלוג יימחקו לצמיתות. לפני המחיקה יישמר גיבוי מלא אוטומטית. הקלידו ״מחק ספרים״ לאישור.</string>
     <string name="windows_tool_delete_books_phrase">מחק ספרים</string>
     <string name="windows_tool_delete_books_ok">מחק הכל</string>
     <string name="windows_tool_delete_books_done">נמחקו %1$d ספרים. נשמר גיבוי מלא לפני המחיקה — ניתן לשחזר מכלי Windows.</string>
     <string name="windows_tool_delete_books_empty">אין ספרים למחיקה.</string>
-    <string name="windows_tool_delete_shortcuts_confirm_title">מחיקת כל קיצורי החיפוש</string>
-    <string name="windows_tool_delete_shortcuts_confirm_body">כל קיצורי החיפוש (התגיות מעל שדה החיפוש) יימחקו. לפני המחיקה יישמר גיבוי מלא אוטומטית. הקלידו ״מחק קיצורים״ לאישור.</string>
-    <string name="windows_tool_delete_shortcuts_phrase">מחק קיצורים</string>
-    <string name="windows_tool_delete_shortcuts_ok">מחק הכל</string>
-    <string name="windows_tool_delete_shortcuts_done">נמחקו %1$d קיצורי חיפוש. נשמר גיבוי מלא לפני המחיקה — ניתן לשחזר מכלי Windows.</string>
-    <string name="windows_tool_delete_shortcuts_empty">אין קיצורי חיפוש למחיקה.</string>
+    <string name="windows_tool_delete_matchings_confirm_title">מחיקת כל התאמות החיפוש</string>
+    <string name="windows_tool_delete_matchings_confirm_body">כל התאמות החיפוש (קיצורים, מילים נרדפות) יימחקו. לפני המחיקה יישמר גיבוי מלא אוטומטית. הקלידו ״מחק התאמות״ לאישור.</string>
+    <string name="windows_tool_delete_matchings_phrase">מחק התאמות</string>
+    <string name="windows_tool_delete_matchings_ok">מחק הכל</string>
+    <string name="windows_tool_delete_matchings_done">נמחקו %1$d התאמות חיפוש. נשמר גיבוי מלא לפני המחיקה — ניתן לשחזר מכלי Windows.</string>
+    <string name="windows_tool_delete_matchings_empty">אין התאמות חיפוש למחיקה.</string>
     <string name="windows_tool_delete_working_backup">יוצר גיבוי מלא לפני המחיקה…</string>
     <string name="windows_tool_delete_books_working">מוחק את כל הספרים…</string>
-    <string name="windows_tool_delete_shortcuts_working">מוחק את כל קיצורי החיפוש…</string>
+    <string name="windows_tool_delete_matchings_working">מוחק את כל התאמות החיפוש…</string>
 
     <string name="windows_tool_dismiss">סגור</string>
 

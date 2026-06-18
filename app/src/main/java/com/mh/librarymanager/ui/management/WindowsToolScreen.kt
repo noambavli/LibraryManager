@@ -50,7 +50,7 @@ import java.util.Locale
 
 private enum class ImportKind { Books, Matchings }
 
-private enum class PendingDelete { Books, Shortcuts }
+private enum class PendingDelete { Books, Matchings }
 
 private data class PendingImport(val kind: ImportKind, val uri: Uri)
 
@@ -173,7 +173,7 @@ fun WindowsToolScreen(
 
                     DangerZoneCard(
                         onDeleteAllBooks = { pendingDelete = PendingDelete.Books },
-                        onDeleteAllShortcuts = { pendingDelete = PendingDelete.Shortcuts },
+                        onDeleteAllMatchings = { pendingDelete = PendingDelete.Matchings },
                     )
 
                     Spacer(modifier = Modifier.height(28.dp))
@@ -260,15 +260,15 @@ fun WindowsToolScreen(
                 viewModel.deleteAllBooks()
             },
         )
-        PendingDelete.Shortcuts -> TypedConfirmDialog(
-            title = stringResource(R.string.windows_tool_delete_shortcuts_confirm_title),
-            body = stringResource(R.string.windows_tool_delete_shortcuts_confirm_body),
-            requiredPhrase = stringResource(R.string.windows_tool_delete_shortcuts_phrase),
-            confirmLabel = stringResource(R.string.windows_tool_delete_shortcuts_ok),
+        PendingDelete.Matchings -> TypedConfirmDialog(
+            title = stringResource(R.string.windows_tool_delete_matchings_confirm_title),
+            body = stringResource(R.string.windows_tool_delete_matchings_confirm_body),
+            requiredPhrase = stringResource(R.string.windows_tool_delete_matchings_phrase),
+            confirmLabel = stringResource(R.string.windows_tool_delete_matchings_ok),
             onDismiss = { pendingDelete = null },
             onConfirmed = {
                 pendingDelete = null
-                viewModel.deleteAllShortcuts()
+                viewModel.deleteAllMatchings()
             },
         )
         null -> Unit
@@ -427,7 +427,7 @@ private fun TransferSection(
 @Composable
 private fun DangerZoneCard(
     onDeleteAllBooks: () -> Unit,
-    onDeleteAllShortcuts: () -> Unit,
+    onDeleteAllMatchings: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     Surface(
@@ -458,11 +458,11 @@ private fun DangerZoneCard(
                     border = BorderStroke(1.dp, cs.error),
                 ) { Text(stringResource(R.string.windows_tool_delete_all_books)) }
                 OutlinedButton(
-                    onClick = onDeleteAllShortcuts,
+                    onClick = onDeleteAllMatchings,
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = cs.error),
                     border = BorderStroke(1.dp, cs.error),
-                ) { Text(stringResource(R.string.windows_tool_delete_all_shortcuts)) }
+                ) { Text(stringResource(R.string.windows_tool_delete_all_matchings)) }
             }
         }
     }

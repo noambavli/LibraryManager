@@ -481,18 +481,18 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun deleteAllShortcuts() = deleteWithBackup(
+    fun deleteAllMatchings() = deleteWithBackup(
         backupWorking = getApplication<Application>().getString(R.string.windows_tool_delete_working_backup),
-        deleteWorking = getApplication<Application>().getString(R.string.windows_tool_delete_shortcuts_working),
+        deleteWorking = getApplication<Application>().getString(R.string.windows_tool_delete_matchings_working),
     ) {
         val app = getApplication<Application>()
-        container.shortcutStore.loadFromDisk()
-        val count = container.shortcutStore.shortcuts.value.size
-        container.shortcutStore.replaceAll(emptyList())
+        container.matchingStore.loadFromDisk()
+        val count = container.matchingStore.matchings.value.size
+        container.matchingStore.replaceAll(emptyList())
         if (count <= 0) {
-            OpStatus.Success(app.getString(R.string.windows_tool_delete_shortcuts_empty))
+            OpStatus.Success(app.getString(R.string.windows_tool_delete_matchings_empty))
         } else {
-            OpStatus.Success(app.getString(R.string.windows_tool_delete_shortcuts_done, count))
+            OpStatus.Success(app.getString(R.string.windows_tool_delete_matchings_done, count))
         }
     }
 
