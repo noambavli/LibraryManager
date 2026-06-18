@@ -18,18 +18,25 @@ import com.mh.librarymanager.domain.Book
  *   rank higher than mid-word matches, so the obvious result floats to top.
  * - Per-field constraints AND together. The general field also ANDs, but each
  *   of its tokens may match in any indexed field.
+ * - Staff-managed synonyms ([SearchSynonyms]) expand the query: a recognised
+ *   shortcut/word is matched against its ranked alternatives, so "רמבם" also
+ *   finds "רבי משה בן מימון". Results found only via an expansion are ordered by
+ *   the alternative's rank (word order in the rule); literal matches stay on top.
  * - Versioning-safe: only books with `isLatest = true` are indexed; old
  *   versions are completely invisible to search.
  *
  * The class is thread-safe to read after construction; replace the engine
  * (rather than mutate it) when the source data changes.
  */
-class SearchEngine(books: List<Book>) {
+class SearchEngine(
+    books: List<Book>,
+    private val synonyms: SearchSynonyms = SearchSynonyms.EMPTY,
+) {
 
     private val indexed: List<IndexedBook> = books
         .asSequence()
         .filter { it.isLatest }
-        .map { IndexedBook.from(it) }
+        .map { IndexedBook.from(it, synonyms) }
         .toList()
 
     val size: Int get() = indexed.size
@@ -37,47 +44,39 @@ class SearchEngine(books: List<Book>) {
     fun search(query: SearchQuery, limit: Int = 500): List<Book> {
         if (query.isEmpty) return indexed.take(limit).map { it.book }
 
-        val generalTokens = HebrewText.tokens(query.general)
-        val nameTokens = HebrewText.tokens(query.name)
-        val topicsTokens = HebrewText.tokens(query.topics)
-        val writerTokens = HebrewText.tokens(query.writer)
-        val letterTokens = HebrewText.tokens(query.letter)
-        val colorTokens = HebrewText.tokens(query.color)
-        val categoryTokens = HebrewText.tokens(query.category)
-        val subcategoryTokens = HebrewText.tokens(query.subcategory)
+        val generalCands = synonyms.expand(HebrewText.tokens(query.general))
+        val nameCands = synonyms.expand(HebrewText.tokens(query.name))
+        val topicsCands = synonyms.expand(HebrewText.tokens(query.topics))
+        val writerCands = synonyms.expand(HebrewText.tokens(query.writer))
+        val letterCands = synonyms.expand(HebrewText.tokens(query.letter))
+        val colorCands = synonyms.expand(HebrewText.tokens(query.color))
+        val categoryCands = synonyms.expand(HebrewText.tokens(query.category))
+        val subcategoryCands = synonyms.expand(HebrewText.tokens(query.subcategory))
+        val notesCands = synonyms.expand(HebrewText.tokens(query.notes))
         val displayNumberTokens = HebrewText.numberTokens(query.displayNumber)
         val bookNumberTokens = HebrewText.numberTokens(query.bookNumber)
-        val notesTokens = HebrewText.tokens(query.notes)
 
         data class Scored(val book: Book, val score: Int, val tieName: String)
 
         val results = ArrayList<Scored>()
 
         for (book in indexed) {
-            if (!book.matchesField(nameTokens, book.name)) continue
-            if (!book.matchesField(topicsTokens, book.topics)) continue
-            if (!book.matchesField(writerTokens, book.writer)) continue
-            if (!book.matchesField(letterTokens, book.letter)) continue
-            if (!book.matchesField(colorTokens, book.color)) continue
-            if (!book.matchesField(categoryTokens, book.category)) continue
-            if (!book.matchesField(subcategoryTokens, book.subcategory)) continue
+            val nameC = book.fieldContribution(nameCands, book.name, weight = 50) ?: continue
+            val topicsC = book.fieldContribution(topicsCands, book.topics, weight = 25) ?: continue
+            val writerC = book.fieldContribution(writerCands, book.writer, weight = 30) ?: continue
+            if (!book.matchesCandidates(letterCands, book.letter)) continue
+            if (!book.matchesCandidates(colorCands, book.color)) continue
+            val categoryC = book.fieldContribution(categoryCands, book.category, weight = 15) ?: continue
+            val subcategoryC = book.fieldContribution(subcategoryCands, book.subcategory, weight = 12) ?: continue
             if (!book.matchesNumberField(displayNumberTokens, book.displayNumber)) continue
             if (!book.matchesNumberField(bookNumberTokens, book.bookNumber)) continue
-            if (!book.matchesField(notesTokens, book.notes)) continue
+            val notesC = book.fieldContribution(notesCands, book.notes, weight = 8) ?: continue
 
-            if (generalTokens.isNotEmpty() && !book.matchesGeneral(generalTokens)) continue
+            val generalC = book.generalContribution(generalCands) ?: continue
 
-            val score = book.score(
-                generalTokens = generalTokens,
-                nameTokens = nameTokens,
-                topicsTokens = topicsTokens,
-                writerTokens = writerTokens,
-                categoryTokens = categoryTokens,
-                subcategoryTokens = subcategoryTokens,
-                displayNumberTokens = displayNumberTokens,
-                bookNumberTokens = bookNumberTokens,
-                notesTokens = notesTokens,
-            )
+            var score = nameC + topicsC + writerC + categoryC + subcategoryC + notesC + generalC
+            score += book.scoreNumberField(displayNumberTokens, book.displayNumber, weight = 20)
+            score += book.scoreNumberField(bookNumberTokens, book.bookNumber, weight = 18)
             results += Scored(book.book, score, book.name)
         }
 
@@ -109,19 +108,71 @@ class SearchEngine(books: List<Book>) {
             displayNumber, bookNumber, notes,
         )
 
-        fun matchesField(tokens: List<String>, field: String): Boolean {
-            if (tokens.isEmpty()) return true
-            for (t in tokens) if (!field.contains(t)) return false
-            return true
+        /**
+         * Filter-only match for a field (used where the field carries no score,
+         * e.g. letter/color). True when unconstrained or any candidate matches.
+         */
+        fun matchesCandidates(candidates: List<SearchSynonyms.Candidate>, field: String): Boolean {
+            if (candidates.isEmpty()) return true
+            if (field.isEmpty()) return false
+            for (c in candidates) {
+                if (c.tokens.all { field.contains(it) }) return true
+            }
+            return false
         }
 
-        fun matchesNumberField(tokens: List<String>, field: String): Boolean {
-            if (tokens.isEmpty()) return true
-            for (t in tokens) if (field != t) return false
-            return true
+        /**
+         * Best score contribution for a constrained field, or null when the
+         * field is constrained but no candidate matches (book is excluded).
+         * Returns 0 when there is no constraint for the field.
+         */
+        fun fieldContribution(
+            candidates: List<SearchSynonyms.Candidate>,
+            field: String,
+            weight: Int,
+        ): Int? {
+            if (candidates.isEmpty()) return 0
+            if (field.isEmpty()) return null
+            var best: Int? = null
+            for (c in candidates) {
+                if (!c.tokens.all { field.contains(it) }) continue
+                var s = 0
+                for (t in c.tokens) s += scoreToken(t, field, weight)
+                s -= c.rank * RANK_PENALTY
+                if (best == null || s > best) best = s
+            }
+            return best
         }
 
-        fun matchesGeneral(tokens: List<String>): Boolean {
+        /**
+         * Best general-field contribution. Each token may live in any field;
+         * a candidate matches when every one of its tokens is found somewhere.
+         */
+        fun generalContribution(candidates: List<SearchSynonyms.Candidate>): Int? {
+            if (candidates.isEmpty()) return 0
+            var best: Int? = null
+            for (c in candidates) {
+                if (!allTokensSomewhere(c.tokens)) continue
+                var s = 0
+                for (t in c.tokens) {
+                    s += scoreToken(t, name, weight = 40)
+                    s += scoreToken(t, topics, weight = 18)
+                    s += scoreToken(t, writer, weight = 22)
+                    s += scoreToken(t, category, weight = 10)
+                    s += scoreToken(t, subcategory, weight = 8)
+                    s += scoreToken(t, displayNumber, weight = 12)
+                    s += scoreToken(t, bookNumber, weight = 10)
+                    s += scoreToken(t, notes, weight = 5)
+                    s += scoreToken(t, letter, weight = 3)
+                    s += scoreToken(t, color, weight = 3)
+                }
+                s -= c.rank * RANK_PENALTY
+                if (best == null || s > best) best = s
+            }
+            return best
+        }
+
+        private fun allTokensSomewhere(tokens: List<String>): Boolean {
             for (t in tokens) {
                 var found = false
                 for (field in searchable) {
@@ -132,50 +183,13 @@ class SearchEngine(books: List<Book>) {
             return true
         }
 
-        fun score(
-            generalTokens: List<String>,
-            nameTokens: List<String>,
-            topicsTokens: List<String>,
-            writerTokens: List<String>,
-            categoryTokens: List<String>,
-            subcategoryTokens: List<String>,
-            displayNumberTokens: List<String>,
-            bookNumberTokens: List<String>,
-            notesTokens: List<String>,
-        ): Int {
-            var s = 0
-            s += scoreField(nameTokens, name, weight = 50)
-            s += scoreField(topicsTokens, topics, weight = 25)
-            s += scoreField(writerTokens, writer, weight = 30)
-            s += scoreField(categoryTokens, category, weight = 15)
-            s += scoreField(subcategoryTokens, subcategory, weight = 12)
-            s += scoreNumberField(displayNumberTokens, displayNumber, weight = 20)
-            s += scoreNumberField(bookNumberTokens, bookNumber, weight = 18)
-            s += scoreField(notesTokens, notes, weight = 8)
-
-            for (t in generalTokens) {
-                s += scoreToken(t, name, weight = 40)
-                s += scoreToken(t, topics, weight = 18)
-                s += scoreToken(t, writer, weight = 22)
-                s += scoreToken(t, category, weight = 10)
-                s += scoreToken(t, subcategory, weight = 8)
-                s += scoreToken(t, displayNumber, weight = 12)
-                s += scoreToken(t, bookNumber, weight = 10)
-                s += scoreToken(t, notes, weight = 5)
-                s += scoreToken(t, letter, weight = 3)
-                s += scoreToken(t, color, weight = 3)
-            }
-            return s
+        fun matchesNumberField(tokens: List<String>, field: String): Boolean {
+            if (tokens.isEmpty()) return true
+            for (t in tokens) if (field != t) return false
+            return true
         }
 
-        private fun scoreField(tokens: List<String>, field: String, weight: Int): Int {
-            if (tokens.isEmpty() || field.isEmpty()) return 0
-            var s = 0
-            for (t in tokens) s += scoreToken(t, field, weight)
-            return s
-        }
-
-        private fun scoreNumberField(tokens: List<String>, field: String, weight: Int): Int {
+        fun scoreNumberField(tokens: List<String>, field: String, weight: Int): Int {
             if (tokens.isEmpty() || field.isEmpty()) return 0
             var s = 0
             for (t in tokens) if (field == t) s += weight * 4 + (t.length / 2)
@@ -210,19 +224,30 @@ class SearchEngine(books: List<Book>) {
         }
 
         companion object {
-            fun from(book: Book): IndexedBook = IndexedBook(
+            fun from(book: Book, synonyms: SearchSynonyms = SearchSynonyms.EMPTY): IndexedBook = IndexedBook(
                 book = book,
-                name = HebrewText.normalize(book.name),
-                topics = HebrewText.normalize(book.topics),
-                writer = HebrewText.normalize(book.writer),
-                letter = HebrewText.normalize(book.letter),
-                color = HebrewText.normalize(book.color),
-                category = HebrewText.normalize(book.category),
-                subcategory = HebrewText.normalize(book.subcategories.joinToString(" ")),
+                name = synonyms.augmentField(HebrewText.normalize(book.name)),
+                topics = synonyms.augmentField(HebrewText.normalize(book.topics)),
+                writer = synonyms.augmentField(HebrewText.normalize(book.writer)),
+                letter = synonyms.augmentField(HebrewText.normalize(book.letter)),
+                color = synonyms.augmentField(HebrewText.normalize(book.color)),
+                category = synonyms.augmentField(HebrewText.normalize(book.category)),
+                subcategory = synonyms.augmentField(
+                    HebrewText.normalize(book.subcategories.joinToString(" ")),
+                ),
                 displayNumber = HebrewText.normalizeNumberKey(book.displayNumber),
                 bookNumber = HebrewText.normalizeNumberKey(book.bookNumber),
-                notes = HebrewText.normalize(book.notes),
+                notes = synonyms.augmentField(HebrewText.normalize(book.notes)),
             )
         }
+    }
+
+    companion object {
+        /**
+         * Score subtracted per rank step of a synonym alternative. Small enough
+         * to act as a tiebreaker (literal/earlier-word matches stay above
+         * later-word matches) without overriding genuine relevance.
+         */
+        private const val RANK_PENALTY = 4
     }
 }

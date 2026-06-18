@@ -47,6 +47,17 @@ class SearchHistoryStore(private val context: Context) {
         }
     }
 
+    /** Force a re-read from disk, e.g. after a backup restore overwrote the file. */
+    suspend fun reloadFromDisk() {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            synchronized(this@SearchHistoryStore) {
+                val raw = if (file.exists()) readFile(file) else emptyList()
+                _entries.value = prune(raw)
+                loadState.markLoaded()
+            }
+        }
+    }
+
     suspend fun append(entry: SearchHistoryEntry) {
         loadFromDisk()
         val next = prune(_entries.value + entry)

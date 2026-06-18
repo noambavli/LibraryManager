@@ -36,6 +36,37 @@ class SearchShortcutStore(private val context: Context) {
         }
     }
 
+    /** Force a re-read from disk, e.g. after a backup restore overwrote the file. */
+    suspend fun reloadFromDisk() {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            synchronized(this@SearchShortcutStore) {
+                _shortcuts.value = if (file.exists()) readFile(file) else emptyList()
+                loadState.markLoaded()
+            }
+        }
+    }
+
+    /**
+     * Replace the whole shortcut list (bulk xlsx import). Blank/duplicate
+     * entries are dropped and the result is capped at [MAX_SHORTCUTS], so a
+     * messy spreadsheet can never produce an invalid state. Returns the list
+     * actually persisted.
+     */
+    suspend fun replaceAll(words: List<String>): List<String> {
+        loadFromDisk()
+        val clean = ArrayList<String>(words.size)
+        for (raw in words) {
+            val w = raw.trim()
+            if (w.isEmpty()) continue
+            if (clean.any { it.equals(w, ignoreCase = true) }) continue
+            clean += w
+            if (clean.size >= MAX_SHORTCUTS) break
+        }
+        writeFile(file, clean)
+        _shortcuts.value = clean
+        return clean
+    }
+
     enum class AddResult { Ok, Blank, Duplicate, LimitReached }
 
     suspend fun add(word: String): AddResult {
