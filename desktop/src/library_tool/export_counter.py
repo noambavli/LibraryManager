@@ -61,3 +61,41 @@ def next_batch_number() -> int:
 def commit_batch_number(n: int) -> None:
     """Mark batch n as successfully sent (idempotent)."""
     _write_last_assigned(max(_read_last_assigned(), n))
+
+
+def _matchings_counter_file() -> str:
+    return os.path.join(_counter_dir(), "matchings_export_counter.txt")
+
+
+def _read_matchings_last_assigned() -> int:
+    try:
+        with open(_matchings_counter_file(), "r", encoding="utf-8") as fh:
+            return max(0, int(fh.read().strip() or "0"))
+    except (OSError, ValueError):
+        return 0
+
+
+def _write_matchings_last_assigned(n: int) -> None:
+    path = _matchings_counter_file()
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        fh.write(str(n))
+        fh.flush()
+        os.fsync(fh.fileno())
+    try:
+        os.replace(tmp, path)
+    except OSError:
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(str(n))
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+
+
+def peek_next_matchings_batch_number() -> int:
+    return _read_matchings_last_assigned() + 1
+
+
+def commit_matchings_batch_number(n: int) -> None:
+    _write_matchings_last_assigned(max(_read_matchings_last_assigned(), n))

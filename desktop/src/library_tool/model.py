@@ -133,3 +133,15 @@ class Book:
 
     def copy(self, **changes) -> "Book":
         return replace(self, **changes)
+
+
+class MatchingDirection:
+    BIDIRECTIONAL = "Bidirectional"
+    WORDS_TO_SHORTCUT = "WordsToShortcut"
+
+
+@dataclass
+class Matching:
+    shortcut: str
+    words: List[str]
+    direction: str = MatchingDirection.BIDIRECTIONAL

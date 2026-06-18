@@ -7,9 +7,10 @@ from dataclasses import dataclass, field
 from typing import Callable, List, Optional
 
 from . import adb_transfer, backups, validation
-from .export_counter import peek_next_batch_number
+from .export_counter import peek_next_batch_number, peek_next_matchings_batch_number
 from .converter import ConvertResult, convert_rows
-from .model import Book
+from .matchings_converter import MatchingsConvertResult, rows_to_matchings
+from .model import Book, Matching
 from .xlsx_reader import read_first_sheet
 
 
@@ -50,6 +51,12 @@ class ImportOutcome:
     restore_point: Optional[backups.BackupEntry]
 
 
+@dataclass
+class MatchingsImportOutcome:
+    convert: MatchingsConvertResult
+    source_path: str
+
+
 class Session:
     def __init__(self) -> None:
         self.books: List[Book] = []
@@ -58,6 +65,9 @@ class Session:
         self.dirty: bool = False
         self.last_import_restore: Optional[backups.BackupEntry] = None
         self.last_report: Optional[validation.ValidationReport] = None
+        self.matchings: List[Matching] = []
+        self.matchings_source_path: Optional[str] = None
+        self.last_sent_matchings_batch: Optional[int] = None
 
     def import_xlsx(
         self,
@@ -95,6 +105,75 @@ class Session:
 
         progress("Done.", 1.0)
         return ImportOutcome(result, report, restore_point)
+
+    def import_matchings_xlsx(
+        self,
+        path: str,
+        progress: ProgressFn = _noop_progress,
+        abort: Optional[AbortFlag] = None,
+    ) -> MatchingsImportOutcome:
+        abort = abort or AbortFlag()
+
+        progress("Reading matchings workbook…", 0.35)
+        rows = read_first_sheet(path)
+        abort.check()
+
+        progress("Converting rows…", 0.7)
+        result = rows_to_matchings(rows)
+        abort.check()
+
+        self.matchings = result.matchings
+        self.matchings_source_path = path
+
+        progress("Done.", 1.0)
+        return MatchingsImportOutcome(result, path)
+
+    def next_matchings_send_batch(self) -> int:
+        return peek_next_matchings_batch_number()
+
+    def matchings_tablet_pick_hint(self) -> str:
+        if self.last_sent_matchings_batch is not None:
+            batch = self.last_sent_matchings_batch
+            return (
+                f"Last matchings send: matchings-{batch}.xlsx. "
+                f"Confirm on the tablet when prompted."
+            )
+        if self.matchings:
+            n = self.next_matchings_send_batch()
+            return (
+                f"After Send matchings: matchings-{n}.xlsx is archived. "
+                f"Confirm on the tablet. USB must stay connected."
+            )
+        return ""
+
+    def send_matchings_to_tablet(
+        self,
+        progress: ProgressFn = _noop_progress,
+        abort: Optional[AbortFlag] = None,
+    ) -> adb_transfer.AdbSendResult:
+        abort = abort or AbortFlag()
+        progress("Looking for tablet (adb)…", 0.1)
+        abort.check()
+        batch = peek_next_matchings_batch_number()
+        progress("Sending matchings Excel to tablet…", 0.4)
+        progress("Waiting for confirmation on the tablet…", 0.55)
+        result = adb_transfer.send_matchings(
+            self.matchings,
+            source_file=self.matchings_source_path or "",
+            batch_number=batch,
+        )
+        self.last_sent_matchings_batch = batch
+        abort.check()
+        line = result.result_line or ""
+        if line.startswith("OK:"):
+            progress("Tablet confirmed — matchings merged.", 1.0)
+        elif line.startswith("ERR:cancelled"):
+            progress("Cancelled on the tablet.", 1.0)
+        elif line.startswith("ERR:confirm_timeout"):
+            progress("Tablet did not confirm in time — approve on tablet.", 1.0)
+        else:
+            progress("Send finished.", 1.0)
+        return result
 
     def can_restore_import(self) -> bool:
         return self.last_import_restore is not None and not self.dirty

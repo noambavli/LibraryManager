@@ -22,7 +22,7 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 REMOTE_XLSX_TMP = "/data/local/tmp/books-import.xlsx"
 REMOTE_XLSX_DOWNLOAD = "/sdcard/Download/books-import.xlsx"
@@ -38,6 +38,69 @@ CONFIRM_TIMEOUT_SEC = 600
 IMPORT_ACTION = "com.mh.librarymanager.IMPORT_EXCEL"
 IMPORT_RECEIVER = "com.mh.librarymanager/.ExcelImportReceiver"
 PACKAGE = "com.mh.librarymanager"
+
+MATCHINGS_REMOTE_XLSX_TMP = "/data/local/tmp/matchings-import.xlsx"
+MATCHINGS_REMOTE_RESULT_TMP = "/data/local/tmp/matchings-import-result.txt"
+MATCHINGS_REMOTE_RESULT = "/sdcard/Download/matchings-import-result.txt"
+MATCHINGS_REMOTE_RESULT_APP = (
+    "/sdcard/Android/data/com.mh.librarymanager/files/matchings-import-result.txt"
+)
+MATCHINGS_REMOTE_RESULTS = [
+    MATCHINGS_REMOTE_RESULT_APP,
+    MATCHINGS_REMOTE_RESULT_TMP,
+    MATCHINGS_REMOTE_RESULT,
+]
+MATCHINGS_IMPORT_ACTION = "com.mh.librarymanager.IMPORT_MATCHINGS_EXCEL"
+MATCHINGS_IMPORT_RECEIVER = "com.mh.librarymanager/.MatchingsImportReceiver"
+MATCHINGS_RESULT_FILE = "matchings-import-result.txt"
+
+
+@dataclass(frozen=True)
+class ImportChannel:
+    remote_xlsx_tmp: str
+    remote_results: Tuple[str, ...]
+    remote_result_tmp: str
+    import_action: str
+    import_receiver: str
+    logcat_tag: str
+    mediastore_name: str
+    merged_re: re.Pattern
+    awaiting_re: re.Pattern
+    pending_prefix: str  # "PENDING:added={added}:skipped={other}" or updated=
+    ok_skipped_key: str  # "skipped" or "updated"
+
+
+BOOKS_CHANNEL = ImportChannel(
+    remote_xlsx_tmp=REMOTE_XLSX_TMP,
+    remote_results=tuple(REMOTE_RESULTS),
+    remote_result_tmp=REMOTE_RESULT_TMP,
+    import_action=IMPORT_ACTION,
+    import_receiver=IMPORT_RECEIVER,
+    logcat_tag="ExcelImport",
+    mediastore_name="catalog-import-result.txt",
+    merged_re=re.compile(r"Merged catalog: \+(\d+) added, (\d+) skipped, total (\d+)"),
+    awaiting_re=re.compile(r"Awaiting confirmation: \+(\d+) to add, (\d+) skipped"),
+    pending_prefix="PENDING:added={added}:skipped={other}",
+    ok_skipped_key="skipped",
+)
+
+MATCHINGS_CHANNEL = ImportChannel(
+    remote_xlsx_tmp=MATCHINGS_REMOTE_XLSX_TMP,
+    remote_results=tuple(MATCHINGS_REMOTE_RESULTS),
+    remote_result_tmp=MATCHINGS_REMOTE_RESULT_TMP,
+    import_action=MATCHINGS_IMPORT_ACTION,
+    import_receiver=MATCHINGS_IMPORT_RECEIVER,
+    logcat_tag="MatchingsImport",
+    mediastore_name=MATCHINGS_RESULT_FILE,
+    merged_re=re.compile(
+        r"Merged matchings: \+(\d+) added, (\d+) updated, total (\d+)"
+    ),
+    awaiting_re=re.compile(
+        r"Awaiting confirmation: \+(\d+) to add, (\d+) to update"
+    ),
+    pending_prefix="PENDING:added={added}:updated={other}",
+    ok_skipped_key="updated",
+)
 
 
 @dataclass
@@ -340,27 +403,28 @@ def _read_result_file(adb: str, serial: str, remote: str) -> str:
     return ""
 
 
-_LOGCAT_MERGED = re.compile(
-    r"Merged catalog: \+(\d+) added, (\d+) skipped, total (\d+)"
-)
-_LOGCAT_AWAITING = re.compile(
-    r"Awaiting confirmation: \+(\d+) to add, (\d+) skipped"
-)
+_LOGCAT_MERGED = BOOKS_CHANNEL.merged_re
+_LOGCAT_AWAITING = BOOKS_CHANNEL.awaiting_re
 
 
-def _parse_logcat_import(logcat: str) -> str:
-    """Build a result line from CatalogImport log output (file write fallback)."""
+def _parse_logcat_import(logcat: str, channel: ImportChannel = BOOKS_CHANNEL) -> str:
+    """Build a result line from import log output (file write fallback)."""
     lines = logcat.splitlines()
     for line in reversed(lines):
-        match = _LOGCAT_MERGED.search(line)
+        match = channel.merged_re.search(line)
         if match:
-            added, skipped, total = match.groups()
-            return f"OK:added={added}:skipped={skipped}:total={total}"
+            added, other, total = match.groups()
+            if channel.ok_skipped_key == "updated":
+                return f"OK:added={added}:updated={other}:unchanged=0:total={total}"
+            return f"OK:added={added}:skipped={other}:total={total}"
     for line in reversed(lines):
-        match = _LOGCAT_AWAITING.search(line)
+        match = channel.awaiting_re.search(line)
         if match:
-            added, skipped = match.groups()
-            return f"PENDING:added={added}:skipped={skipped}:current=0:total=0"
+            added, other = match.groups()
+            pending = channel.pending_prefix.format(added=added, other=other)
+            if channel.ok_skipped_key == "updated":
+                return f"{pending}:unchanged=0:current=0:total=0"
+            return f"{pending}:current=0:total=0"
     for line in reversed(lines):
         if "Import failed:" in line:
             detail = line.split("Import failed:", 1)[1].strip()
@@ -370,10 +434,17 @@ def _parse_logcat_import(logcat: str) -> str:
     return ""
 
 
-def _read_result_logcat(adb: str, serial: str, *, since: str = "") -> str:
+def _read_result_logcat(
+    adb: str,
+    serial: str,
+    *,
+    since: str = "",
+    channel: ImportChannel = BOOKS_CHANNEL,
+) -> str:
+    tag = channel.logcat_tag
     code, out, _ = _run(
         adb,
-        ["-s", serial, "logcat", "-d", "-s", "ExcelImport:I", "ExcelImport:E"],
+        ["-s", serial, "logcat", "-d", "-s", f"{tag}:I", f"{tag}:E"],
         timeout=15,
     )
     if code != 0 or not out.strip():
@@ -383,16 +454,22 @@ def _read_result_logcat(adb: str, serial: str, *, since: str = "") -> str:
         fresh = [ln for ln in out.splitlines() if ln not in since_lines]
         if not fresh:
             return ""
-        return _parse_logcat_import("\n".join(fresh))
-    return _parse_logcat_import(out)
+        return _parse_logcat_import("\n".join(fresh), channel)
+    return _parse_logcat_import(out, channel)
 
 
-def _read_result_mediastore(adb: str, serial: str) -> str:
+def _read_result_mediastore(
+    adb: str,
+    serial: str,
+    *,
+    channel: ImportChannel = BOOKS_CHANNEL,
+) -> str:
     """Fallback when Downloads was written via MediaStore (Android 10+)."""
+    name = channel.mediastore_name
     for where in (
-        "display_name='catalog-import-result.txt'",
-        "_display_name='catalog-import-result.txt'",
-        "title='catalog-import-result.txt'",
+        f"display_name='{name}'",
+        f"_display_name='{name}'",
+        f"title='{name}'",
     ):
         code, out, _ = _run(
             adb,
@@ -416,27 +493,31 @@ def _read_result_mediastore(adb: str, serial: str) -> str:
     return ""
 
 
-def _trigger_import(adb: str, serial: str) -> None:
+def _trigger_import(
+    adb: str,
+    serial: str,
+    *,
+    channel: ImportChannel = BOOKS_CHANNEL,
+) -> None:
     """Broadcast import (proven path) and wake the app on newer builds."""
     code, out, err = _run(
         adb,
         [
             "-s", serial, "shell", "am", "broadcast",
-            "-a", IMPORT_ACTION,
-            "-n", IMPORT_RECEIVER,
+            "-a", channel.import_action,
+            "-n", channel.import_receiver,
             "--include-stopped-packages",
         ],
         timeout=30,
     )
     if code != 0:
         raise IOError(f"adb broadcast failed: {err or out or 'unknown error'}")
-    # Extra wake-up for newer APKs; harmless no-op on older builds.
     _run(
         adb,
         [
             "-s", serial, "shell", "am", "start",
             "-n", f"{PACKAGE}/.MainActivity",
-            "-a", IMPORT_ACTION,
+            "-a", channel.import_action,
             "--include-stopped-packages",
         ],
         timeout=30,
@@ -449,25 +530,26 @@ def push_and_import(
     local_xlsx: str,
     *,
     download_name: str = "books-import.xlsx",
+    channel: ImportChannel = BOOKS_CHANNEL,
 ) -> AdbSendResult:
     """Push workbook to tmp for import and copy a numbered archive into Download."""
     prepare_usb(adb, serial)
 
-    for path in REMOTE_RESULTS:
+    for path in channel.remote_results:
         _run(adb, ["-s", serial, "shell", "rm", "-f", path], timeout=15)
 
     code, _, err = _run(
-        adb, ["-s", serial, "push", local_xlsx, REMOTE_XLSX_TMP], timeout=180,
+        adb, ["-s", serial, "push", local_xlsx, channel.remote_xlsx_tmp], timeout=180,
     )
     if code != 0:
         raise IOError(f"adb push failed: {err or 'unknown error'}")
 
-    _verify_remote_file(adb, serial, local_xlsx, REMOTE_XLSX_TMP)
+    _verify_remote_file(adb, serial, local_xlsx, channel.remote_xlsx_tmp)
 
     remote_download = f"/sdcard/Download/{download_name}"
     _run(
         adb,
-        ["-s", serial, "shell", "cp", REMOTE_XLSX_TMP, remote_download],
+        ["-s", serial, "shell", "cp", channel.remote_xlsx_tmp, remote_download],
         timeout=30,
     )
     _run(
@@ -482,29 +564,32 @@ def push_and_import(
 
     digest = _local_sha256(local_xlsx)
 
-    # PC can write to tmp via shell — seed RUNNING so we know adb can read this path.
     _run(
         adb,
         [
             "-s", serial, "shell", "sh", "-c",
-            f"echo {RESULT_PROGRESS} > {REMOTE_RESULT_TMP}",
+            f"echo {RESULT_PROGRESS} > {channel.remote_result_tmp}",
         ],
         timeout=10,
     )
 
-    # Clear log so we only see output from this import attempt.
+    tag = channel.logcat_tag
     _run(adb, ["-s", serial, "logcat", "-c"], timeout=10)
     _, logcat_baseline, _ = _run(
         adb,
-        ["-s", serial, "logcat", "-d", "-s", "ExcelImport:I", "ExcelImport:E"],
+        ["-s", serial, "logcat", "-d", "-s", f"{tag}:I", f"{tag}:E"],
         timeout=15,
     )
 
-    _trigger_import(adb, serial)
+    _trigger_import(adb, serial, channel=channel)
 
     timeout_sec = _import_timeout_sec(local_xlsx)
     result_line = _wait_for_result(
-        adb, serial, timeout_sec=timeout_sec, logcat_baseline=logcat_baseline,
+        adb,
+        serial,
+        timeout_sec=timeout_sec,
+        logcat_baseline=logcat_baseline,
+        channel=channel,
     )
     if not result_line or not _is_final_result(result_line):
         raise IOError(
@@ -518,7 +603,7 @@ def push_and_import(
     return AdbSendResult(
         device=DeviceInfo(serial=serial, model=""),
         local_path=local_xlsx,
-        remote_path=REMOTE_XLSX_TMP,
+        remote_path=channel.remote_xlsx_tmp,
         sha256=digest,
         imported_count=imported,
         result_line=result_line,
@@ -543,13 +628,18 @@ def _pick_best_result(*candidates: str) -> str:
     return ""
 
 
-def _collect_result_candidates(adb: str, serial: str) -> List[str]:
+def _collect_result_candidates(
+    adb: str,
+    serial: str,
+    *,
+    channel: ImportChannel = BOOKS_CHANNEL,
+) -> List[str]:
     out: List[str] = []
-    for remote in REMOTE_RESULTS:
+    for remote in channel.remote_results:
         line = _read_result_file(adb, serial, remote)
         if line:
             out.append(line)
-    line = _read_result_mediastore(adb, serial)
+    line = _read_result_mediastore(adb, serial, channel=channel)
     if line:
         out.append(line)
     return out
@@ -560,11 +650,13 @@ def _wait_for_result(
     serial: str,
     timeout_sec: int = 120,
     logcat_baseline: str = "",
+    *,
+    channel: ImportChannel = BOOKS_CHANNEL,
 ) -> str:
     deadline = time.time() + timeout_sec
     saw_pending = False
     while time.time() < deadline:
-        best = _pick_best_result(*_collect_result_candidates(adb, serial))
+        best = _pick_best_result(*_collect_result_candidates(adb, serial, channel=channel))
         if best.startswith("PENDING:"):
             saw_pending = True
             deadline = max(deadline, time.time() + CONFIRM_TIMEOUT_SEC)
@@ -573,15 +665,13 @@ def _wait_for_result(
         elif best.startswith("ERR:cancelled"):
             return best
         elif saw_pending:
-            # After preview is ready, ignore stale ERR from an earlier attempt
-            # until we see OK, cancel, or time out.
             pass
         elif best.startswith("ERR:"):
             return best
         elif best == RESULT_PROGRESS and deadline - time.time() < 45:
             deadline = time.time() + 60
 
-        line = _read_result_logcat(adb, serial, since=logcat_baseline)
+        line = _read_result_logcat(adb, serial, since=logcat_baseline, channel=channel)
         if line:
             if line.startswith("OK:"):
                 return line
@@ -667,5 +757,65 @@ def send_books(
     _quiet_remove(archive_path)
     raise IOError(
         f"Tablet rejected the catalog: {line}. "
+        "The file was pushed but import failed."
+    )
+
+
+def send_matchings(
+    matchings,
+    source_file: str = "",
+    batch_number: Optional[int] = None,
+) -> AdbSendResult:
+    """High-level: find adb + device, archive matchings .xlsx, push, wait for confirm."""
+    from .export_counter import (
+        commit_matchings_batch_number,
+        peek_next_matchings_batch_number,
+    )
+    from .exports import matchings_export_filename, matchings_path_for_batch
+    from .matchings_converter import matchings_to_rows
+    from .xlsx_writer import write_xlsx
+
+    diag = diagnose(restart_server=False)
+    if not diag.adb_path:
+        raise FileNotFoundError(diag.error or "adb not found")
+    if not diag.ready:
+        raise ConnectionError(diag.error or "No tablet detected")
+
+    if len(diag.ready) > 1:
+        raise ConnectionError(
+            f"Multiple tablets connected ({len(diag.ready)}). Unplug extras and try again."
+        )
+
+    device = diag.ready[0]
+    adb = diag.adb_path
+    batch = (
+        batch_number
+        if batch_number is not None
+        else peek_next_matchings_batch_number()
+    )
+    archive_path = matchings_path_for_batch(batch)
+    write_xlsx(archive_path, matchings_to_rows(matchings))
+    download_name = matchings_export_filename(batch)
+    result = push_and_import(
+        adb,
+        device.serial,
+        archive_path,
+        download_name=download_name,
+        channel=MATCHINGS_CHANNEL,
+    )
+    result.device = device
+
+    line = result.result_line or ""
+    if line.startswith("OK:"):
+        commit_matchings_batch_number(batch)
+        return result
+    if line.startswith("ERR:cancelled"):
+        _quiet_remove(archive_path)
+        return result
+    if line.startswith("ERR:confirm_timeout"):
+        return result
+    _quiet_remove(archive_path)
+    raise IOError(
+        f"Tablet rejected the matchings import: {line}. "
         "The file was pushed but import failed."
     )

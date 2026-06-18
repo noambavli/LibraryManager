@@ -387,6 +387,9 @@
     <string name="excel_import_confirm_preview">יתווספו %1$d חדשים · %2$d כבר קיימים · מ‑%3$d ל‑%4$d סה״כ.</string>
     <string name="excel_import_confirm_safety">נשמר גיבוי מלא לפני הייבוא — אפשר לשחזר מכלי Windows.</string>
     <string name="excel_import_confirm_ok">הוסף</string>
+    <string name="matchings_import_adb_confirm_title">קובץ התאמות הגיע מהמחשב — לאשר ייבוא?</string>
+    <string name="matchings_import_confirm_preview">יתווספו %1$d · יעודכנו %2$d · %3$d ללא שינוי · מ‑%4$d ל‑%5$d סה״כ.</string>
+    <string name="matchings_import_confirm_ok">ייבא</string>
 
     <string name="windows_tool_title">כלי Windows</string>
     <string name="windows_tool_intro">כאן מנהלים את החיבור למחשב: גיבוי מלא של כל נתוני האפליקציה (כולל קיצורים), וייבוא/ייצוא של ספרים והתאמות כקובצי אקסל. בכל ייבוא נשמר אוטומטית גיבוי מלא לפני השינוי, כך שתמיד אפשר לחזור אחורה.</string>

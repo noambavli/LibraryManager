@@ -24,6 +24,20 @@ def path_for_batch(batch_number: int) -> str:
     return os.path.join(exports_dir(), export_filename(batch_number))
 
 
+def matchings_exports_dir() -> str:
+    path = os.path.join(_counter_dir(), "exports", "matchings")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def matchings_export_filename(batch_number: int) -> str:
+    return f"matchings-{batch_number}{XLSX_EXTENSION}"
+
+
+def matchings_path_for_batch(batch_number: int) -> str:
+    return os.path.join(matchings_exports_dir(), matchings_export_filename(batch_number))
+
+
 def list_archives() -> List[Tuple[int, str]]:
     out: List[Tuple[int, str]] = []
     root = exports_dir()

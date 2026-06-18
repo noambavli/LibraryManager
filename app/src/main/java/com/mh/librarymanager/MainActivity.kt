@@ -141,12 +141,17 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleImportIntent(intent: android.content.Intent?) {
-        if (intent?.action != ExcelImportReceiver.ACTION &&
-            intent?.action != "com.mh.librarymanager.IMPORT_CATALOG"
+        val action = intent?.action ?: return
+        if (action != ExcelImportReceiver.ACTION &&
+            action != MatchingsImportReceiver.ACTION &&
+            action != "com.mh.librarymanager.IMPORT_CATALOG"
         ) return
         intent.action = null
         lifecycleScope.launch {
-            windowsToolViewModel.onAdbImportStaged()
+            when (action) {
+                MatchingsImportReceiver.ACTION -> windowsToolViewModel.onAdbMatchingsImportStaged()
+                else -> windowsToolViewModel.onAdbImportStaged()
+            }
         }
     }
 

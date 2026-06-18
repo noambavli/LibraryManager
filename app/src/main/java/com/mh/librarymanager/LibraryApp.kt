@@ -5,6 +5,7 @@ import android.content.Context
 import com.mh.librarymanager.data.BookRepository
 import com.mh.librarymanager.data.backup.BackupManager
 import com.mh.librarymanager.data.excel.ExcelImportIO
+import com.mh.librarymanager.data.excel.MatchingsImportIO
 import com.mh.librarymanager.data.store.AnnouncementStore
 import com.mh.librarymanager.data.store.AuditStore
 import com.mh.librarymanager.data.store.CatalogStore
@@ -32,6 +33,7 @@ class LibraryApp : Application() {
     val techSupportStore: TechSupportStore by lazy { TechSupportStore(this) }
     val repository: BookRepository by lazy { BookRepository(catalogStore, auditStore) }
     val excelImportIo: ExcelImportIO by lazy { ExcelImportIO(this, repository) }
+    val matchingsImportIo: MatchingsImportIO by lazy { MatchingsImportIO(this, matchingStore) }
     val backupManager: BackupManager by lazy { BackupManager(this, this) }
 
     companion object {

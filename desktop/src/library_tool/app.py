@@ -26,6 +26,7 @@ from typing import Callable, Optional
 from . import __version__, adb_transfer, backups
 from .session import AbortError, AbortFlag, Session
 from .converter import books_to_rows
+from .matchings_converter import matchings_to_rows
 from .xlsx_writer import write_xlsx
 from .validation import ERROR, INFO, WARNING
 
@@ -47,12 +48,13 @@ class LibraryToolApp:
         self._tablet_ready = False
 
         root.title(f"ExcelTool {__version__} — Excel ↔ Tablet")
-        root.geometry("960x680")
-        root.minsize(820, 600)
+        root.geometry("960x760")
+        root.minsize(820, 680)
 
         self._build_styles()
         self._build_header()
         self._build_actions()
+        self._build_matchings_actions()
         self._build_findings()
         self._build_progress()
         self._build_footer()
@@ -150,6 +152,62 @@ class LibraryToolApp:
         )
         self.btn_restore_backup.pack(side="left", padx=(8, 0))
 
+    def _build_matchings_actions(self) -> None:
+        frame = ttk.LabelFrame(
+            self.root,
+            text="Search matchings (synonyms / shortcuts)",
+            padding=12,
+            style="Step.TLabelframe",
+        )
+        frame.pack(fill="x", padx=16, pady=(0, 8))
+
+        ttk.Label(
+            frame,
+            text="Columns: shortcut · words · direction. Merge adds new shortcuts and updates existing ones.",
+            style="Sub.TLabel",
+            wraplength=900,
+            justify="left",
+        ).pack(anchor="w", pady=(0, 8))
+
+        self.matchings_chosen_var = tk.StringVar(
+            value="No matchings file chosen yet — click Import matchings.",
+        )
+        ttk.Label(frame, textvariable=self.matchings_chosen_var, style="Sub.TLabel").pack(
+            anchor="w", pady=(0, 6),
+        )
+
+        row = ttk.Frame(frame)
+        row.pack(fill="x")
+        self.btn_import_matchings = ttk.Button(
+            row,
+            text="Import matchings (.xlsx)…",
+            style="Accent.TButton",
+            command=self.on_import_matchings,
+        )
+        self.btn_import_matchings.pack(side="left")
+
+        self.btn_save_matchings = ttk.Button(
+            row,
+            text="Save matchings locally…",
+            command=self.on_save_matchings_local,
+            state="disabled",
+        )
+        self.btn_save_matchings.pack(side="left", padx=(8, 0))
+
+        self.btn_send_matchings = ttk.Button(
+            row,
+            text="Send matchings to tablet…",
+            style="Accent.TButton",
+            command=self.on_send_matchings_to_tablet,
+            state="disabled",
+        )
+        self.btn_send_matchings.pack(side="right")
+
+        self.matchings_hint_var = tk.StringVar(value="")
+        ttk.Label(frame, textvariable=self.matchings_hint_var, style="Sub.TLabel").pack(
+            anchor="w", pady=(8, 0),
+        )
+
     def _build_findings(self) -> None:
         frame = ttk.LabelFrame(self.root, text="Review — duplicates & potential problems",
                                padding=10, style="Step.TLabelframe")
@@ -220,10 +278,23 @@ class LibraryToolApp:
             state="normal" if (s.can_restore_import() and not self._busy) else "disabled"
         )
 
+        mn = len(s.matchings)
+        if s.matchings_source_path:
+            src = os.path.basename(s.matchings_source_path)
+            self.matchings_chosen_var.set(f"Chosen: {src}  —  {mn} matchings ready to send")
+        else:
+            self.matchings_chosen_var.set("No matchings file chosen yet — click Import matchings.")
+        self.matchings_hint_var.set(s.matchings_tablet_pick_hint())
+
+        has_matchings = mn > 0 and not self._busy
+        can_send_matchings = has_matchings and self._tablet_ready
+        self.btn_send_matchings.config(state="normal" if can_send_matchings else "disabled")
+        self.btn_save_matchings.config(state="normal" if has_matchings else "disabled")
+
     def _set_busy(self, busy: bool) -> None:
         self._busy = busy
         state = "disabled" if busy else "normal"
-        for b in (self.btn_import, self.btn_restore_backup):
+        for b in (self.btn_import, self.btn_restore_backup, self.btn_import_matchings):
             b.config(state=state)
         self.btn_abort.config(state="normal" if busy else "disabled")
         if not busy:
@@ -506,6 +577,121 @@ class LibraryToolApp:
             )
 
         self._run_worker(work, done, on_error=error, progress_label="Sending to tablet…")
+
+    def on_import_matchings(self) -> None:
+        path = filedialog.askopenfilename(
+            title="Choose the matchings workbook",
+            filetypes=[("Excel workbook", "*.xlsx"), ("All files", "*.*")],
+        )
+        if not path:
+            return
+
+        def work(progress, abort):
+            return self.session.import_matchings_xlsx(path, progress, abort)
+
+        def done(outcome):
+            src = os.path.basename(path)
+            n = len(outcome.convert.matchings)
+            invalid = outcome.convert.invalid
+            msg = f"Chosen: {src} — {n} matchings loaded."
+            if invalid:
+                msg += f" ({invalid} invalid rows skipped.)"
+            self.footer_var.set(msg)
+            if n == 0:
+                messagebox.showwarning(
+                    "No matchings",
+                    "The workbook had no valid matchings rows "
+                    "(need shortcut + words on each row).",
+                )
+            self._refresh_status()
+
+        self._run_worker(work, done, progress_label="Importing matchings…")
+
+    def on_save_matchings_local(self) -> None:
+        initial = os.path.basename(self.session.matchings_source_path or "matchings.xlsx")
+        path = filedialog.asksaveasfilename(
+            title="Save matchings workbook",
+            defaultextension=".xlsx",
+            initialfile=initial,
+            filetypes=[("Excel workbook", "*.xlsx")],
+        )
+        if not path:
+            return
+        try:
+            write_xlsx(path, matchings_to_rows(self.session.matchings))
+        except Exception as exc:
+            messagebox.showerror("Save failed", str(exc))
+            return
+        fname = os.path.basename(path)
+        self.footer_var.set(f"Saved {len(self.session.matchings)} matchings → {fname}")
+        messagebox.showinfo(
+            "Saved",
+            f"Saved {len(self.session.matchings)} matchings to:\n{path}",
+        )
+
+    def on_send_matchings_to_tablet(self) -> None:
+        n = len(self.session.matchings)
+        batch = self.session.next_matchings_send_batch()
+        src = os.path.basename(self.session.matchings_source_path or "") or "matchings"
+        if not messagebox.askyesno(
+            "Send matchings to tablet",
+            f"Connect the tablet with USB-C, then click Yes.\n\n"
+            f"You chose: {src}\n"
+            f"This send creates file: matchings-{batch}.xlsx\n"
+            f"Matchings to send: {n}\n\n"
+            f"A confirmation dialog will appear on the tablet.\n"
+            f"New shortcuts are added; existing ones get updated words/direction.\n\n"
+            "Continue?",
+        ):
+            return
+
+        def work(progress, abort):
+            return self.session.send_matchings_to_tablet(progress, abort)
+
+        def done(result):
+            batch = (
+                self.session.last_sent_matchings_batch
+                or self.session.next_matchings_send_batch() - 1
+            )
+            count = result.imported_count
+            line = result.result_line or ""
+            if line.startswith("ERR:cancelled"):
+                msg = f"Send cancelled on the tablet (matchings-{batch}.xlsx was not merged)."
+            elif line.startswith("ERR:confirm_timeout"):
+                msg = (
+                    f"Sent matchings-{batch}.xlsx — tablet did not confirm in time. "
+                    "Open the tablet app and approve the dialog."
+                )
+            elif count is not None:
+                msg = f"Done. Sent matchings-{batch}.xlsx — {count} new matchings merged."
+            else:
+                msg = f"Sent matchings-{batch}.xlsx — confirm on the tablet to finish."
+            self.footer_var.set(msg)
+            if line.startswith("ERR:"):
+                messagebox.showwarning("Tablet sync", f"{msg}\n\nDevice: {result.device.serial}")
+            else:
+                from .exports import matchings_exports_dir
+
+                messagebox.showinfo(
+                    "Tablet sync",
+                    f"{msg}\n\n"
+                    f"Excel on PC: {src}\n"
+                    f"Batch file: matchings-{batch}.xlsx\n"
+                    f"PC archive: {matchings_exports_dir()}\n"
+                    f"Device: {result.device.model} ({result.device.serial})",
+                )
+            self._refresh_status()
+
+        def error(exc):
+            diag = adb_transfer.diagnose()
+            extra = ""
+            if diag.devices_raw:
+                extra = f"\n\nadb devices -l:\n{diag.devices_raw}"
+            messagebox.showerror("Could not send matchings to tablet", f"{exc}{extra}")
+
+        self._run_worker(
+            work, done, on_error=error, progress_label="Sending matchings to tablet…",
+        )
 
     def on_restore_import(self) -> None:
         if not self.session.can_restore_import():

@@ -36,6 +36,7 @@ import com.mh.librarymanager.ui.management.AnnouncementEditorScreen
 import com.mh.librarymanager.ui.management.AnnouncementsManagementScreen
 import com.mh.librarymanager.ui.management.AnnouncementsManagementViewModel
 import com.mh.librarymanager.ui.management.ImportConfirmDialog
+import com.mh.librarymanager.ui.management.MatchingsImportConfirmDialog
 import com.mh.librarymanager.ui.management.ManagementDashboardScreen
 import com.mh.librarymanager.ui.management.OutOfOrderBooksScreen
 import com.mh.librarymanager.ui.management.ManagementSession
@@ -112,6 +113,9 @@ fun AppRoot(
     val session: ManagementSession = managementSession
     val adbPending by windowsToolVm.adbPending.collectAsStateWithLifecycle()
     val adbConfirming by windowsToolVm.adbConfirming.collectAsStateWithLifecycle()
+    val adbMatchingsPending by windowsToolVm.adbMatchingsPending.collectAsStateWithLifecycle()
+    val adbMatchingsConfirming by windowsToolVm.adbMatchingsConfirming.collectAsStateWithLifecycle()
+    val adbDialogOpen = adbPending != null || adbMatchingsPending != null
     fun returnToAttract() {
         session.logout()
         searchVm.finalizePublicSearchSession()
@@ -156,7 +160,7 @@ fun AppRoot(
     // Power / side-button sleep wakes back to the attract screen (unless a
     // system overlay like the file picker or an adb-import dialog is open).
     val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner, session, adbPending) {
+    DisposableEffect(lifecycleOwner, session, adbDialogOpen) {
         var wasStopped = false
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -164,7 +168,7 @@ fun AppRoot(
                 Lifecycle.Event.ON_RESUME -> {
                     if (wasStopped &&
                         !session.isExternalTaskActive() &&
-                        adbPending == null
+                        !adbDialogOpen
                     ) {
                         returnToAttract()
                     }
@@ -198,7 +202,7 @@ fun AppRoot(
         PublicIdleScope(
             enabled = nav.current.tracksPublicIdle() &&
                 nav.current !is AppScreen.Attract &&
-                adbPending == null,
+                !adbDialogOpen,
             onIdle = { returnToAttract() },
         ) {
         when (val current = nav.current) {
@@ -454,6 +458,15 @@ fun AppRoot(
                 onCancel = { windowsToolVm.cancelAdbPending() },
                 onConfirm = { windowsToolVm.confirmAdbPending() },
                 confirmEnabled = !adbConfirming,
+            )
+        }
+
+        adbMatchingsPending?.let { preview ->
+            MatchingsImportConfirmDialog(
+                preview = preview,
+                onCancel = { windowsToolVm.cancelAdbMatchingsPending() },
+                onConfirm = { windowsToolVm.confirmAdbMatchingsPending() },
+                confirmEnabled = !adbMatchingsConfirming,
             )
         }
 
