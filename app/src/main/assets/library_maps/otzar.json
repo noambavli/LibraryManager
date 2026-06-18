@@ -1,0 +1,1210 @@
+{
+  "mapId": "otzar",
+  "place": "otzar",
+  "frameWidth": 1920,
+  "frameHeight": 1200,
+  "imageDrawable": "map_otzar",
+  "sections": [
+    {
+      "id": "orange_1",
+      "label": "א-1 - ח-2",
+      "color": "כתום",
+      "from": {
+        "letter": "א",
+        "number": 1
+      },
+      "to": {
+        "letter": "ח",
+        "number": 2
+      },
+      "hotspot": {
+        "x": 286,
+        "y": 84,
+        "w": 129,
+        "h": 62
+      }
+    },
+    {
+      "id": "orange_2",
+      "label": "ח-3 - ל-1",
+      "color": "כתום",
+      "from": {
+        "letter": "ח",
+        "number": 3
+      },
+      "to": {
+        "letter": "ל",
+        "number": 1
+      },
+      "hotspot": {
+        "x": 421,
+        "y": 84,
+        "w": 130,
+        "h": 62
+      }
+    },
+    {
+      "id": "orange_3",
+      "label": "מ-1 - ק-1",
+      "color": "כתום",
+      "from": {
+        "letter": "מ",
+        "number": 1
+      },
+      "to": {
+        "letter": "ק",
+        "number": 1
+      },
+      "hotspot": {
+        "x": 557,
+        "y": 84,
+        "w": 128,
+        "h": 62
+      }
+    },
+    {
+      "id": "orange_4",
+      "label": "ק-2 - ת-2",
+      "color": "כתום",
+      "from": {
+        "letter": "ק",
+        "number": 2
+      },
+      "to": {
+        "letter": "ת",
+        "number": 2
+      },
+      "hotspot": {
+        "x": 692,
+        "y": 84,
+        "w": 128,
+        "h": 62
+      }
+    },
+    {
+      "id": "blue_1",
+      "label": "ב-6 - ד-2",
+      "color": "כחול",
+      "from": {
+        "letter": "ב",
+        "number": 6
+      },
+      "to": {
+        "letter": "ד",
+        "number": 2
+      },
+      "hotspot": {
+        "x": 286,
+        "y": 152,
+        "w": 129,
+        "h": 62
+      }
+    },
+    {
+      "id": "blue_2",
+      "label": "ב-1 - ב-5",
+      "color": "כחול",
+      "from": {
+        "letter": "ב",
+        "number": 1
+      },
+      "to": {
+        "letter": "ב",
+        "number": 5
+      },
+      "hotspot": {
+        "x": 421,
+        "y": 152,
+        "w": 130,
+        "h": 62
+      }
+    },
+    {
+      "id": "blue_3",
+      "label": "א-6 - א-10",
+      "color": "כחול",
+      "from": {
+        "letter": "א",
+        "number": 6
+      },
+      "to": {
+        "letter": "א",
+        "number": 10
+      },
+      "hotspot": {
+        "x": 556,
+        "y": 152,
+        "w": 129,
+        "h": 62
+      }
+    },
+    {
+      "id": "blue_4",
+      "label": "א-1 - א-5",
+      "color": "כחול",
+      "from": {
+        "letter": "א",
+        "number": 1
+      },
+      "to": {
+        "letter": "א",
+        "number": 5
+      },
+      "hotspot": {
+        "x": 692,
+        "y": 152,
+        "w": 129,
+        "h": 62
+      }
+    },
+    {
+      "id": "blue_5",
+      "label": "ד-3 - ה-2",
+      "color": "כחול",
+      "from": {
+        "letter": "ד",
+        "number": 3
+      },
+      "to": {
+        "letter": "ה",
+        "number": 2
+      },
+      "hotspot": {
+        "x": 286,
+        "y": 331,
+        "w": 129,
+        "h": 61
+      }
+    },
+    {
+      "id": "blue_6",
+      "label": "ה-3 - ח-2",
+      "color": "כחול",
+      "from": {
+        "letter": "ה",
+        "number": 3
+      },
+      "to": {
+        "letter": "ח",
+        "number": 2
+      },
+      "hotspot": {
+        "x": 421,
+        "y": 331,
+        "w": 130,
+        "h": 61
+      }
+    },
+    {
+      "id": "blue_7",
+      "label": "ח-3 - ח-7",
+      "color": "כחול",
+      "from": {
+        "letter": "ח",
+        "number": 3
+      },
+      "to": {
+        "letter": "ח",
+        "number": 7
+      },
+      "hotspot": {
+        "x": 556,
+        "y": 331,
+        "w": 129,
+        "h": 61
+      }
+    },
+    {
+      "id": "blue_8",
+      "label": "ח-8 - י-1",
+      "color": "כחול",
+      "from": {
+        "letter": "ח",
+        "number": 8
+      },
+      "to": {
+        "letter": "י",
+        "number": 1
+      },
+      "hotspot": {
+        "x": 692,
+        "y": 331,
+        "w": 129,
+        "h": 61
+      }
+    },
+    {
+      "id": "blue_9",
+      "label": "מ-11 - נ-2",
+      "color": "כחול",
+      "from": {
+        "letter": "מ",
+        "number": 11
+      },
+      "to": {
+        "letter": "נ",
+        "number": 2
+      },
+      "hotspot": {
+        "x": 286,
+        "y": 399,
+        "w": 129,
+        "h": 61
+      }
+    },
+    {
+      "id": "blue_10",
+      "label": "מ-6 - מ-10",
+      "color": "כחול",
+      "from": {
+        "letter": "מ",
+        "number": 6
+      },
+      "to": {
+        "letter": "מ",
+        "number": 10
+      },
+      "hotspot": {
+        "x": 421,
+        "y": 399,
+        "w": 130,
+        "h": 61
+      }
+    },
+    {
+      "id": "blue_11",
+      "label": "מ-1 - מ-5",
+      "color": "כחול",
+      "from": {
+        "letter": "מ",
+        "number": 1
+      },
+      "to": {
+        "letter": "מ",
+        "number": 5
+      },
+      "hotspot": {
+        "x": 556,
+        "y": 399,
+        "w": 129,
+        "h": 61
+      }
+    },
+    {
+      "id": "blue_12",
+      "label": "י-2 - ל-2",
+      "color": "כחול",
+      "from": {
+        "letter": "י",
+        "number": 2
+      },
+      "to": {
+        "letter": "ל",
+        "number": 2
+      },
+      "hotspot": {
+        "x": 692,
+        "y": 399,
+        "w": 129,
+        "h": 61
+      }
+    },
+    {
+      "id": "blue_13",
+      "label": "נ-2 - ע-2",
+      "color": "כחול",
+      "from": {
+        "letter": "נ",
+        "number": 2
+      },
+      "to": {
+        "letter": "ע",
+        "number": 2
+      },
+      "hotspot": {
+        "x": 286,
+        "y": 585,
+        "w": 129,
+        "h": 62
+      }
+    },
+    {
+      "id": "blue_14",
+      "label": "ע-3 - צ-1",
+      "color": "כחול",
+      "from": {
+        "letter": "ע",
+        "number": 3
+      },
+      "to": {
+        "letter": "צ",
+        "number": 1
+      },
+      "hotspot": {
+        "x": 421,
+        "y": 585,
+        "w": 130,
+        "h": 62
+      }
+    },
+    {
+      "id": "blue_15",
+      "label": "ק-1 - ק-5",
+      "color": "כחול",
+      "from": {
+        "letter": "ק",
+        "number": 1
+      },
+      "to": {
+        "letter": "ק",
+        "number": 5
+      },
+      "hotspot": {
+        "x": 557,
+        "y": 585,
+        "w": 128,
+        "h": 62
+      }
+    },
+    {
+      "id": "blue_16",
+      "label": "ר-1 - ש-4",
+      "color": "כחול",
+      "from": {
+        "letter": "ר",
+        "number": 1
+      },
+      "to": {
+        "letter": "ש",
+        "number": 4
+      },
+      "hotspot": {
+        "x": 954,
+        "y": 579,
+        "w": 130,
+        "h": 62
+      }
+    },
+    {
+      "id": "blue_17",
+      "label": "ש-5 - ש-9",
+      "color": "כחול",
+      "from": {
+        "letter": "ש",
+        "number": 5
+      },
+      "to": {
+        "letter": "ש",
+        "number": 9
+      },
+      "hotspot": {
+        "x": 1090,
+        "y": 579,
+        "w": 129,
+        "h": 62
+      }
+    },
+    {
+      "id": "blue_18",
+      "label": "ש-10 - ת-3",
+      "color": "כחול",
+      "from": {
+        "letter": "ש",
+        "number": 10
+      },
+      "to": {
+        "letter": "ת",
+        "number": 3
+      },
+      "hotspot": {
+        "x": 1225,
+        "y": 579,
+        "w": 129,
+        "h": 62
+      }
+    },
+    {
+      "id": "yellow_1",
+      "label": "ש-1 - ת-1",
+      "color": "צהוב",
+      "from": {
+        "letter": "ש",
+        "number": 1
+      },
+      "to": {
+        "letter": "ת",
+        "number": 1
+      },
+      "hotspot": {
+        "x": 286,
+        "y": 921,
+        "w": 127,
+        "h": 58
+      }
+    },
+    {
+      "id": "yellow_2",
+      "label": "פ-1 - ר-1",
+      "color": "צהוב",
+      "from": {
+        "letter": "פ",
+        "number": 1
+      },
+      "to": {
+        "letter": "ר",
+        "number": 1
+      },
+      "hotspot": {
+        "x": 422,
+        "y": 921,
+        "w": 126,
+        "h": 58
+      }
+    },
+    {
+      "id": "yellow_3",
+      "label": "נ-1 - ע-1",
+      "color": "צהוב",
+      "from": {
+        "letter": "נ",
+        "number": 1
+      },
+      "to": {
+        "letter": "ע",
+        "number": 1
+      },
+      "hotspot": {
+        "x": 555,
+        "y": 921,
+        "w": 127,
+        "h": 58
+      }
+    },
+    {
+      "id": "yellow_4",
+      "label": "מ-2 - מ-6",
+      "color": "צהוב",
+      "from": {
+        "letter": "מ",
+        "number": 2
+      },
+      "to": {
+        "letter": "מ",
+        "number": 6
+      },
+      "hotspot": {
+        "x": 691,
+        "y": 921,
+        "w": 127,
+        "h": 58
+      }
+    },
+    {
+      "id": "yellow_5",
+      "label": "י-1 - מ-1",
+      "color": "צהוב",
+      "from": {
+        "letter": "י",
+        "number": 1
+      },
+      "to": {
+        "letter": "מ",
+        "number": 1
+      },
+      "hotspot": {
+        "x": 945,
+        "y": 923,
+        "w": 128,
+        "h": 59
+      }
+    },
+    {
+      "id": "yellow_6",
+      "label": "ה-1 - ט-1",
+      "color": "צהוב",
+      "from": {
+        "letter": "ה",
+        "number": 1
+      },
+      "to": {
+        "letter": "ט",
+        "number": 1
+      },
+      "hotspot": {
+        "x": 1081,
+        "y": 923,
+        "w": 128,
+        "h": 59
+      }
+    },
+    {
+      "id": "yellow_7",
+      "label": "א-6 - ד-2",
+      "color": "צהוב",
+      "from": {
+        "letter": "א",
+        "number": 6
+      },
+      "to": {
+        "letter": "ד",
+        "number": 2
+      },
+      "hotspot": {
+        "x": 1216,
+        "y": 923,
+        "w": 127,
+        "h": 59
+      }
+    },
+    {
+      "id": "yellow_8",
+      "label": "א-1 - א-5",
+      "color": "צהוב",
+      "from": {
+        "letter": "א",
+        "number": 1
+      },
+      "to": {
+        "letter": "א",
+        "number": 5
+      },
+      "hotspot": {
+        "x": 1352,
+        "y": 923,
+        "w": 126,
+        "h": 59
+      }
+    },
+    {
+      "id": "yellow_tefila",
+      "label": "1 - 4",
+      "color": "צהוב",
+      "numberOnly": true,
+      "from": {
+        "letter": "",
+        "number": 1
+      },
+      "to": {
+        "letter": "",
+        "number": 4
+      },
+      "hotspot": {
+        "x": 1719,
+        "y": 889,
+        "w": 62,
+        "h": 131
+      }
+    },
+    {
+      "id": "red_1",
+      "label": "א-1 - א-5",
+      "color": "אדום",
+      "from": {
+        "letter": "א",
+        "number": 1
+      },
+      "to": {
+        "letter": "א",
+        "number": 5
+      },
+      "hotspot": {
+        "x": 104,
+        "y": 1109,
+        "w": 129,
+        "h": 60
+      }
+    },
+    {
+      "id": "red_2",
+      "label": "ב-1 - ד-2",
+      "color": "אדום",
+      "from": {
+        "letter": "ב",
+        "number": 1
+      },
+      "to": {
+        "letter": "ד",
+        "number": 2
+      },
+      "hotspot": {
+        "x": 238,
+        "y": 1109,
+        "w": 129,
+        "h": 60
+      }
+    },
+    {
+      "id": "red_3",
+      "label": "ה-1 - ז-2",
+      "color": "אדום",
+      "from": {
+        "letter": "ה",
+        "number": 1
+      },
+      "to": {
+        "letter": "ז",
+        "number": 2
+      },
+      "hotspot": {
+        "x": 374,
+        "y": 1109,
+        "w": 127,
+        "h": 60
+      }
+    },
+    {
+      "id": "red_4",
+      "label": "ח-1 - י-2",
+      "color": "אדום",
+      "from": {
+        "letter": "ח",
+        "number": 1
+      },
+      "to": {
+        "letter": "י",
+        "number": 2
+      },
+      "hotspot": {
+        "x": 507,
+        "y": 1109,
+        "w": 127,
+        "h": 60
+      }
+    },
+    {
+      "id": "red_5",
+      "label": "י-3 - ל-2",
+      "color": "אדום",
+      "from": {
+        "letter": "י",
+        "number": 3
+      },
+      "to": {
+        "letter": "ל",
+        "number": 2
+      },
+      "hotspot": {
+        "x": 641,
+        "y": 1109,
+        "w": 129,
+        "h": 60
+      }
+    },
+    {
+      "id": "red_6",
+      "label": "מ-1 - מ-5",
+      "color": "אדום",
+      "from": {
+        "letter": "מ",
+        "number": 1
+      },
+      "to": {
+        "letter": "מ",
+        "number": 5
+      },
+      "hotspot": {
+        "x": 777,
+        "y": 1109,
+        "w": 128,
+        "h": 60
+      }
+    },
+    {
+      "id": "red_7",
+      "label": "מ-6 - מ-10",
+      "color": "אדום",
+      "from": {
+        "letter": "מ",
+        "number": 6
+      },
+      "to": {
+        "letter": "מ",
+        "number": 10
+      },
+      "hotspot": {
+        "x": 913,
+        "y": 1109,
+        "w": 128,
+        "h": 60
+      }
+    },
+    {
+      "id": "red_8",
+      "label": "מ-11 - ס-1",
+      "color": "אדום",
+      "from": {
+        "letter": "מ",
+        "number": 11
+      },
+      "to": {
+        "letter": "ס",
+        "number": 1
+      },
+      "hotspot": {
+        "x": 1048,
+        "y": 1109,
+        "w": 127,
+        "h": 60
+      }
+    },
+    {
+      "id": "red_9",
+      "label": "ס-2 - פ-3",
+      "color": "אדום",
+      "from": {
+        "letter": "ס",
+        "number": 2
+      },
+      "to": {
+        "letter": "פ",
+        "number": 3
+      },
+      "hotspot": {
+        "x": 1184,
+        "y": 1109,
+        "w": 127,
+        "h": 60
+      }
+    },
+    {
+      "id": "red_10",
+      "label": "צ-1 - ש-1",
+      "color": "אדום",
+      "from": {
+        "letter": "צ",
+        "number": 1
+      },
+      "to": {
+        "letter": "ש",
+        "number": 1
+      },
+      "hotspot": {
+        "x": 1380,
+        "y": 1109,
+        "w": 126,
+        "h": 60
+      }
+    },
+    {
+      "id": "red_11",
+      "label": "ש-2 - ת-3",
+      "color": "אדום",
+      "from": {
+        "letter": "ש",
+        "number": 2
+      },
+      "to": {
+        "letter": "ת",
+        "number": 3
+      },
+      "hotspot": {
+        "x": 1513,
+        "y": 1109,
+        "w": 129,
+        "h": 60
+      }
+    },
+    {
+      "id": "purple_1",
+      "label": "א-2 - ד-3",
+      "color": "סגול",
+      "from": {
+        "letter": "א",
+        "number": 2
+      },
+      "to": {
+        "letter": "ד",
+        "number": 3
+      },
+      "hotspot": {
+        "x": 691,
+        "y": 855,
+        "w": 127,
+        "h": 57
+      }
+    },
+    {
+      "id": "purple_2",
+      "label": "א-1",
+      "color": "סגול",
+      "from": {
+        "letter": "א",
+        "number": 1
+      },
+      "to": {
+        "letter": "א",
+        "number": 1
+      },
+      "hotspot": {
+        "x": 555,
+        "y": 889,
+        "w": 127,
+        "h": 23
+      }
+    },
+    {
+      "id": "purple_3",
+      "label": "ה-1 - ל-1",
+      "color": "סגול",
+      "from": {
+        "letter": "ה",
+        "number": 1
+      },
+      "to": {
+        "letter": "ל",
+        "number": 1
+      },
+      "hotspot": {
+        "x": 945,
+        "y": 855,
+        "w": 128,
+        "h": 59
+      }
+    },
+    {
+      "id": "purple_4",
+      "label": "מ-1 - מ-5",
+      "color": "סגול",
+      "from": {
+        "letter": "מ",
+        "number": 1
+      },
+      "to": {
+        "letter": "מ",
+        "number": 5
+      },
+      "hotspot": {
+        "x": 1080,
+        "y": 855,
+        "w": 129,
+        "h": 59
+      }
+    },
+    {
+      "id": "purple_5",
+      "label": "נ-1 - ר-1",
+      "color": "סגול",
+      "from": {
+        "letter": "נ",
+        "number": 1
+      },
+      "to": {
+        "letter": "ר",
+        "number": 1
+      },
+      "hotspot": {
+        "x": 1216,
+        "y": 855,
+        "w": 127,
+        "h": 59
+      }
+    },
+    {
+      "id": "purple_6",
+      "label": "ש-1 - ת-2",
+      "color": "סגול",
+      "from": {
+        "letter": "ש",
+        "number": 1
+      },
+      "to": {
+        "letter": "ת",
+        "number": 2
+      },
+      "hotspot": {
+        "x": 1352,
+        "y": 855,
+        "w": 127,
+        "h": 59
+      }
+    },
+    {
+      "id": "green_1",
+      "label": "י-4 - ל-1",
+      "color": "ירוק",
+      "from": {
+        "letter": "י",
+        "number": 4
+      },
+      "to": {
+        "letter": "ל",
+        "number": 1
+      },
+      "hotspot": {
+        "x": 691,
+        "y": 653,
+        "w": 129,
+        "h": 62
+      }
+    },
+    {
+      "id": "green_2",
+      "label": "ל-2 - מ-4",
+      "color": "ירוק",
+      "from": {
+        "letter": "ל",
+        "number": 2
+      },
+      "to": {
+        "letter": "מ",
+        "number": 4
+      },
+      "hotspot": {
+        "x": 557,
+        "y": 653,
+        "w": 128,
+        "h": 62
+      }
+    },
+    {
+      "id": "green_3",
+      "label": "מ-5 - מ-9",
+      "color": "ירוק",
+      "from": {
+        "letter": "מ",
+        "number": 5
+      },
+      "to": {
+        "letter": "מ",
+        "number": 9
+      },
+      "hotspot": {
+        "x": 421,
+        "y": 653,
+        "w": 130,
+        "h": 62
+      }
+    },
+    {
+      "id": "green_4",
+      "label": "נ-1 - ע-2",
+      "color": "ירוק",
+      "from": {
+        "letter": "נ",
+        "number": 1
+      },
+      "to": {
+        "letter": "ע",
+        "number": 2
+      },
+      "hotspot": {
+        "x": 286,
+        "y": 653,
+        "w": 129,
+        "h": 62
+      }
+    },
+    {
+      "id": "green_5",
+      "label": "ח-2 - י-3",
+      "color": "ירוק",
+      "from": {
+        "letter": "ח",
+        "number": 2
+      },
+      "to": {
+        "letter": "י",
+        "number": 3
+      },
+      "hotspot": {
+        "x": 954,
+        "y": 647,
+        "w": 130,
+        "h": 62
+      }
+    },
+    {
+      "id": "green_6",
+      "label": "ה-4 - ח-1",
+      "color": "ירוק",
+      "from": {
+        "letter": "ה",
+        "number": 4
+      },
+      "to": {
+        "letter": "ח",
+        "number": 1
+      },
+      "hotspot": {
+        "x": 1090,
+        "y": 647,
+        "w": 129,
+        "h": 62
+      }
+    },
+    {
+      "id": "green_7",
+      "label": "ב-1 - ה-3",
+      "color": "ירוק",
+      "from": {
+        "letter": "ב",
+        "number": 1
+      },
+      "to": {
+        "letter": "ה",
+        "number": 3
+      },
+      "hotspot": {
+        "x": 1226,
+        "y": 647,
+        "w": 129,
+        "h": 62
+      }
+    },
+    {
+      "id": "green_8",
+      "label": "ב-1 - ג-1",
+      "color": "ירוק",
+      "from": {
+        "letter": "ב",
+        "number": 1
+      },
+      "to": {
+        "letter": "ג",
+        "number": 1
+      },
+      "hotspot": {
+        "x": 1361,
+        "y": 647,
+        "w": 128,
+        "h": 62
+      }
+    },
+    {
+      "id": "green_9",
+      "label": "א-1 - א-5",
+      "color": "ירוק",
+      "from": {
+        "letter": "א",
+        "number": 1
+      },
+      "to": {
+        "letter": "א",
+        "number": 5
+      },
+      "hotspot": {
+        "x": 1493,
+        "y": 647,
+        "w": 128,
+        "h": 62
+      }
+    },
+    {
+      "id": "green_10",
+      "label": "ע-3 - ק-1",
+      "color": "ירוק",
+      "from": {
+        "letter": "ע",
+        "number": 3
+      },
+      "to": {
+        "letter": "ק",
+        "number": 1
+      },
+      "hotspot": {
+        "x": 286,
+        "y": 854,
+        "w": 127,
+        "h": 59
+      }
+    },
+    {
+      "id": "green_11",
+      "label": "ק-2 - ש-4",
+      "color": "ירוק",
+      "from": {
+        "letter": "ק",
+        "number": 2
+      },
+      "to": {
+        "letter": "ש",
+        "number": 4
+      },
+      "hotspot": {
+        "x": 421,
+        "y": 854,
+        "w": 128,
+        "h": 59
+      }
+    },
+    {
+      "id": "green_12",
+      "label": "ש-5 - ת-2",
+      "color": "ירוק",
+      "from": {
+        "letter": "ש",
+        "number": 5
+      },
+      "to": {
+        "letter": "ת",
+        "number": 2
+      },
+      "hotspot": {
+        "x": 555,
+        "y": 854,
+        "w": 129,
+        "h": 28
+      }
+    },
+    {
+      "id": "white_yesod_1",
+      "label": "1 - 6",
+      "color": "לבן",
+      "numberOnly": true,
+      "from": {
+        "letter": "",
+        "number": 1
+      },
+      "to": {
+        "letter": "",
+        "number": 6
+      },
+      "hotspot": {
+        "x": 941,
+        "y": 83,
+        "w": 126,
+        "h": 58
+      }
+    },
+    {
+      "id": "white_yesod_2",
+      "label": "7 - 12",
+      "color": "לבן",
+      "numberOnly": true,
+      "from": {
+        "letter": "",
+        "number": 7
+      },
+      "to": {
+        "letter": "",
+        "number": 12
+      },
+      "hotspot": {
+        "x": 1076,
+        "y": 82,
+        "w": 127,
+        "h": 59
+      }
+    },
+    {
+      "id": "pink_moedim",
+      "label": "1 - 7",
+      "color": "ורוד",
+      "numberOnly": true,
+      "from": {
+        "letter": "",
+        "number": 1
+      },
+      "to": {
+        "letter": "",
+        "number": 7
+      },
+      "hotspot": {
+        "x": 1649,
+        "y": 1109,
+        "w": 129,
+        "h": 60
+      }
+    }
+  ]
+}

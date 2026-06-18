@@ -8,6 +8,8 @@
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
 .DS_Store
+# Local map authoring screenshots (source TSV/JSON are tracked under map-assets/)
+app/map-assets/*.png
 /build
 **/build/
 /captures
