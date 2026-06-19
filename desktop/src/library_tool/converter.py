@@ -21,7 +21,8 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 from .hebrew import normalize
-from .model import Book, BookPlace, BookState
+from .model import Book, BookState
+from .place_text import from_stored
 
 # Header field keys.
 NAME = "name"
@@ -33,6 +34,7 @@ COLOR = "color"
 CATEGORY = "category"
 SUBCATEGORY = "subcategory"
 NOTES = "notes"
+PLACE = "place"
 
 # Aliases mirror CatalogImporter.HeaderMap.ALIASES.
 _ALIASES: Dict[str, List[str]] = {
@@ -45,6 +47,7 @@ _ALIASES: Dict[str, List[str]] = {
     CATEGORY: ["קטגוריה", "category"],
     SUBCATEGORY: ["תת קטגוריה", "תת-קטגוריה", "subcategory", "subcategories"],
     NOTES: ["הערות", "הערה", "notes", "note"],
+    PLACE: ["מקום", "place", "location"],
 }
 
 
@@ -115,6 +118,7 @@ def convert_rows(rows: List[List[str]], now_ms: Optional[int] = None) -> Convert
         category = header_map.get(row, CATEGORY)
         subcategory = header_map.get(row, SUBCATEGORY)
         notes = header_map.get(row, NOTES)
+        place = from_stored(header_map.get(row, PLACE))
 
         # Same skip rule as the tablet: a row with no name/topics/writer/number
         # is treated as blank padding.
@@ -140,7 +144,7 @@ def convert_rows(rows: List[List[str]], now_ms: Optional[int] = None) -> Convert
                 category=category,
                 subcategories=[] if not subcategory else [subcategory],
                 notes=notes,
-                place=BookPlace.OTZAR,
+                place=place,
                 state=BookState.AVAILABLE,
                 parentBookId=None,
                 parentBookName="",
@@ -161,7 +165,8 @@ def convert_rows(rows: List[List[str]], now_ms: Optional[int] = None) -> Convert
 
 
 BOOK_HEADERS = [
-    "שם הספר", "ענינים", "המחבר", "מספר", "אות", "צבע", "קטגוריה", "תת קטגוריה", "הערות",
+    "שם הספר", "ענינים", "המחבר", "מספר", "אות", "צבע",
+    "קטגוריה", "תת קטגוריה", "הערות", "מקום",
 ]
 
 
@@ -179,5 +184,6 @@ def books_to_rows(books: List[Book]) -> List[List[str]]:
             book.category,
             sub,
             book.notes,
+            book.place,
         ])
     return rows

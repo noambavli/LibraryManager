@@ -400,42 +400,53 @@
     <string name="matchings_import_confirm_ok">ייבא</string>
 
     <string name="windows_tool_title">כלי Windows</string>
-    <string name="windows_tool_intro">כאן מנהלים את החיבור למחשב: גיבוי מלא של כל נתוני האפליקציה (כולל קיצורים), וייבוא/ייצוא של ספרים והתאמות כקובצי אקסל. בכל ייבוא נשמר אוטומטית גיבוי מלא לפני השינוי, כך שתמיד אפשר לחזור אחורה.</string>
+    <string name="windows_tool_intro">מרכז הניהול מול המחשב. כל פעולה כאן בטוחה — לפני כל שינוי נשמר אוטומטית גיבוי שאפשר לחזור אליו.</string>
 
-    <string name="windows_tool_backup_section">גיבוי מלא</string>
-    <string name="windows_tool_backup_desc">יוצר קובץ zip בתיקיית Download של הטאבלט (נראה מהמחשב). הקובץ כולל את כל הנתונים — ספרים, קיצורים, התאמות, בקשות, תמיכה והודעות — גם בפורמט קריא לצפייה וגם בפורמט שניתן לשחזר ממנו בדיוק.</string>
+    <string name="windows_tool_backup_section">גיבוי</string>
+    <string name="windows_tool_backup_desc">שומר עותק של כל הנתונים, ליתר ביטחון.\nלחצו ״צור גיבוי עכשיו״ והמתינו עד שמופיעה הודעה שהגיבוי נשמר.</string>
     <string name="windows_tool_backup_now">צור גיבוי עכשיו</string>
     <string name="windows_tool_backup_last">גיבוי אחרון: %1$s</string>
     <string name="windows_tool_backup_never">עדיין לא נוצר גיבוי</string>
     <string name="windows_tool_backup_done">הגיבוי נשמר: %1$s (בתיקיית Download)</string>
     <string name="windows_tool_backup_failed">הגיבוי נכשל: %1$s</string>
 
-    <string name="windows_tool_books_section">ספרים</string>
-    <string name="windows_tool_books_format">עמודות: שם הספר · ענינים · המחבר · מספר · אות · צבע · קטגוריה · תת קטגוריה · הערות · מקום. השורה הראשונה היא כותרות.\n\nייבוא מוסיף רק ספרים חדשים. אם שם + מחבר + אות + מספר + קטגוריה וכו\' תואמים לספר שכבר על הטאבלט — השורה תדולג (לא שגיאה). ייצוא ואז ייבוא של אותו קובץ = 0 חדשים.\n\nמקום: טקסט חופשי. רק ״אוצר הספרים״ או ״בית מדרש״ (גם עם רווחים מיותרים) מציגים מפת מדף — כל מקום אחר יציג הודעה ללא מפה.</string>
-    <string name="windows_tool_matchings_section">התאמות חיפוש (מילים נרדפות)</string>
-    <string name="windows_tool_matchings_format">עמודות: קיצור · מילים · כיוון. ב״מילים״ ניתן לרשום כמה מילים מלאות מופרדות בפסיק. ״כיוון״: דו-כיווני או חד-כיווני (ברירת מחדל: דו-כיווני).\n\nייבוא מוסיף קיצורים חדשים ומעדכן מילים/כיוון לקיצור שכבר קיים. שורות זהות ללא שינוי — ללא פעולה.</string>
+    <string name="windows_tool_books_section">ייבוא ספרים</string>
+    <string name="windows_tool_books_format">טוען ספרים מקובץ אקסל שהוכן במחשב. ספרים חדשים יתווספו, וקיימים יישארו כמו שהם.\nלחצו ״ייבוא מאקסל״ ובחרו את הקובץ.</string>
+    <string name="windows_tool_matchings_section">ייבוא קיצורי חיפוש</string>
+    <string name="windows_tool_matchings_format">טוען קיצורי חיפוש (מילים נרדפות) מקובץ אקסל.\nלחצו ״ייבוא מאקסל״ ובחרו את הקובץ.</string>
 
     <string name="windows_tool_export">ייצוא למחשב</string>
     <string name="windows_tool_import">ייבוא מאקסל</string>
-    <string name="windows_tool_export_pc_guide_title">איך מייצאים קובץ למחשב?</string>
-    <string name="windows_tool_export_pc_guide_body">1. חברו את הטאבלט למחשב בכבל USB (מצב ״מעבר קבצים״ / MTP).\n2. לחצו כאן ״ייצוא למחשב״ — הקובץ נשמר בתיקיית Download של הטאבלט.\n3. במחשב: פתחו את הטאבלט בחלון הקבצים ← תיקיית Download ← העתיקו את קובץ האקסל.\n\nאין צורך בכלי ExcelTool לייצוא — רק לייבוא מהמחשב.</string>
-    <string name="windows_tool_export_books_working">מייצא ספרים ושומר בתיקיית Download…</string>
-    <string name="windows_tool_export_matchings_working">מייצא התאמות ושומר בתיקיית Download…</string>
-    <string name="windows_tool_export_result_title_books">ייצוא הספרים הושלם</string>
-    <string name="windows_tool_export_result_title_matchings">ייצוא ההתאמות הושלם</string>
+    <string name="windows_tool_export_section_title">הורדת קובץ למחשב</string>
+    <string name="windows_tool_export_section_subtitle">שומרים את הקובץ בטאבלט (מומלץ: תיקיית Download) — ואז מעתיקים אותו למחשב דרך כבל USB</string>
+    <string name="windows_tool_export_step_tap">לחצו על סוג הקובץ להורדה (ספרים או התאמות)</string>
+    <string name="windows_tool_export_step_save">בחלון השמירה שנפתח — בחרו ״Download״ ולחצו ״שמירה״</string>
+    <string name="windows_tool_export_step_copy">חברו את הטאבלט למחשב ב-USB ← פתחו את הטאבלט ← העתיקו את הקובץ</string>
+    <string name="windows_tool_export_books_btn">הורדת ספרים</string>
+    <string name="windows_tool_export_matchings_btn">הורדת התאמות</string>
+    <string name="windows_tool_export_books_hint">כל הספרים בקטלוג → books_תאריך.xlsx</string>
+    <string name="windows_tool_export_matchings_hint">כל קיצורי החיפוש → matchings_תאריך.xlsx</string>
+    <string name="windows_tool_export_books_working">מכין קובץ ספרים…</string>
+    <string name="windows_tool_export_matchings_working">מכין קובץ התאמות…</string>
+    <string name="windows_tool_export_saving">שומר את הקובץ…</string>
+    <string name="windows_tool_export_save_failed">השמירה נכשלה — נסו שוב, ובחרו תיקייה אחרת (למשל Download).</string>
+    <string name="windows_tool_export_result_title_books">קובץ הספרים נשמר</string>
+    <string name="windows_tool_export_result_title_matchings">קובץ ההתאמות נשמר</string>
     <string name="windows_tool_export_result_file">שם הקובץ: %1$s</string>
-    <string name="windows_tool_export_result_rows">יוצאו %1$d שורות נתונים</string>
-    <string name="windows_tool_export_result_empty">אין שורות לייצוא — נשמר קובץ עם כותרות בלבד</string>
-    <string name="windows_tool_export_result_where">איפה למצוא במחשב:</string>
-    <string name="windows_tool_export_result_steps">פתחו את הטאבלט (USB) ← תיקיית Download ← %1$s</string>
-    <string name="windows_tool_export_result_path">מיקום בטאבלט: %1$s</string>
+    <string name="windows_tool_export_result_rows">%1$d שורות נתונים</string>
+    <string name="windows_tool_export_result_empty">אין שורות — נשמר קובץ עם כותרות בלבד</string>
+    <string name="windows_tool_export_result_where">איך להעתיק למחשב:</string>
+    <string name="windows_tool_export_result_steps">חברו USB ← פתחו את הטאבלט במחשב ← מצאו את %1$s ← העתיקו</string>
+    <string name="windows_tool_export_result_path">נשמר בטאבלט: %1$s</string>
+    <string name="windows_tool_export_result_done">הקובץ נשמר בהצלחה — אפשר להעתיק למחשב</string>
+    <string name="windows_tool_export_error_hint">אם השגיאה חוזרת: נסו שוב, או פנו לטכנאי. אין צורך בהרשאות מיוחדות — השמירה דרך המערכת.</string>
     <string name="windows_tool_busy">לא ניתן כעת — המתינו לסיום הפעולה הקודמת.</string>
     <string name="windows_tool_backup_required_failed">הפעולה בוטלה — הגיבוי לפני השינוי נכשל: %1$s. לא בוצע שינוי.</string>
     <string name="windows_tool_backup_cancelled_before_op">הגיבוי בוטל</string>
     <string name="windows_tool_backup_unknown_failure">שגיאה לא ידועה</string>
 
     <string name="windows_tool_restore_section">שחזור מגיבוי</string>
-    <string name="windows_tool_restore_desc">בחרו קובץ גיבוי zip כדי להחזיר את כל נתוני האפליקציה למצב שנשמר. פעולה זו מחליפה את כל הנתונים הקיימים.</string>
+    <string name="windows_tool_restore_desc">מחזיר את כל הנתונים למצב קודם. שימו לב — מחליף את כל מה שקיים עכשיו.\nלחצו ״שחזור״ ובחרו קובץ גיבוי.</string>
     <string name="windows_tool_restore_button">שחזור מקובץ גיבוי…</string>
     <string name="windows_tool_restore_confirm_title">שחזור מגיבוי</string>
     <string name="windows_tool_restore_confirm_body">השחזור יחליף את כל נתוני האפליקציה (ספרים, קיצורים, בקשות, תמיכה, הודעות ועוד) בנתונים מתוך הגיבוי. הקלידו ״שחזר״ לאישור.</string>
@@ -446,8 +457,8 @@
     <string name="windows_tool_import_books_confirm">ייבוא הספרים יוסיף רק ספרים חדשים — שורות שכבר קיימות בקטלוג (אותו תוכן) ידולגו. גיבוי מלא יישמר אוטומטית לפני הייבוא. להמשיך?</string>
     <string name="windows_tool_import_matchings_confirm">ייבוא ההתאמות יוסיף קיצורים חדשים ויעדכן מילים/כיוון לקיצורים שכבר קיימים. גיבוי מלא יישמר אוטומטית לפני הייבוא. להמשיך?</string>
 
-    <string name="windows_tool_danger_section">מחיקה מלאה</string>
-    <string name="windows_tool_danger_desc">מחיקת כל הספרים או כל התאמות החיפוש. לפני המחיקה נשמר אוטומטית גיבוי מלא — ניתן לשחזר ממנו. נדרש אישור מוקלד.</string>
+    <string name="windows_tool_danger_section">מחיקה</string>
+    <string name="windows_tool_danger_desc">מחיקת כל הספרים או כל קיצורי החיפוש. לפני המחיקה נשמר אוטומטית גיבוי.\nכדי למנוע טעות — תתבקשו להקליד מילת אישור.</string>
     <string name="windows_tool_delete_all_books">מחק את כל הספרים</string>
     <string name="windows_tool_delete_all_matchings">מחק את כל התאמות החיפוש</string>
     <string name="windows_tool_delete_books_confirm_title">מחיקת כל הספרים</string>
@@ -477,7 +488,7 @@
     <string name="windows_tool_usb_backup_continue">המשך</string>
 
     <string name="windows_tool_home_maps_section">מפות דף הבית</string>
-    <string name="windows_tool_home_maps_desc">העלאת תמונות מפה לכפתורים בדף הבית (מפת אוצר הספרים / מפת בית המדרש). התמונה תותאם לגודל, תוצג בתצוגה מקדימה, ורק לאחר אישור תישמר. מפות אלו נפרדות ממפת מיקום הספר בחיפוש.</string>
+    <string name="windows_tool_home_maps_desc">התמונות שמופיעות בכפתורי המפה בדף הבית.\nלחצו ״העלאת תמונה״, בחרו תמונה, ואשרו בתצוגה המקדימה.</string>
     <string name="windows_tool_home_map_upload">העלאת תמונה…</string>
     <string name="windows_tool_home_map_uploaded">מפה קיימת</string>
     <string name="windows_tool_home_map_not_uploaded">טרם הועלתה מפה</string>
