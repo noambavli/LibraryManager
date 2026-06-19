@@ -1,8 +1,10 @@
 package com.mh.librarymanager.data.export
 
+import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
 import android.media.MediaScannerConnection
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -12,11 +14,11 @@ import java.io.File
 import java.io.OutputStream
 
 /**
- * Writes binary documents (xlsx, zip, …) where a connected PC can reach them.
+ * Writes binary documents (xlsx, zip, …) where a connected PC can reach them over USB/MTP.
  *
- * Prefers a direct write into the public Download folder (most reliable over USB
- * / MTP on kiosk tablets), then MediaStore, then legacy public paths.
- * App-private folders are never used — those are hard to find from a PC.
+ * On Android 10+ uses MediaStore first (no direct filesystem permission needed).
+ * Falls back to direct public Download paths on older devices or locked-down kiosks
+ * where MediaStore insert is blocked.
  */
 object DownloadsWriter {
 
@@ -36,10 +38,8 @@ object DownloadsWriter {
     sealed interface Result {
         data class Ok(
             val displayName: String,
-            /** Short location label kept for older callers (e.g. backup). */
             val location: String,
             val absolutePath: String = "",
-            /** Human-readable hint for staff opening the file on a PC. */
             val pcHint: String = "",
             val bytesWritten: Long = 0L,
         ) : Result
@@ -53,18 +53,22 @@ object DownloadsWriter {
         mimeType: String,
         writeBody: (OutputStream) -> Unit,
     ): Result {
-        val payload = materialize(writeBody) ?: return Result.Failed("הקובץ ריק — הייצוא נכשל.")
+        val payload = materialize(writeBody)
+            ?: return Result.Failed("הקובץ ריק — הייצוא נכשל.")
         var lastError = "לא ניתן לשמור את הקובץ בתיקיית Download של הטאבלט."
-
-        for (dir in directDownloadDirs()) {
-            when (val outcome = writeDirect(dir, displayName, mimeType, context, payload)) {
-                is Result.Ok -> return outcome
-                is Result.Failed -> lastError = outcome.message
-            }
-        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             when (val outcome = writeViaMediaStore(context, displayName, mimeType, payload)) {
+                is Result.Ok -> return outcome
+                is Result.Failed -> {
+                    lastError = outcome.message
+                    Log.w(TAG, "MediaStore write failed for $displayName: ${outcome.message}")
+                }
+            }
+        }
+
+        for (dir in directDownloadDirs()) {
+            when (val outcome = writeDirect(dir, displayName, mimeType, context, payload)) {
                 is Result.Ok -> return outcome
                 is Result.Failed -> lastError = outcome.message
             }
@@ -85,7 +89,6 @@ object DownloadsWriter {
         return Result.Failed(lastError)
     }
 
-    /** Build bytes once so every target gets an identical, verified payload. */
     private fun materialize(writeBody: (OutputStream) -> Unit): ByteArray? {
         return try {
             val buffer = ByteArrayOutputStream()
@@ -94,6 +97,88 @@ object DownloadsWriter {
         } catch (e: Exception) {
             Log.w(TAG, "Failed to build export payload", e)
             null
+        }
+    }
+
+    private fun writeViaMediaStore(
+        context: Context,
+        displayName: String,
+        mimeType: String,
+        payload: ByteArray,
+    ): Result {
+        val resolver = context.contentResolver
+        deleteExistingMediaStore(resolver, displayName)
+
+        // Try the same pattern as ExcelDownloadPublisher (proven on this app).
+        writeMediaStoreInsert(resolver, displayName, mimeType, payload, withRelativePath = false)
+            ?.let { uri ->
+                return finishMediaStoreWrite(context, resolver, uri, displayName, mimeType, payload)
+            }
+
+        deleteExistingMediaStore(resolver, displayName)
+        writeMediaStoreInsert(resolver, displayName, mimeType, payload, withRelativePath = true)
+            ?.let { uri ->
+                return finishMediaStoreWrite(context, resolver, uri, displayName, mimeType, payload)
+            }
+
+        return Result.Failed("תיקיית Download אינה זמינה — נסו שוב.")
+    }
+
+    private fun writeMediaStoreInsert(
+        resolver: ContentResolver,
+        displayName: String,
+        mimeType: String,
+        payload: ByteArray,
+        withRelativePath: Boolean,
+    ): Uri? {
+        val pending = ContentValues().apply {
+            put(MediaStore.Downloads.DISPLAY_NAME, displayName)
+            put(MediaStore.Downloads.MIME_TYPE, mimeType)
+            put(MediaStore.Downloads.IS_PENDING, 1)
+            if (withRelativePath && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/")
+            }
+        }
+        return resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, pending)
+    }
+
+    private fun finishMediaStoreWrite(
+        context: Context,
+        resolver: ContentResolver,
+        uri: Uri,
+        displayName: String,
+        mimeType: String,
+        payload: ByteArray,
+    ): Result {
+        try {
+            val out = resolver.openOutputStream(uri, "w")
+                ?: return Result.Failed("לא ניתן לפתוח את Download לכתיבה.")
+            out.use { it.write(payload) }
+            val ready = ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }
+            resolver.update(uri, ready, null, null)
+            val absolutePath = queryDownloadPath(resolver, displayName)
+                ?: defaultDownloadHint(displayName)
+            if (absolutePath.startsWith("/")) {
+                scan(context, absolutePath, mimeType)
+            }
+            Log.i(TAG, "Wrote $displayName via MediaStore (${payload.size} bytes)")
+            return Result.Ok(
+                displayName = displayName,
+                location = LOCATION_DOWNLOAD,
+                absolutePath = absolutePath,
+                pcHint = pcHint(displayName),
+                bytesWritten = payload.size.toLong(),
+            )
+        } catch (e: Exception) {
+            try {
+                resolver.delete(uri, null, null)
+            } catch (_: Exception) {
+            }
+            Log.w(TAG, "MediaStore write failed for $displayName", e)
+            return Result.Failed(
+                e.message?.takeIf { it.isNotBlank() }
+                    ?: "שגיאה בשמירה ל-Download — נסו שוב.",
+            )
         }
     }
 
@@ -109,7 +194,7 @@ object DownloadsWriter {
                 return Result.Failed("לא ניתן ליצור את תיקיית Download.")
             }
             if (!dir.canWrite()) {
-                return Result.Failed("אין הרשאת כתיבה לתיקיית Download.")
+                return Result.Failed("אין גישת כתיבה ישירה ל-Download.")
             }
             val target = File(dir, displayName)
             val temp = File(dir, ".$displayName.part")
@@ -142,56 +227,34 @@ object DownloadsWriter {
         }
     }
 
-    private fun writeViaMediaStore(
-        context: Context,
-        displayName: String,
-        mimeType: String,
-        payload: ByteArray,
-    ): Result {
-        val resolver = context.contentResolver
-        deleteExisting(context, displayName)
-        val pending = ContentValues().apply {
-            put(MediaStore.Downloads.DISPLAY_NAME, displayName)
-            put(MediaStore.Downloads.MIME_TYPE, mimeType)
-            put(MediaStore.Downloads.IS_PENDING, 1)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/")
-            }
-        }
-        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, pending)
-            ?: return Result.Failed("תיקיית Download אינה זמינה.")
-        try {
-            val out = resolver.openOutputStream(uri, "w")
-                ?: return Result.Failed("לא ניתן לפתוח את Download לכתיבה.")
-            out.use { it.write(payload) }
-            val ready = ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }
-            resolver.update(uri, ready, null, null)
-            val absolutePath = resolvedPath(displayName).orEmpty()
-            if (absolutePath.isNotBlank()) {
-                scan(context, absolutePath, mimeType)
-            }
-            Log.i(TAG, "Wrote $displayName via MediaStore (${payload.size} bytes)")
-            return Result.Ok(
-                displayName = displayName,
-                location = LOCATION_DOWNLOAD,
-                absolutePath = absolutePath,
-                pcHint = pcHint(displayName),
-                bytesWritten = payload.size.toLong(),
-            )
-        } catch (e: Exception) {
-            try {
-                resolver.delete(uri, null, null)
-            } catch (_: Exception) {
-            }
-            Log.w(TAG, "MediaStore write failed for $displayName", e)
-            return Result.Failed(e.message ?: "שגיאה בשמירה ל-Download")
-        }
-    }
-
     private fun directDownloadDirs(): List<File> {
         val out = ArrayList<File>(DIRECT_DOWNLOAD_DIRS.size)
         for (path in DIRECT_DOWNLOAD_DIRS) out += File(path)
         return out
+    }
+
+    private fun queryDownloadPath(resolver: ContentResolver, displayName: String): String? {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            runCatching {
+                resolver.query(
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                    arrayOf(MediaStore.Downloads.DATA, MediaStore.Downloads.RELATIVE_PATH),
+                    "${MediaStore.Downloads.DISPLAY_NAME}=?",
+                    arrayOf(displayName),
+                    "${MediaStore.Downloads.DATE_ADDED} DESC",
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val dataIdx = cursor.getColumnIndex(MediaStore.Downloads.DATA)
+                        if (dataIdx >= 0) {
+                            cursor.getString(dataIdx)?.takeIf { it.isNotBlank() }?.let { return it }
+                        }
+                    }
+                }
+            }.onFailure {
+                Log.w(TAG, "Could not query Download path", it)
+            }
+        }
+        return resolvedPath(displayName)
     }
 
     private fun resolvedPath(displayName: String): String? {
@@ -202,13 +265,15 @@ object DownloadsWriter {
         return null
     }
 
+    private fun defaultDownloadHint(displayName: String): String =
+        "${DIRECT_DOWNLOAD_DIRS.first()}/$displayName"
+
     private fun pcHint(displayName: String): String =
         "מחשב ← הטאבלט (USB) ← Download ← $displayName"
 
-    private fun deleteExisting(context: Context, displayName: String) {
+    private fun deleteExistingMediaStore(resolver: ContentResolver, displayName: String) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
         runCatching {
-            val resolver = context.contentResolver
             val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
             val existing = resolver.query(
                 collection,
@@ -229,12 +294,7 @@ object DownloadsWriter {
                 }
             }
         }.onFailure {
-            Log.w(TAG, "Could not delete existing Download entry", it)
-        }
-        for (dir in DIRECT_DOWNLOAD_DIRS) {
-            runCatching {
-                File(dir, displayName).takeIf { it.isFile }?.delete()
-            }
+            Log.w(TAG, "Could not delete existing MediaStore Download entry", it)
         }
     }
 

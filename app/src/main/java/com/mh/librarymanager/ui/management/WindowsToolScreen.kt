@@ -4,15 +4,21 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -34,6 +40,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -74,10 +82,13 @@ fun WindowsToolScreen(
     var showRestoreConfirm by remember { mutableStateOf<Uri?>(null) }
     var pendingDelete by remember { mutableStateOf<PendingDelete?>(null) }
 
+    val pendingDownloadActive by viewModel.pendingDownload.collectAsStateWithLifecycle()
+
     val inExternalFlow = pendingImport != null ||
         pendingHomeMap != null ||
         showRestoreConfirm != null ||
         pendingDelete != null ||
+        pendingDownloadActive != null ||
         opStatus !is WindowsToolViewModel.OpStatus.Idle ||
         backupState is BackupState.Running
 
@@ -146,6 +157,26 @@ fun WindowsToolScreen(
         "*/*",
     )
 
+    val exportSaver = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ),
+    ) { uri ->
+        if (uri != null) {
+            viewModel.saveExportTo(uri)
+        } else {
+            viewModel.cancelPendingDownload()
+            session.endExternalTask()
+        }
+    }
+    LaunchedEffect(pendingDownloadActive) {
+        val pd = pendingDownloadActive
+        if (pd != null) {
+            session.beginExternalTask()
+            exportSaver.launch(pd.fileName)
+        }
+    }
+
     val imageTypes = arrayOf("image/png", "image/jpeg", "image/jpg", "image/webp", "image/*", "*/*")
 
     AppScreenBackground {
@@ -186,30 +217,25 @@ fun WindowsToolScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    PcExportGuideCard()
+                    ExportToPcSection(
+                        lastExport = lastExport,
+                        onExportBooks = { viewModel.exportBooks() },
+                        onExportMatchings = { viewModel.exportMatchings() },
+                        onDismissExport = { viewModel.dismissExport() },
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    TransferSection(
+                    ImportSection(
                         title = stringResource(R.string.windows_tool_books_section),
                         format = stringResource(R.string.windows_tool_books_format),
-                        onExport = { viewModel.exportBooks() },
                         onImport = { pick(booksPicker, xlsxTypes) },
                     )
                     Spacer(modifier = Modifier.height(12.dp))
-                    TransferSection(
+                    ImportSection(
                         title = stringResource(R.string.windows_tool_matchings_section),
                         format = stringResource(R.string.windows_tool_matchings_format),
-                        onExport = { viewModel.exportMatchings() },
                         onImport = { pick(matchingsPicker, xlsxTypes) },
                     )
-
-                    lastExport?.let { export ->
-                        Spacer(modifier = Modifier.height(16.dp))
-                        ExportResultCard(
-                            export = export,
-                            onDismiss = { viewModel.dismissExport() },
-                        )
-                    }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -334,8 +360,9 @@ private fun IntroCard() {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = AppColors.PanelElevated,
-        shape = RoundedCornerShape(16.dp),
-        shadowElevation = 2.dp,
+        shape = RoundedCornerShape(18.dp),
+        shadowElevation = 1.dp,
+        border = BorderStroke(1.dp, AppColors.BorderLight),
     ) {
         Column(modifier = Modifier.padding(22.dp)) {
             Text(
@@ -347,10 +374,101 @@ private fun IntroCard() {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.windows_tool_intro),
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 color = AppColors.TextSecondary,
             )
         }
+    }
+}
+
+/**
+ * Unified card used by every Windows-Tool section: a colored accent bar, a
+ * title, an action-focused subtitle, then the section's controls. Keeping one
+ * component guarantees identical spacing, radius, and typography everywhere.
+ */
+@Composable
+private fun ToolSection(
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier,
+    accent: Color = AppColors.Accent,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = AppColors.PanelElevated,
+        shape = RoundedCornerShape(18.dp),
+        shadowElevation = 1.dp,
+        border = BorderStroke(1.dp, AppColors.BorderLight),
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(accent),
+                )
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = AppColors.TextPrimary,
+                    )
+                    if (subtitle.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AppColors.TextSecondary,
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(18.dp))
+            content()
+        }
+    }
+}
+
+@Composable
+private fun PrimaryActionButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.height(52.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+private fun SecondaryActionButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.height(52.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
 
@@ -366,73 +484,51 @@ private fun BackupCard(
     val runningState = (backupState as? BackupState.Running)?.takeIf { it.trigger == BackupTrigger.Manual }
     val doneState = (backupState as? BackupState.Done)?.takeIf { it.trigger != BackupTrigger.Usb }
     val failedState = (backupState as? BackupState.Failed)?.takeIf { it.trigger != BackupTrigger.Usb }
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = AppColors.Panel,
-        shape = RoundedCornerShape(16.dp),
-        shadowElevation = 1.dp,
+    ToolSection(
+        title = stringResource(R.string.windows_tool_backup_section),
+        subtitle = stringResource(R.string.windows_tool_backup_desc),
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                text = stringResource(R.string.windows_tool_backup_section),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = AppColors.TextPrimary,
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = stringResource(R.string.windows_tool_backup_desc),
-                style = MaterialTheme.typography.bodyMedium,
-                color = AppColors.TextSecondary,
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = if (lastBackupAt > 0L) {
-                    stringResource(R.string.windows_tool_backup_last, formatStamp(lastBackupAt))
-                } else {
-                    stringResource(R.string.windows_tool_backup_never)
-                },
-                style = MaterialTheme.typography.labelLarge,
-                color = AppColors.TextMuted,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Spacer(modifier = Modifier.height(14.dp))
-            Button(
-                onClick = onBackupNow,
-                enabled = !anyRunning,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.windows_tool_backup_now),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
+        Text(
+            text = if (lastBackupAt > 0L) {
+                stringResource(R.string.windows_tool_backup_last, formatStamp(lastBackupAt))
+            } else {
+                stringResource(R.string.windows_tool_backup_never)
+            },
+            style = MaterialTheme.typography.labelLarge,
+            color = AppColors.TextMuted,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        PrimaryActionButton(
+            text = stringResource(R.string.windows_tool_backup_now),
+            onClick = onBackupNow,
+            enabled = !anyRunning,
+            modifier = Modifier.fillMaxWidth(),
+        )
 
-            if (runningState != null) {
-                Spacer(modifier = Modifier.height(14.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(modifier = Modifier.height(22.dp).padding(end = 12.dp))
-                    Text(runningState.step, style = MaterialTheme.typography.bodyMedium)
-                }
+        if (runningState != null) {
+            Spacer(modifier = Modifier.height(14.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(modifier = Modifier.height(22.dp).padding(end = 12.dp))
+                Text(runningState.step, style = MaterialTheme.typography.bodyMedium)
             }
-            // Surface non-USB backup outcomes here (USB ones show a global overlay).
-            if (doneState != null) {
-                Spacer(modifier = Modifier.height(12.dp))
-                FeedbackInline(
-                    message = backupDoneLabel(doneState.fileName, doneState.location),
-                    isError = false,
-                    onDismiss = onDismissBackup,
-                )
-            }
-            if (failedState != null) {
-                Spacer(modifier = Modifier.height(12.dp))
-                FeedbackInline(
-                    message = stringResource(R.string.windows_tool_backup_failed, failedState.message),
-                    isError = true,
-                    onDismiss = onDismissBackup,
-                )
-            }
+        }
+        // Surface non-USB backup outcomes here (USB ones show a global overlay).
+        if (doneState != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            FeedbackInline(
+                message = backupDoneLabel(doneState.fileName, doneState.location),
+                isError = false,
+                onDismiss = onDismissBackup,
+            )
+        }
+        if (failedState != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            FeedbackInline(
+                message = stringResource(R.string.windows_tool_backup_failed, failedState.message),
+                isError = true,
+                onDismiss = onDismissBackup,
+            )
         }
     }
 }
@@ -444,38 +540,21 @@ private fun HomeOverviewMapsSection(
     onUploadOtzar: () -> Unit,
     onUploadBeisMidrash: () -> Unit,
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = AppColors.Panel,
-        shape = RoundedCornerShape(14.dp),
-        shadowElevation = 1.dp,
+    ToolSection(
+        title = stringResource(R.string.windows_tool_home_maps_section),
+        subtitle = stringResource(R.string.windows_tool_home_maps_desc),
     ) {
-        Column(modifier = Modifier.padding(18.dp)) {
-            Text(
-                text = stringResource(R.string.windows_tool_home_maps_section),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = AppColors.TextPrimary,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = stringResource(R.string.windows_tool_home_maps_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = AppColors.TextMuted,
-            )
-            Spacer(modifier = Modifier.height(14.dp))
-            HomeOverviewMapUploadRow(
-                title = stringResource(R.string.home_map_otzar),
-                hasMap = hasOtzarMap,
-                onUpload = onUploadOtzar,
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            HomeOverviewMapUploadRow(
-                title = stringResource(R.string.home_map_beis_midrash),
-                hasMap = hasBeisMidrashMap,
-                onUpload = onUploadBeisMidrash,
-            )
-        }
+        HomeOverviewMapUploadRow(
+            title = stringResource(R.string.home_map_otzar),
+            hasMap = hasOtzarMap,
+            onUpload = onUploadOtzar,
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        HomeOverviewMapUploadRow(
+            title = stringResource(R.string.home_map_beis_midrash),
+            hasMap = hasBeisMidrashMap,
+            onUpload = onUploadBeisMidrash,
+        )
     }
 }
 
@@ -507,36 +586,107 @@ private fun HomeOverviewMapUploadRow(
                 color = if (hasMap) AppColors.Accent else AppColors.TextMuted,
             )
         }
-        OutlinedButton(
+        SecondaryActionButton(
+            text = stringResource(R.string.windows_tool_home_map_upload),
             onClick = onUpload,
-            modifier = Modifier.height(48.dp),
-        ) { Text(stringResource(R.string.windows_tool_home_map_upload)) }
+        )
     }
 }
 
 @Composable
-private fun PcExportGuideCard() {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = AppColors.Panel,
-        shape = RoundedCornerShape(14.dp),
-        shadowElevation = 1.dp,
-        border = BorderStroke(1.dp, AppColors.Accent.copy(alpha = 0.35f)),
+private fun ExportToPcSection(
+    lastExport: WindowsToolViewModel.LastExport?,
+    onExportBooks: () -> Unit,
+    onExportMatchings: () -> Unit,
+    onDismissExport: () -> Unit,
+) {
+    ToolSection(
+        title = stringResource(R.string.windows_tool_export_section_title),
+        subtitle = stringResource(R.string.windows_tool_export_section_subtitle),
     ) {
-        Column(modifier = Modifier.padding(18.dp)) {
-            Text(
-                text = stringResource(R.string.windows_tool_export_pc_guide_title),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = AppColors.TextPrimary,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.windows_tool_export_pc_guide_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = AppColors.TextSecondary,
-            )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            ExportStepRow("1", stringResource(R.string.windows_tool_export_step_tap))
+            ExportStepRow("2", stringResource(R.string.windows_tool_export_step_save))
+            ExportStepRow("3", stringResource(R.string.windows_tool_export_step_copy))
         }
+        Spacer(modifier = Modifier.height(18.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                PrimaryActionButton(
+                    text = "\u2193  " + stringResource(R.string.windows_tool_export_books_btn),
+                    onClick = onExportBooks,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.windows_tool_export_books_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = AppColors.TextMuted,
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                PrimaryActionButton(
+                    text = "\u2193  " + stringResource(R.string.windows_tool_export_matchings_btn),
+                    onClick = onExportMatchings,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.windows_tool_export_matchings_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = AppColors.TextMuted,
+                )
+            }
+        }
+        if (lastExport != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            ExportResultCard(export = lastExport, onDismiss = onDismissExport)
+        }
+    }
+}
+
+@Composable
+private fun ExportStepRow(number: String, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Surface(
+            modifier = Modifier.size(24.dp),
+            shape = RoundedCornerShape(12.dp),
+            color = AppColors.Accent.copy(alpha = 0.16f),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    text = number,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.Accent,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = AppColors.TextPrimary,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun ImportSection(
+    title: String,
+    format: String,
+    onImport: () -> Unit,
+) {
+    ToolSection(title = title, subtitle = format) {
+        SecondaryActionButton(
+            text = stringResource(R.string.windows_tool_import),
+            onClick = onImport,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 
@@ -545,22 +695,28 @@ private fun ExportResultCard(
     export: WindowsToolViewModel.LastExport,
     onDismiss: () -> Unit,
 ) {
-    val cs = MaterialTheme.colorScheme
     val titleRes = when (export.kind) {
         WindowsToolViewModel.ExportKind.Books -> R.string.windows_tool_export_result_title_books
         WindowsToolViewModel.ExportKind.Matchings -> R.string.windows_tool_export_result_title_matchings
     }
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = cs.primaryContainer,
-        shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, cs.primary.copy(alpha = 0.35f)),
+        color = AppColors.Panel,
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, AppColors.Accent.copy(alpha = 0.45f)),
     ) {
-        Column(modifier = Modifier.padding(18.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.windows_tool_export_result_done),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = AppColors.Accent,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(titleRes),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
                 color = AppColors.TextPrimary,
             )
             Spacer(modifier = Modifier.height(10.dp))
@@ -610,85 +766,40 @@ private fun ExportResultCard(
 }
 
 @Composable
-private fun TransferSection(
-    title: String,
-    format: String,
-    onExport: () -> Unit,
-    onImport: () -> Unit,
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = AppColors.Panel,
-        shape = RoundedCornerShape(14.dp),
-        shadowElevation = 1.dp,
-    ) {
-        Column(modifier = Modifier.padding(18.dp)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = AppColors.TextPrimary,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = format,
-                style = MaterialTheme.typography.bodySmall,
-                color = AppColors.TextMuted,
-            )
-            Spacer(modifier = Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(
-                    onClick = onExport,
-                    modifier = Modifier.weight(1f).height(52.dp),
-                ) { Text(stringResource(R.string.windows_tool_export)) }
-                OutlinedButton(
-                    onClick = onImport,
-                    modifier = Modifier.weight(1f).height(52.dp),
-                ) { Text(stringResource(R.string.windows_tool_import)) }
-            }
-        }
-    }
-}
-
-@Composable
 private fun DangerZoneCard(
     onDeleteAllBooks: () -> Unit,
     onDeleteAllMatchings: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = cs.errorContainer.copy(alpha = 0.35f),
-        shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, cs.error.copy(alpha = 0.45f)),
+    ToolSection(
+        title = stringResource(R.string.windows_tool_danger_section),
+        subtitle = stringResource(R.string.windows_tool_danger_desc),
+        accent = cs.error,
     ) {
-        Column(modifier = Modifier.padding(18.dp)) {
-            Text(
-                text = stringResource(R.string.windows_tool_danger_section),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = cs.error,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = stringResource(R.string.windows_tool_danger_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = AppColors.TextSecondary,
-            )
-            Spacer(modifier = Modifier.height(14.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton(
-                    onClick = onDeleteAllBooks,
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = cs.error),
-                    border = BorderStroke(1.dp, cs.error),
-                ) { Text(stringResource(R.string.windows_tool_delete_all_books)) }
-                OutlinedButton(
-                    onClick = onDeleteAllMatchings,
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = cs.error),
-                    border = BorderStroke(1.dp, cs.error),
-                ) { Text(stringResource(R.string.windows_tool_delete_all_matchings)) }
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinedButton(
+                onClick = onDeleteAllBooks,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = cs.error),
+                border = BorderStroke(1.dp, cs.error),
+            ) {
+                Text(
+                    text = stringResource(R.string.windows_tool_delete_all_books),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            OutlinedButton(
+                onClick = onDeleteAllMatchings,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = cs.error),
+                border = BorderStroke(1.dp, cs.error),
+            ) {
+                Text(
+                    text = stringResource(R.string.windows_tool_delete_all_matchings),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
         }
     }
@@ -696,31 +807,15 @@ private fun DangerZoneCard(
 
 @Composable
 private fun RestoreCard(onRestore: () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = AppColors.Panel,
-        shape = RoundedCornerShape(14.dp),
-        shadowElevation = 1.dp,
+    ToolSection(
+        title = stringResource(R.string.windows_tool_restore_section),
+        subtitle = stringResource(R.string.windows_tool_restore_desc),
     ) {
-        Column(modifier = Modifier.padding(18.dp)) {
-            Text(
-                text = stringResource(R.string.windows_tool_restore_section),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = AppColors.TextPrimary,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = stringResource(R.string.windows_tool_restore_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = AppColors.TextMuted,
-            )
-            Spacer(modifier = Modifier.height(14.dp))
-            OutlinedButton(
-                onClick = onRestore,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-            ) { Text(stringResource(R.string.windows_tool_restore_button)) }
-        }
+        SecondaryActionButton(
+            text = stringResource(R.string.windows_tool_restore_button),
+            onClick = onRestore,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 

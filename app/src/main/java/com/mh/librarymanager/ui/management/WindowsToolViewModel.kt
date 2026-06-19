@@ -2,6 +2,7 @@ package com.mh.librarymanager.ui.management
 
 import android.app.Application
 import android.net.Uri
+import android.provider.DocumentsContract
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mh.librarymanager.LibraryApp
@@ -9,7 +10,6 @@ import com.mh.librarymanager.R
 import com.mh.librarymanager.data.backup.BackupManager
 import com.mh.librarymanager.data.backup.BackupState
 import com.mh.librarymanager.data.backup.BackupTrigger
-import com.mh.librarymanager.data.export.DownloadsWriter
 import com.mh.librarymanager.data.excel.ExcelImportIO
 import com.mh.librarymanager.data.excel.MatchingsImportIO
 import com.mh.librarymanager.data.homemap.HomeOverviewMapProcessor
@@ -70,6 +70,9 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
     private val _lastExport = MutableStateFlow<LastExport?>(null)
     val lastExport: StateFlow<LastExport?> = _lastExport.asStateFlow()
 
+    private val _pendingDownload = MutableStateFlow<PendingDownload?>(null)
+    val pendingDownload: StateFlow<PendingDownload?> = _pendingDownload.asStateFlow()
+
     fun hasHomeMap(kind: HomeOverviewMapKind): Boolean = homeMapStore.hasCustomMap(kind)
 
     data class BackupInfo(val at: Long, val name: String)
@@ -83,6 +86,15 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
         val absolutePath: String,
         val pcHint: String,
         val isEmpty: Boolean,
+    )
+
+    /** Built file waiting for the user to pick a save location (system "Save" dialog). */
+    class PendingDownload(
+        val kind: ExportKind,
+        val fileName: String,
+        val rowCount: Int,
+        val isEmpty: Boolean,
+        val bytes: ByteArray,
     )
 
     data class PendingHomeMapUpload(
@@ -160,35 +172,81 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
                     val rows = buildRows()
                     val bytes = XlsxWriter.toBytes(rows, sheet)
                     val name = "${baseName}_${stamp()}.xlsx"
-                    DownloadsWriter.write(
-                        app,
-                        name,
-                        DownloadsWriter.MIME_XLSX,
-                    ) { out -> out.write(bytes) } to (rows.size - 1).coerceAtLeast(0)
+                    Triple(name, bytes, (rows.size - 1).coerceAtLeast(0))
                 }
             }
             result.fold(
-                onSuccess = { (outcome, count) ->
-                    when (outcome) {
-                        is DownloadsWriter.Result.Ok -> {
-                            _lastExport.value = LastExport(
-                                kind = kind,
-                                fileName = outcome.displayName,
-                                rowCount = count,
-                                absolutePath = outcome.absolutePath.ifBlank { outcome.location },
-                                pcHint = outcome.pcHint,
-                                isEmpty = count <= 0,
-                            )
-                            _opStatus.value = OpStatus.Idle
-                        }
-                        is DownloadsWriter.Result.Failed ->
-                            _opStatus.value = OpStatus.Error(outcome.message)
-                    }
+                onSuccess = { (name, bytes, count) ->
+                    // Hand the built file to the system "Save" dialog (works on
+                    // every Android version, no storage permission needed).
+                    _pendingDownload.value = PendingDownload(
+                        kind = kind,
+                        fileName = name,
+                        rowCount = count,
+                        isEmpty = count <= 0,
+                        bytes = bytes,
+                    )
+                    _opStatus.value = OpStatus.Idle
                 },
                 onFailure = {
                     _opStatus.value = OpStatus.Error(it.message ?: "שגיאה בייצוא")
                 },
             )
+        }
+    }
+
+    /** Writes the prepared file to the location the user picked in the save dialog. */
+    fun saveExportTo(uri: Uri) {
+        val pending = _pendingDownload.value ?: return
+        val app = getApplication<Application>()
+        _opStatus.value = OpStatus.Working(app.getString(R.string.windows_tool_export_saving))
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val resolver = app.contentResolver
+                    val stream = resolver.openOutputStream(uri, "w")
+                        ?: throw java.io.IOException("no output stream")
+                    stream.use { it.write(pending.bytes) }
+                    describeSavedLocation(uri, pending.fileName)
+                }
+            }
+            result.fold(
+                onSuccess = { location ->
+                    _lastExport.value = LastExport(
+                        kind = pending.kind,
+                        fileName = pending.fileName,
+                        rowCount = pending.rowCount,
+                        absolutePath = location,
+                        pcHint = "",
+                        isEmpty = pending.isEmpty,
+                    )
+                    _pendingDownload.value = null
+                    _opStatus.value = OpStatus.Idle
+                },
+                onFailure = {
+                    _pendingDownload.value = null
+                    _opStatus.value = OpStatus.Error(
+                        app.getString(R.string.windows_tool_export_save_failed),
+                    )
+                },
+            )
+        }
+    }
+
+    /** User dismissed the save dialog without choosing a location. */
+    fun cancelPendingDownload() {
+        _pendingDownload.value = null
+        if (_opStatus.value !is OpStatus.Working) _opStatus.value = OpStatus.Idle
+    }
+
+    /** Best-effort human-readable folder/name from a SAF document URI. */
+    private fun describeSavedLocation(uri: Uri, fallbackName: String): String {
+        return try {
+            val docId = DocumentsContract.getDocumentId(uri)
+            val tail = docId.substringAfter(':', "")
+            if (tail.isNotBlank()) tail else fallbackName
+        } catch (_: Exception) {
+            fallbackName
         }
     }
 
