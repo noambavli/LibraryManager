@@ -261,6 +261,7 @@ fun AppActionTile(
     accent: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    badgeCount: Int = 0,
 ) {
     Surface(
         modifier = modifier
@@ -283,14 +284,23 @@ fun AppActionTile(
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = AppColors.TextPrimary,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = AppColors.TextPrimary,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (badgeCount > 0) {
+                        NotificationBadge(count = badgeCount)
+                    }
+                }
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
@@ -306,6 +316,23 @@ fun AppActionTile(
                 fontWeight = FontWeight.Bold,
             )
         }
+    }
+}
+
+@Composable
+fun NotificationBadge(count: Int) {
+    val label = if (count > 99) "99+" else count.toString()
+    Surface(
+        color = MaterialTheme.colorScheme.error,
+        shape = RoundedCornerShape(999.dp),
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onError,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 
@@ -495,6 +522,7 @@ fun AppManagementTile(
     accent: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    badgeCount: Int = 0,
 ) {
     AppActionTile(
         title = title,
@@ -502,5 +530,6 @@ fun AppManagementTile(
         accent = accent,
         onClick = onClick,
         modifier = modifier.heightIn(min = 88.dp),
+        badgeCount = badgeCount,
     )
 }

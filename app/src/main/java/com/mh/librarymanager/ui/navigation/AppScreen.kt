@@ -1,5 +1,7 @@
 package com.mh.librarymanager.ui.navigation
 
+import com.mh.librarymanager.domain.HomeOverviewMapKind
+
 /**
  * Closed set of screens the kiosk shell can display. Kept here rather than
  * pulling in Navigation-Compose because the topology is intentionally tiny
@@ -43,9 +45,15 @@ sealed interface AppScreen {
     /** Windows Tool — backup + xlsx import/export on tablet + PC adb push. */
     data object ManagementWindowsTool : AppScreen
 
+    /** Sandboxed file browser for safe storage management. */
+    data object ManagementStorageBrowser : AppScreen
+
     /** Book editor — `bookId == null` means "create a brand new book". */
     data class BookEditor(val bookId: String?) : AppScreen
 
     /** Library map view for a single book (placeholder until map assets are wired). */
     data class BookLocation(val bookId: String) : AppScreen
+
+    /** Full overview map from the home page (uploaded via Windows Tool). */
+    data class HomeOverviewMap(val kind: HomeOverviewMapKind) : AppScreen
 }

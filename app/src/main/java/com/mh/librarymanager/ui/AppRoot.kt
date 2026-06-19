@@ -20,7 +20,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.LibraryApp
 import com.mh.librarymanager.R
+import com.mh.librarymanager.domain.HomeOverviewMapKind
 import com.mh.librarymanager.ui.home.AttractScreen
+import com.mh.librarymanager.ui.home.HomeOverviewMapScreen
 import com.mh.librarymanager.ui.home.HomeScreen
 import com.mh.librarymanager.ui.location.BookLocationScreen
 import com.mh.librarymanager.ui.management.BookEditorScreen
@@ -41,6 +43,7 @@ import com.mh.librarymanager.ui.management.ManagementDashboardScreen
 import com.mh.librarymanager.ui.management.OutOfOrderBooksScreen
 import com.mh.librarymanager.ui.management.ManagementSession
 import com.mh.librarymanager.ui.management.PopularBooksScreen
+import com.mh.librarymanager.ui.management.ManagementDashboardViewModel
 import com.mh.librarymanager.ui.management.PopularBooksViewModel
 import com.mh.librarymanager.ui.management.PasswordScreen
 import com.mh.librarymanager.ui.management.RequestsManagementScreen
@@ -53,6 +56,8 @@ import com.mh.librarymanager.ui.management.ShortcutsManagementScreen
 import com.mh.librarymanager.ui.management.ShortcutsManagementViewModel
 import com.mh.librarymanager.ui.management.TechSupportManagementScreen
 import com.mh.librarymanager.ui.management.TechSupportManagementViewModel
+import com.mh.librarymanager.ui.management.StorageBrowserScreen
+import com.mh.librarymanager.ui.management.StorageBrowserViewModel
 import com.mh.librarymanager.ui.management.WindowsToolScreen
 import com.mh.librarymanager.ui.management.WindowsToolViewModel
 import com.mh.librarymanager.ui.requests.PublicRequestScreen
@@ -92,6 +97,8 @@ fun AppRoot(
     techSupportViewModel: TechSupportViewModel,
     techSupportManagementViewModel: TechSupportManagementViewModel,
     windowsToolViewModel: WindowsToolViewModel,
+    storageBrowserViewModel: StorageBrowserViewModel,
+    managementDashboardViewModel: ManagementDashboardViewModel,
     managementSession: ManagementSession,
     onRegisterBackHandler: (handler: (() -> Boolean)) -> Unit,
 ) {
@@ -110,6 +117,8 @@ fun AppRoot(
     val techSupportVm: TechSupportViewModel = techSupportViewModel
     val techSupportManagementVm: TechSupportManagementViewModel = techSupportManagementViewModel
     val windowsToolVm: WindowsToolViewModel = windowsToolViewModel
+    val storageBrowserVm: StorageBrowserViewModel = storageBrowserViewModel
+    val managementDashboardVm: ManagementDashboardViewModel = managementDashboardViewModel
     val session: ManagementSession = managementSession
     val adbPending by windowsToolVm.adbPending.collectAsStateWithLifecycle()
     val adbConfirming by windowsToolVm.adbConfirming.collectAsStateWithLifecycle()
@@ -134,7 +143,13 @@ fun AppRoot(
             if (nav.current is AppScreen.Search) {
                 searchVm.finalizePublicSearchSession()
             }
+            if (nav.current is AppScreen.ManagementStorageBrowser &&
+                storageBrowserVm.navigateUp()
+            ) {
+                return@onRegisterBackHandler true
+            }
             nav.pop()
+            true
         }
     }
 
@@ -152,7 +167,8 @@ fun AppRoot(
             nav.current is AppScreen.PublicRequests ||
             nav.current is AppScreen.TechSupport ||
             nav.current is AppScreen.AnnouncementDetail ||
-            nav.current is AppScreen.AllAnnouncements
+            nav.current is AppScreen.AllAnnouncements ||
+            nav.current is AppScreen.HomeOverviewMap
         if (onPublic && session.isAuthenticated) {
             session.logout()
         }
@@ -221,6 +237,8 @@ fun AppRoot(
                 onOpenManagement = { nav.push(AppScreen.ManagementGate) },
                 onOpenRequests = { nav.push(AppScreen.PublicRequests) },
                 onOpenTechSupport = { nav.push(AppScreen.TechSupport) },
+                onOpenOtzarMap = { nav.push(AppScreen.HomeOverviewMap(HomeOverviewMapKind.OTZAR)) },
+                onOpenBeisMidrashMap = { nav.push(AppScreen.HomeOverviewMap(HomeOverviewMapKind.BEIS_MIDRASH)) },
                 onOpenAnnouncement = { id -> nav.push(AppScreen.AnnouncementDetail(id)) },
                 onOpenAllAnnouncements = { nav.push(AppScreen.AllAnnouncements) },
             )
@@ -267,6 +285,11 @@ fun AppRoot(
                 onBack = { nav.pop() },
             )
 
+            is AppScreen.HomeOverviewMap -> HomeOverviewMapScreen(
+                kind = current.kind,
+                onBack = { nav.pop() },
+            )
+
             AppScreen.ManagementGate -> PasswordScreen(
                 session = session,
                 onBack = { nav.pop() },
@@ -276,9 +299,11 @@ fun AppRoot(
             AppScreen.ManagementHome -> ManagementGuard(session = session, nav = nav) {
                 val outOfOrderCount by managementVm.outOfOrderCount.collectAsStateWithLifecycle()
                 val catalogLoaded by managementVm.catalogLoaded.collectAsStateWithLifecycle()
+                val badgeCounts by managementDashboardVm.badgeCounts.collectAsStateWithLifecycle()
                 ManagementDashboardScreen(
                     outOfOrderCount = outOfOrderCount,
                     catalogLoaded = catalogLoaded,
+                    badgeCounts = badgeCounts,
                     onOpenBooks = { nav.push(AppScreen.BooksManagement) },
                     onOpenOutOfOrder = { nav.push(AppScreen.OutOfOrderBooks) },
                     onOpenHistory = { nav.push(AppScreen.ManagementHistory) },
@@ -290,6 +315,7 @@ fun AppRoot(
                     onOpenMatchings = { nav.push(AppScreen.ManagementMatchings) },
                     onOpenTechSupport = { nav.push(AppScreen.ManagementTechSupport) },
                     onOpenWindowsTool = { nav.push(AppScreen.ManagementWindowsTool) },
+                    onOpenStorageBrowser = { nav.push(AppScreen.ManagementStorageBrowser) },
                     onLogout = {
                         session.logout()
                         nav.resetTo(AppScreen.Attract)
@@ -309,7 +335,19 @@ fun AppRoot(
                 )
             }
 
+            AppScreen.ManagementStorageBrowser -> ManagementGuard(session = session, nav = nav) {
+                StorageBrowserScreen(
+                    viewModel = storageBrowserVm,
+                    onBack = { nav.pop() },
+                    onLogout = {
+                        session.logout()
+                        nav.resetTo(AppScreen.Attract)
+                    },
+                )
+            }
+
             AppScreen.ManagementRequests -> ManagementGuard(session = session, nav = nav) {
+                LaunchedEffect(Unit) { managementDashboardVm.markRequestsSeen() }
                 RequestsManagementScreen(
                     viewModel = requestsManagementVm,
                     onBack = { nav.pop() },
@@ -367,6 +405,7 @@ fun AppRoot(
             }
 
             AppScreen.ManagementTechSupport -> ManagementGuard(session = session, nav = nav) {
+                LaunchedEffect(Unit) { managementDashboardVm.markTechSupportSeen() }
                 TechSupportManagementScreen(
                     viewModel = techSupportManagementVm,
                     onBack = { nav.pop() },
@@ -424,6 +463,10 @@ fun AppRoot(
             }
 
             AppScreen.OutOfOrderBooks -> ManagementGuard(session = session, nav = nav) {
+                val outOfOrderCount by managementVm.outOfOrderCount.collectAsStateWithLifecycle()
+                LaunchedEffect(outOfOrderCount) {
+                    managementDashboardVm.markOutOfOrderSeen(outOfOrderCount)
+                }
                 OutOfOrderBooksScreen(
                     viewModel = managementVm,
                     onBack = { nav.pop() },
@@ -488,6 +531,7 @@ private fun AppScreen.tracksPublicIdle(): Boolean = when (this) {
     AppScreen.ManagementMatchings,
     AppScreen.ManagementTechSupport,
     AppScreen.ManagementWindowsTool,
+    AppScreen.ManagementStorageBrowser,
     is AppScreen.BookEditor -> false
     else -> true
 }

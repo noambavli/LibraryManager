@@ -23,6 +23,7 @@ from typing import Dict, List, Set
 
 from .hebrew import normalize, normalize_number_key
 from .model import Book, BookPlace
+from . import strings_he as S
 
 ERROR = "ERROR"
 WARNING = "WARNING"
@@ -36,23 +37,7 @@ _DUPLICATE_CODES = frozenset({
     "dup_id", "dup_record", "dup_system_number",
 })
 
-_ISSUE_MESSAGES: Dict[str, str] = {
-    "missing_name": "books have no name — hard to find on the tablet",
-    "missing_writer": "named books are missing an author",
-    "missing_letter": "named books are missing a shelf letter (אות)",
-    "missing_display_number": "named books are missing a display number (מספר)",
-    "missing_system_number": "named books are missing a system number",
-    "missing_category": "named books are missing a category",
-    "number_in_letter_field": "books have digits in the letter field",
-    "letter_in_display_number": "books have a letter in the display-number field",
-    "letter_in_system_number": "books have a letter in the system-number field",
-    "invalid_system_number": "books have a non-numeric system number",
-    "dup_record": "books are identical on every field",
-    "dup_system_number": "books share a system number",
-    "unknown_parent": "books reference a parent book that does not exist",
-    "self_parent": "books are set as their own parent",
-    "place_not_set": "named books have no place assigned",
-}
+_ISSUE_MESSAGES: Dict[str, str] = S.ISSUE_MESSAGES
 
 
 @dataclass
@@ -95,11 +80,11 @@ class ValidationReport:
         return total
 
     def summary_line(self) -> str:
-        return (
-            f"{self.total_books} books · "
-            f"{len(self.errors)} errors · "
-            f"{len(self.warnings)} warnings · "
-            f"{len(self.infos)} notes"
+        return S.VALIDATION_SUMMARY.format(
+            total=self.total_books,
+            errors=len(self.errors),
+            warnings=len(self.warnings),
+            infos=len(self.infos),
         )
 
 
@@ -130,7 +115,7 @@ class _CatalogContext:
 def _trunc(values: List[str], limit: int = 5) -> List[str]:
     shown = [v for v in values[:limit]]
     if len(values) > limit:
-        shown.append(f"... (+{len(values) - limit} more)")
+        shown.append(S.TRUNC_MORE.format(n=len(values) - limit))
     return shown
 
 
@@ -278,7 +263,7 @@ def _aggregate_issue_findings(books: List[Book]) -> List[Finding]:
             Finding(
                 WARNING,
                 code,
-                f"{count} {hint}.",
+                S.FINDING_ISSUE_COUNT.format(count=count, hint=hint),
                 count=count,
                 examples=examples,
             )
@@ -298,9 +283,7 @@ def validate(books: List[Book], skipped: int = 0) -> ValidationReport:
             Finding(
                 ERROR,
                 "dup_id",
-                f"{involved} books share {len(dup_ids)} duplicate internal IDs. "
-                "On the tablet these would overwrite each other — only one "
-                "survives. Fix the source sheet before exporting.",
+                S.FINDING_DUP_ID.format(involved=involved, groups=len(dup_ids)),
                 count=involved,
                 examples=_trunc(sorted(dup_ids.keys())),
             )
@@ -316,8 +299,7 @@ def validate(books: List[Book], skipped: int = 0) -> ValidationReport:
             Finding(
                 WARNING,
                 "missing_name",
-                f"{len(nameless)} books have no name. They will be hard to find "
-                "on the tablet.",
+                S.FINDING_MISSING_NAME.format(count=len(nameless)),
                 count=len(nameless),
                 examples=_trunc(
                     [b.displayNumber or b.id for b in nameless]
@@ -331,7 +313,7 @@ def validate(books: List[Book], skipped: int = 0) -> ValidationReport:
             Finding(
                 INFO,
                 "skipped_rows",
-                f"{skipped} blank rows in the sheet were skipped during import.",
+                S.FINDING_SKIPPED_ROWS.format(count=skipped),
                 count=skipped,
             )
         )
@@ -341,8 +323,7 @@ def validate(books: List[Book], skipped: int = 0) -> ValidationReport:
             Finding(
                 ERROR,
                 "empty",
-                "No books were found. Check that the sheet has a header row with "
-                "recognised column names (e.g. שם הספר, המחבר, מספר).",
+                S.FINDING_EMPTY,
             )
         )
 
@@ -365,9 +346,11 @@ def compare_for_duplicates(new_books: List[Book], existing_books: List[Book]) ->
     return Finding(
         INFO,
         "overlap_with_tablet",
-        f"{len(overlap)} of the {len(new_books)} incoming books already exist on "
-        f"the tablet (matched by ID) and will be skipped; {new_count} would be "
-        "added as new rows.",
+        S.FINDING_OVERLAP.format(
+            overlap=len(overlap),
+            total=len(new_books),
+            new=new_count,
+        ),
         count=len(overlap),
         examples=_trunc([b.name or b.id for b in overlap]),
     )
