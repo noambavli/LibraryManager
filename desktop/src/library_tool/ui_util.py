@@ -264,16 +264,20 @@ class Card(ttk.Frame):
         subtitle: str = "",
         padding: int = 20,
         pady: tuple[int, int] = (0, 14),
+        fill: str = "x",
+        expand: bool = False,
         **kwargs,
     ) -> None:
         super().__init__(parent, style="Card.TFrame", **kwargs)
+        # Cards add themselves to their parent so callers only build content.
+        self.pack(fill=fill, expand=expand, pady=pady)
         shell = tk.Frame(
             self,
             bg=COLORS["surface"],
             highlightbackground=COLORS["border"],
             highlightthickness=1,
         )
-        shell.pack(fill="both", expand=True, padx=0, pady=pady)
+        shell.pack(fill="both", expand=True)
         self.body = ttk.Frame(shell, style="CardInner.TFrame", padding=padding)
         self.body.pack(fill="both", expand=True)
 

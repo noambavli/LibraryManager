@@ -241,6 +241,8 @@ class LibraryToolApp:
             subtitle=S.REVIEW_HELP,
             padding=18,
             pady=(0, 18),
+            fill="both",
+            expand=True,
         )
         body = card.content()
 
