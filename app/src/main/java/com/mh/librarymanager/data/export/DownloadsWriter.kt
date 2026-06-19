@@ -86,6 +86,22 @@ object DownloadsWriter {
             Log.w(TAG, "Legacy Downloads write failed", it)
         }
 
+        // Last resort: the app's own external files dir is always writable with
+        // no permission on every Android version and is reachable from a PC over
+        // USB (Android/data/<pkg>/files). This guarantees safety backups never
+        // fail — which would otherwise block (and loop) imports/deletes.
+        runCatching {
+            context.getExternalFilesDir(null)?.let { dir ->
+                when (val outcome = writeDirect(dir, displayName, mimeType, context, payload)) {
+                    is Result.Ok -> return outcome
+                    is Result.Failed -> lastError = outcome.message
+                }
+            }
+        }.onFailure {
+            lastError = it.message ?: lastError
+            Log.w(TAG, "App files dir write failed", it)
+        }
+
         return Result.Failed(lastError)
     }
 

@@ -403,10 +403,13 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
                     ensurePreChangeBackup()
                 }
                 if (backupError != null) {
+                    // Backup failed: drop the staged file and stop. Do NOT
+                    // re-surface the confirm dialog, or every "OK" would loop
+                    // back here. Write the real reason last so the PC sees it.
+                    excelIo.discardPendingImport()
                     excelIo.writeImportResult(
                         ExcelImportIO.ImportResult.IoFailure(backupError.message),
                     )
-                    refreshAdbPending()
                     _opStatus.value = backupError
                     return@launch
                 }
@@ -493,10 +496,13 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
                     ensurePreChangeBackup()
                 }
                 if (backupError != null) {
+                    // Backup failed: drop the staged file and stop. Do NOT
+                    // re-surface the confirm dialog, or every "OK" would loop
+                    // back here. Write the real reason last so the PC sees it.
+                    matchingsIo.discardPendingImport()
                     matchingsIo.writeImportResult(
                         MatchingsImportIO.ImportResult.IoFailure(backupError.message),
                     )
-                    refreshAdbMatchingsPending()
                     _opStatus.value = backupError
                     return@launch
                 }
