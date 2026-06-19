@@ -22,7 +22,8 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Set
 
 from .hebrew import normalize, normalize_number_key
-from .model import Book, BookPlace
+from .model import Book
+from .place_text import is_blank as place_is_blank
 from . import strings_he as S
 
 ERROR = "ERROR"
@@ -218,7 +219,7 @@ def _issues_for_book(book: Book, ctx: _CatalogContext) -> Set[str]:
     elif parent_id and parent_id not in ctx.known_ids:
         out.add("unknown_parent")
 
-    if book.place == BookPlace.UNSPECIFIED and name:
+    if place_is_blank(book.place) and name:
         out.add("place_not_set")
 
     return out

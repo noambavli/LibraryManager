@@ -3,7 +3,7 @@ import os
 from _xlsx_writer import write_xlsx
 
 from library_tool.converter import convert_rows
-from library_tool.model import BookPlace, BookState
+from library_tool.model import BookState
 from library_tool.xlsx_reader import column_index, read_first_sheet
 
 
@@ -46,7 +46,7 @@ def test_convert_maps_fields_by_header_regardless_of_order(tmp_path):
     # Deterministic ids/numbers match the tablet importer.
     assert b.id == "book-000001"
     assert b.bookNumber == "0001"
-    assert b.place == BookPlace.OTZAR
+    assert b.place == ""
     assert b.state == BookState.AVAILABLE
     assert b.createdAt == 1000 and b.updatedAt == 1000
 

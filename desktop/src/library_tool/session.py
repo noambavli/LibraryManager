@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import threading
+import zipfile
 from dataclasses import dataclass, field
 from typing import Callable, List, Optional
 
@@ -58,6 +60,26 @@ class MatchingsImportOutcome:
     source_path: str
 
 
+def _read_workbook(path: str) -> list:
+    """Read xlsx with user-facing Hebrew errors."""
+    if not os.path.isfile(path):
+        raise ValueError(S.ERR_FILE_NOT_FOUND)
+    try:
+        return read_first_sheet(path)
+    except zipfile.BadZipFile as exc:
+        raise ValueError(S.ERR_NOT_XLSX) from exc
+    except PermissionError as exc:
+        raise ValueError(S.ERR_FILE_LOCKED) from exc
+    except OSError as exc:
+        if getattr(exc, "errno", None) in (13, 32):
+            raise ValueError(S.ERR_FILE_LOCKED) from exc
+        raise ValueError(S.ERR_READ_XLSX.format(detail=str(exc))) from exc
+    except ValueError as exc:
+        raise ValueError(S.ERR_READ_XLSX.format(detail=str(exc))) from exc
+    except Exception as exc:
+        raise ValueError(S.ERR_READ_XLSX.format(detail=str(exc))) from exc
+
+
 class Session:
     def __init__(self) -> None:
         self.books: List[Book] = []
@@ -87,7 +109,7 @@ class Session:
         abort.check()
 
         progress(S.PROGRESS_READ_WORKBOOK, 0.25)
-        rows = read_first_sheet(path)
+        rows = _read_workbook(path)
         abort.check()
 
         progress(S.PROGRESS_CONVERT, 0.55)
@@ -116,7 +138,7 @@ class Session:
         abort = abort or AbortFlag()
 
         progress(S.PROGRESS_READ_MATCHINGS, 0.35)
-        rows = read_first_sheet(path)
+        rows = _read_workbook(path)
         abort.check()
 
         progress(S.PROGRESS_CONVERT, 0.7)
