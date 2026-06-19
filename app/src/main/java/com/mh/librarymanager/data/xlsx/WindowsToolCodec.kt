@@ -23,7 +23,7 @@ object WindowsToolCodec {
     // ---- Books ------------------------------------------------------------
 
     val BOOK_HEADERS = listOf(
-        "שם הספר", "ענינים", "המחבר", "מספר", "אות", "צבע", "קטגוריה", "תת קטגוריה", "הערות",
+        "שם הספר", "ענינים", "המחבר", "מספר", "אות", "צבע", "קטגוריה", "תת קטגוריה", "הערות", "מקום",
     )
 
     fun booksToRows(books: List<Book>): List<List<String>> {
@@ -40,6 +40,7 @@ object WindowsToolCodec {
                 b.category,
                 b.subcategories.firstOrNull().orEmpty(),
                 b.notes,
+                b.place,
             )
         }
         return rows

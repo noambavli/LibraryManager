@@ -14,6 +14,11 @@
     <string name="home_requests_subtitle">בקשה לספר חדש או הערה</string>
     <string name="home_tech_support">תמיכה טכנית</string>
     <string name="home_tech_support_subtitle">דיווח על בעיה בתוכנה</string>
+    <string name="home_map_otzar">מפת אוצר הספרים</string>
+    <string name="home_map_otzar_subtitle">מפת כללית של אוצר הספרים</string>
+    <string name="home_map_beis_midrash">מפת בית המדרש</string>
+    <string name="home_map_beis_midrash_subtitle">מפת כללית של בית המדרש</string>
+    <string name="home_overview_map_missing">מפה טרם הועלתה. העלו תמונת מפה בכלי Windows (ניהול → כלי Windows).</string>
 
     <!-- Technical support (public) -->
     <string name="tech_support_public_title">תמיכה טכנית</string>
@@ -69,6 +74,7 @@
     <string name="book_location_title">מיקום הספר</string>
     <string name="book_location_missing">הספר לא נמצא.</string>
     <string name="book_location_no_map">מפת מיקום אינה זמינה לחדר זה.</string>
+    <string name="book_location_no_map_for_place">אין מפה זמינה למקום %1$s</string>
     <string name="book_location_section_unknown">הספר אינו משויך לאזור במפה (בדקו צבע, אות ומספר).</string>
     <string name="book_state_available">זמין</string>
     <string name="book_state_unavailable">לא זמין</string>
@@ -120,6 +126,8 @@
     <string name="management_catalog_transfer_subtitle">אישור ייבוא וצפייה בסיכום</string>
     <string name="management_windows_tool">כלי Windows</string>
     <string name="management_windows_tool_subtitle">גיבוי, ייבוא/ייצוא אקסל, וחיבור למחשב (ExcelTool)</string>
+    <string name="management_storage_browser">ניהול קבצים</string>
+    <string name="management_storage_browser_subtitle">צפייה ומחיקה בטוחה של קבצים בטאבלט</string>
 
     <!-- Out-of-order books (missing / swapped letter &amp; number) -->
     <string name="out_of_order_title">ספרים לא מסודרים</string>
@@ -403,15 +411,24 @@
     <string name="windows_tool_backup_failed">הגיבוי נכשל: %1$s</string>
 
     <string name="windows_tool_books_section">ספרים</string>
-    <string name="windows_tool_books_format">עמודות: שם הספר · ענינים · המחבר · מספר · אות · צבע · קטגוריה · תת קטגוריה · הערות. השורה הראשונה היא כותרות.\n\nייבוא מוסיף רק ספרים חדשים. אם שם + מחבר + אות + מספר + קטגוריה וכו\' תואמים לספר שכבר על הטאבלט — השורה תדולג (לא שגיאה). ייצוא ואז ייבוא של אותו קובץ = 0 חדשים.</string>
+    <string name="windows_tool_books_format">עמודות: שם הספר · ענינים · המחבר · מספר · אות · צבע · קטגוריה · תת קטגוריה · הערות · מקום. השורה הראשונה היא כותרות.\n\nייבוא מוסיף רק ספרים חדשים. אם שם + מחבר + אות + מספר + קטגוריה וכו\' תואמים לספר שכבר על הטאבלט — השורה תדולג (לא שגיאה). ייצוא ואז ייבוא של אותו קובץ = 0 חדשים.\n\nמקום: טקסט חופשי. רק ״אוצר הספרים״ או ״בית מדרש״ (גם עם רווחים מיותרים) מציגים מפת מדף — כל מקום אחר יציג הודעה ללא מפה.</string>
     <string name="windows_tool_matchings_section">התאמות חיפוש (מילים נרדפות)</string>
     <string name="windows_tool_matchings_format">עמודות: קיצור · מילים · כיוון. ב״מילים״ ניתן לרשום כמה מילים מלאות מופרדות בפסיק. ״כיוון״: דו-כיווני או חד-כיווני (ברירת מחדל: דו-כיווני).\n\nייבוא מוסיף קיצורים חדשים ומעדכן מילים/כיוון לקיצור שכבר קיים. שורות זהות ללא שינוי — ללא פעולה.</string>
 
-    <string name="windows_tool_export">ייצוא לאקסל</string>
+    <string name="windows_tool_export">ייצוא למחשב</string>
     <string name="windows_tool_import">ייבוא מאקסל</string>
-    <string name="windows_tool_export_success">הייצוא הושלם בהצלחה! נשמרו %1$d שורות בקובץ %2$s בתיקיית Download.</string>
-    <string name="windows_tool_export_success_path">הייצוא הושלם בהצלחה! נשמרו %1$d שורות ב-%2$s</string>
-    <string name="windows_tool_export_empty">הייצוא הושלם — הקובץ %1$s נשמר (אין שורות לייצוא).</string>
+    <string name="windows_tool_export_pc_guide_title">איך מייצאים קובץ למחשב?</string>
+    <string name="windows_tool_export_pc_guide_body">1. חברו את הטאבלט למחשב בכבל USB (מצב ״מעבר קבצים״ / MTP).\n2. לחצו כאן ״ייצוא למחשב״ — הקובץ נשמר בתיקיית Download של הטאבלט.\n3. במחשב: פתחו את הטאבלט בחלון הקבצים ← תיקיית Download ← העתיקו את קובץ האקסל.\n\nאין צורך בכלי ExcelTool לייצוא — רק לייבוא מהמחשב.</string>
+    <string name="windows_tool_export_books_working">מייצא ספרים ושומר בתיקיית Download…</string>
+    <string name="windows_tool_export_matchings_working">מייצא התאמות ושומר בתיקיית Download…</string>
+    <string name="windows_tool_export_result_title_books">ייצוא הספרים הושלם</string>
+    <string name="windows_tool_export_result_title_matchings">ייצוא ההתאמות הושלם</string>
+    <string name="windows_tool_export_result_file">שם הקובץ: %1$s</string>
+    <string name="windows_tool_export_result_rows">יוצאו %1$d שורות נתונים</string>
+    <string name="windows_tool_export_result_empty">אין שורות לייצוא — נשמר קובץ עם כותרות בלבד</string>
+    <string name="windows_tool_export_result_where">איפה למצוא במחשב:</string>
+    <string name="windows_tool_export_result_steps">פתחו את הטאבלט (USB) ← תיקיית Download ← %1$s</string>
+    <string name="windows_tool_export_result_path">מיקום בטאבלט: %1$s</string>
     <string name="windows_tool_busy">לא ניתן כעת — המתינו לסיום הפעולה הקודמת.</string>
     <string name="windows_tool_backup_required_failed">הפעולה בוטלה — הגיבוי לפני השינוי נכשל: %1$s. לא בוצע שינוי.</string>
     <string name="windows_tool_backup_cancelled_before_op">הגיבוי בוטל</string>
@@ -458,6 +475,36 @@
     <string name="windows_tool_usb_backup_failed">הגיבוי נכשל: %1$s</string>
     <string name="windows_tool_usb_backup_cancelled">הגיבוי בוטל. מומלץ ליצור גיבוי לפני ביצוע שינויים.</string>
     <string name="windows_tool_usb_backup_continue">המשך</string>
+
+    <string name="windows_tool_home_maps_section">מפות דף הבית</string>
+    <string name="windows_tool_home_maps_desc">העלאת תמונות מפה לכפתורים בדף הבית (מפת אוצר הספרים / מפת בית המדרש). התמונה תותאם לגודל, תוצג בתצוגה מקדימה, ורק לאחר אישור תישמר. מפות אלו נפרדות ממפת מיקום הספר בחיפוש.</string>
+    <string name="windows_tool_home_map_upload">העלאת תמונה…</string>
+    <string name="windows_tool_home_map_uploaded">מפה קיימת</string>
+    <string name="windows_tool_home_map_not_uploaded">טרם הועלתה מפה</string>
+    <string name="windows_tool_home_map_processing">בודק ומכין את התמונה…</string>
+    <string name="windows_tool_home_map_saving">שומר את המפה…</string>
+    <string name="windows_tool_home_map_saved">המפה %1$s נשמרה בהצלחה.</string>
+    <string name="windows_tool_home_map_confirm_title">לאשר העלאת %1$s?</string>
+    <string name="windows_tool_home_map_confirm_note">המפה תוצג בדף הבית בלבד. מפת מיקום הספר בחיפוש לא תושפע. גיבוי מלא יישמר אוטומטית לפני השמירה.</string>
+    <string name="windows_tool_home_map_preview_size">גודל לאחר עיבוד: %1$d × %2$d פיקסלים</string>
+    <string name="windows_tool_home_map_preview_resized">התמונה הוקטנה מ-%1$d×%2$d ל-%3$d×%4$d כדי להתאים לטאבלט.</string>
+
+    <string name="storage_browser_title">ניהול קבצים</string>
+    <string name="storage_browser_intro">בחרו תיקייה לצפייה. לא ניתן לצאת מתוך האזורים המותרים — רק לחזור לאפליקציה.</string>
+    <string name="storage_browser_sandbox_note">ניתן למחוק רק קבצים שאינם נדרשים לפעולת האפליקציה (ייצוא ישן, גיבוי, דוחות). קבצי קטלוג, הגדרות וייבוא פעיל מוגנים.</string>
+    <string name="storage_browser_empty">אין קבצים בתיקייה זו.</string>
+    <string name="storage_browser_folder">תיקייה</string>
+    <string name="storage_browser_open">פתיחה</string>
+    <string name="storage_browser_select_all">בחר הכל</string>
+    <string name="storage_browser_clear_selection">נקה בחירה</string>
+    <string name="storage_browser_delete_selected">מחק %1$d נבחרים</string>
+    <string name="storage_browser_bulk_delete_title">מחיקת קבצים</string>
+    <string name="storage_browser_bulk_delete_body">למחוק %1$d קבצים (סה״כ %2$s)?\n\nפעולה זו לא ניתנת לביטול. קבצים מוגנים לא נכללים.</string>
+    <string name="storage_browser_bulk_done">נמחקו %1$d קבצים.</string>
+    <string name="storage_browser_bulk_partial">נמחקו %1$d קבצים, %2$d נכשלו. %3$s</string>
+    <string name="storage_browser_bulk_none">לא נמחק אף קובץ.</string>
+    <string name="storage_browser_delete_confirm">מחק</string>
+    <string name="storage_browser_feedback_title">ניהול קבצים</string>
 
     <!-- PC authorize maintenance (technician only) -->
     <string name="pc_authorize_title">תחזוקה: אישור מחשב Windows</string>

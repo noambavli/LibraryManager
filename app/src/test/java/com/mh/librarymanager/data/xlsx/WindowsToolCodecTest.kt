@@ -1,7 +1,7 @@
 package com.mh.librarymanager.data.xlsx
 
 import com.mh.librarymanager.domain.Book
-import com.mh.librarymanager.domain.BookPlace
+import com.mh.librarymanager.domain.BookPlaceText
 import com.mh.librarymanager.domain.BookState
 import com.mh.librarymanager.domain.MatchingDirection
 import com.mh.librarymanager.domain.SearchMatching
@@ -105,6 +105,7 @@ class WindowsToolCodecTest {
         assertEquals("אדום", row[5])
         assertEquals("חומש", row[6])
         assertEquals("תורה", row[7])
+        assertEquals(BookPlaceText.OTZAR_LABEL, row[9])
     }
 
     @Test
@@ -129,7 +130,7 @@ class WindowsToolCodecTest {
         category = "חומש",
         subcategories = listOf("תורה"),
         notes = "",
-        place = BookPlace.OTZAR,
+        place = BookPlaceText.OTZAR_LABEL,
         state = BookState.AVAILABLE,
         parentBookId = null,
         relations = emptyList(),

@@ -160,7 +160,7 @@ object BookOrderIssues {
                 out += BookOrderIssue.UNKNOWN_PARENT
         }
 
-        if (book.place == BookPlace.UNSPECIFIED && book.name.isNotBlank()) {
+        if (BookPlaceText.isBlank(book.place) && book.name.isNotBlank()) {
             out += BookOrderIssue.PLACE_NOT_SET
         }
 
@@ -183,7 +183,7 @@ object BookOrderIssues {
             HebrewText.normalize(book.category),
             HebrewText.normalize(book.topics),
             HebrewText.normalize(book.color),
-            book.place.storedValue,
+            HebrewText.normalize(book.place),
             book.state.storedValue,
             book.parentBookId.orEmpty(),
             book.parentBookName,

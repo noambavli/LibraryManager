@@ -166,7 +166,7 @@ class BookOrderIssuesTest {
         category = category,
         subcategories = emptyList(),
         notes = "",
-        place = BookPlace.OTZAR,
+        place = BookPlaceText.OTZAR_LABEL,
         state = BookState.AVAILABLE,
         parentBookId = null,
         relations = emptyList(),

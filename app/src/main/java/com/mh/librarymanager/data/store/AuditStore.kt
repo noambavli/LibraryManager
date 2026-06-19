@@ -3,7 +3,7 @@ package com.mh.librarymanager.data.store
 import android.content.Context
 import com.mh.librarymanager.domain.AuditEvent
 import com.mh.librarymanager.domain.Book
-import com.mh.librarymanager.domain.BookPlace
+import com.mh.librarymanager.domain.BookPlaceText
 import com.mh.librarymanager.domain.BookState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -160,7 +160,7 @@ class AuditStore(private val context: Context) {
         category = o.optString("category"),
         subcategories = o.optJSONArray("subcategories")?.toStringList().orEmpty(),
         notes = o.optString("notes"),
-        place = BookPlace.fromStored(o.optString("place")),
+        place = BookPlaceText.fromStored(o.optString("place")),
         state = BookState.fromStored(o.optString("state")),
         parentBookId = o.optString("parentBookId").takeIf { it.isNotBlank() },
         parentBookName = o.optString("parentBookName", ""),
@@ -185,7 +185,7 @@ class AuditStore(private val context: Context) {
         o.put("category", b.category)
         o.put("subcategories", JSONArray(b.subcategories))
         o.put("notes", b.notes)
-        o.put("place", b.place.storedValue)
+        o.put("place", b.place)
         o.put("state", b.state.storedValue)
         o.put("parentBookId", b.parentBookId.orEmpty())
         o.put("parentBookName", b.parentBookName)

@@ -53,7 +53,7 @@ object LibraryMapLoader {
         }
         return LibraryMap(
             mapId = root.getString("mapId"),
-            place = BookPlace.fromStored(root.getString("place")),
+            place = BookPlace.fromStored(root.getString("place")) ?: return null,
             frameWidth = root.getInt("frameWidth"),
             frameHeight = root.getInt("frameHeight"),
             imageResId = imageResId,

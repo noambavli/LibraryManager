@@ -21,9 +21,10 @@ import androidx.compose.ui.unit.dp
 import com.mh.librarymanager.R
 import com.mh.librarymanager.data.librarymap.LibraryMapLoader
 import com.mh.librarymanager.domain.Book
-import com.mh.librarymanager.domain.BookPlace
 import com.mh.librarymanager.domain.LibraryMap
 import com.mh.librarymanager.domain.LibraryMapMatcher
+import com.mh.librarymanager.domain.displayPlace
+import com.mh.librarymanager.domain.mapPlace
 import com.mh.librarymanager.ui.components.AppColors
 import com.mh.librarymanager.ui.components.AppLoadingContent
 import com.mh.librarymanager.ui.components.AppScreenBackground
@@ -36,8 +37,9 @@ fun BookLocationScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val libraryMap = remember(book?.place) {
-        book?.place?.let { LibraryMapLoader.load(context, it) }
+    val mapPlace = remember(book?.place) { book?.mapPlace() }
+    val libraryMap = remember(mapPlace) {
+        mapPlace?.let { LibraryMapLoader.load(context, it) }
     }
 
     AppScreenBackground {
@@ -71,7 +73,7 @@ private fun BookLocationContent(
 ) {
     val highlightSection = libraryMap?.let { LibraryMapMatcher.findSection(it, book) }
     val slotLabel = formatSlotLabel(book)
-    val showMap = libraryMap != null
+    val hasMapPlace = book.mapPlace() != null
 
     Column(
         modifier = Modifier
@@ -85,7 +87,19 @@ private fun BookLocationContent(
         )
 
         when {
-            !showMap -> {
+            !hasMapPlace -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    val placeLabel = book.displayPlace()
+                        ?: stringResource(R.string.book_place_unspecified)
+                    Text(
+                        text = stringResource(R.string.book_location_no_map_for_place, placeLabel),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AppColors.TextMuted,
+                        modifier = Modifier.padding(horizontal = 24.dp),
+                    )
+                }
+            }
+            libraryMap == null -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
                         text = stringResource(R.string.book_location_no_map),
@@ -96,7 +110,7 @@ private fun BookLocationContent(
             }
             highlightSection == null -> {
                 LibraryMapView(
-                    map = libraryMap!!,
+                    map = libraryMap,
                     highlightSection = null,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -111,7 +125,7 @@ private fun BookLocationContent(
             }
             else -> {
                 LibraryMapView(
-                    map = libraryMap!!,
+                    map = libraryMap,
                     highlightSection = highlightSection,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -153,9 +167,9 @@ private fun BookLocationHeader(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            book.place.labelRes()?.let { labelRes ->
+            book.displayPlace()?.let { place ->
                 Text(
-                    text = stringResource(labelRes),
+                    text = place,
                     style = MaterialTheme.typography.bodySmall,
                     color = AppColors.TextMuted,
                 )

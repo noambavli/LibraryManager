@@ -37,6 +37,7 @@ import com.mh.librarymanager.R
 import com.mh.librarymanager.domain.Book
 import com.mh.librarymanager.domain.BookOrderIssue
 import com.mh.librarymanager.domain.BookOrderIssues
+import com.mh.librarymanager.domain.BookPlaceText
 import com.mh.librarymanager.domain.CustomColor
 import com.mh.librarymanager.domain.OutOfOrderBook
 import com.mh.librarymanager.domain.OutOfOrderFilter
@@ -415,7 +416,7 @@ private fun FieldSnapshot(book: Book) {
         if (book.category.isBlank()) {
             SnapshotLine(stringResource(R.string.field_category), "", missing = true)
         }
-        if (book.place == com.mh.librarymanager.domain.BookPlace.UNSPECIFIED) {
+        if (BookPlaceText.isBlank(book.place)) {
             SnapshotLine(
                 stringResource(R.string.field_place),
                 stringResource(R.string.book_place_unspecified),

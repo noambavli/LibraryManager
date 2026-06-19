@@ -36,6 +36,7 @@ import com.mh.librarymanager.R
 import com.mh.librarymanager.domain.Book
 import com.mh.librarymanager.domain.BookState
 import com.mh.librarymanager.domain.CustomColor
+import com.mh.librarymanager.domain.displayPlace
 
 /**
  * Card used in both the public search and the management list. The card body
@@ -336,9 +337,9 @@ private fun BookChipsRow(
         }
         if (book.category.isNotBlank()) ChipPill(book.category)
         book.subcategories.firstOrNull()?.takeIf { it.isNotBlank() }?.let { ChipPill(it) }
-        book.place.labelRes()?.let { labelRes ->
+        book.displayPlace()?.let { place ->
             ChipPill(
-                label = stringResource(labelRes),
+                label = place,
                 containerColor = Color.White,
                 contentColor = Color(0xFF424242),
                 border = BorderStroke(1.dp, Color(0xFF9E9E9E)),

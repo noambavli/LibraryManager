@@ -31,7 +31,8 @@ data class Book(
     val subcategories: List<String>,
     val notes: String,
 
-    val place: BookPlace,
+    /** Free-text location (e.g. אוצר הספרים, בית מדרש, or any custom place). */
+    val place: String,
     val state: BookState,
     /** Linked parent row in the catalog, when known. */
     val parentBookId: String?,

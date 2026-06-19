@@ -36,7 +36,7 @@ data class MapHotspot(
 
 object LibraryMapMatcher {
     fun findSection(map: LibraryMap, book: Book): LibraryMapSection? {
-        if (book.place != map.place) return null
+        if (book.mapPlace() != map.place) return null
         val number = HebrewText.normalizeNumberKey(book.displayNumber).toIntOrNull() ?: return null
         if (number <= 0) return null
         return map.sections.firstOrNull { section ->

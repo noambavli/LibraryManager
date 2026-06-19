@@ -2,7 +2,7 @@ package com.mh.librarymanager.data.store
 
 import android.content.Context
 import com.mh.librarymanager.domain.Book
-import com.mh.librarymanager.domain.BookPlace
+import com.mh.librarymanager.domain.BookPlaceText
 import com.mh.librarymanager.domain.BookState
 import com.mh.librarymanager.domain.CustomColor
 import kotlinx.coroutines.Dispatchers
@@ -187,7 +187,7 @@ class CatalogStore(private val context: Context) {
             category = safeString("category"),
             subcategories = optJSONArray("subcategories").toStringList(),
             notes = safeString("notes"),
-            place = BookPlace.fromStored(safeString("place")),
+            place = BookPlaceText.fromStored(safeString("place")),
             state = BookState.fromStored(safeString("state")),
             parentBookId = parent,
             parentBookName = safeString("parentBookName"),
@@ -218,7 +218,7 @@ class CatalogStore(private val context: Context) {
             o.put("category", b.category)
             o.put("subcategories", JSONArray(b.subcategories))
             o.put("notes", b.notes)
-            o.put("place", b.place.storedValue)
+            o.put("place", b.place)
             o.put("state", b.state.storedValue)
             o.put("parentBookId", b.parentBookId.orEmpty())
             o.put("parentBookName", b.parentBookName)

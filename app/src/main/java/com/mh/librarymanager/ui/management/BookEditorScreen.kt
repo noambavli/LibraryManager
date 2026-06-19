@@ -51,7 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
 import com.mh.librarymanager.domain.Book
-import com.mh.librarymanager.domain.BookPlace
+import com.mh.librarymanager.domain.BookPlaceText
 import com.mh.librarymanager.domain.BookState
 import com.mh.librarymanager.domain.CustomColor
 import com.mh.librarymanager.ui.components.AppLoadingContent
@@ -71,7 +71,7 @@ import java.util.UUID
  * in-app Hebrew keyboard via the focused-field pattern.
  */
 private enum class EditField {
-    NAME, WRITER, DISPLAY_NUMBER, LETTER, CATEGORY, TOPICS, NOTES,
+    NAME, WRITER, DISPLAY_NUMBER, LETTER, PLACE, CATEGORY, TOPICS, NOTES,
 }
 
 /** Snapshot of the form. Stored as one struct so save is straightforward. */
@@ -89,7 +89,7 @@ private data class FormState(
     val topics: String = "",
     val notes: String = "",
     val color: String = "",
-    val place: BookPlace = BookPlace.OTZAR,
+    val place: String = "",
     val state: BookState = BookState.AVAILABLE,
     val subcategories: List<String> = emptyList(),
     val relations: List<String> = emptyList(),
@@ -134,7 +134,7 @@ private fun FormState.toBook(): Book = Book(
     category = category.trim(),
     subcategories = subcategories.map { it.trim() }.filter { it.isNotBlank() },
     notes = notes.trim(),
-    place = place,
+    place = BookPlaceText.normalize(place),
     state = state,
     parentBookId = parentBookId,
     parentBookName = parentBookName.trim(),
@@ -256,6 +256,7 @@ fun BookEditorScreen(
             writer = if (field == EditField.WRITER) value.text else form.writer,
             displayNumber = if (field == EditField.DISPLAY_NUMBER) value.text else form.displayNumber,
             letter = if (field == EditField.LETTER) value.text else form.letter,
+            place = if (field == EditField.PLACE) value.text else form.place,
             category = if (field == EditField.CATEGORY) value.text else form.category,
             topics = if (field == EditField.TOPICS) value.text else form.topics,
             notes = if (field == EditField.NOTES) value.text else form.notes,
@@ -310,7 +311,6 @@ fun BookEditorScreen(
                 onRemoveRelation = { idx ->
                     form = form.copy(relations = form.relations.filterIndexed { i, _ -> i != idx })
                 },
-                onSetPlace = { form = form.copy(place = it) },
                 onSetState = { form = form.copy(state = it) },
             )
 
@@ -543,7 +543,6 @@ private fun FormColumn(
     onRemoveSubcategory: (Int) -> Unit,
     onAddRelation: () -> Unit,
     onRemoveRelation: (Int) -> Unit,
-    onSetPlace: (BookPlace) -> Unit,
     onSetState: (BookState) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -594,15 +593,7 @@ private fun FormColumn(
             textField(EditField.LETTER, R.string.field_letter, modifier = Modifier.weight(1f))
         }
 
-        // Place
-        LabeledBlock(label = stringResource(R.string.field_place)) {
-            SegmentedRow(
-                options = BookPlace.entries.filter { it != BookPlace.UNSPECIFIED },
-                selected = form.place,
-                labelFor = { stringResource(it.editorLabelRes()) },
-                onSelect = onSetPlace,
-            )
-        }
+        textField(EditField.PLACE, R.string.field_place)
 
         // State
         LabeledBlock(label = stringResource(R.string.field_state)) {
@@ -1127,6 +1118,7 @@ private fun initialFieldValues(form: FormState): Map<EditField, TextFieldValue> 
     EditField.WRITER to TextFieldValue(form.writer),
     EditField.DISPLAY_NUMBER to TextFieldValue(form.displayNumber),
     EditField.LETTER to TextFieldValue(form.letter),
+    EditField.PLACE to TextFieldValue(form.place),
     EditField.CATEGORY to TextFieldValue(form.category),
     EditField.TOPICS to TextFieldValue(form.topics),
     EditField.NOTES to TextFieldValue(form.notes),

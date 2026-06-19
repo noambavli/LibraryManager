@@ -64,7 +64,7 @@ class LibraryMapMatcherTest {
 
     @Test
     fun wrong_place_does_not_match() {
-        val book = sampleBook(letter = "ב", displayNumber = "2", color = "כתום", place = BookPlace.OTZAR)
+        val book = sampleBook(letter = "ב", displayNumber = "2", color = "כתום", place = BookPlaceText.OTZAR_LABEL)
         assertTrue(LibraryMapMatcher.findSection(map, book) == null)
     }
 
@@ -95,7 +95,7 @@ class LibraryMapMatcherTest {
                 ),
             ),
         )
-        val book = sampleBook(letter = "נ", displayNumber = "1", color = "ירוק", place = BookPlace.OTZAR)
+        val book = sampleBook(letter = "נ", displayNumber = "1", color = "ירוק", place = BookPlaceText.OTZAR_LABEL)
         val section = LibraryMapMatcher.findSection(otzar, book)
         assertTrue(section?.id == "green_4")
         assertTrue(section?.hotspot?.x == 286f)
@@ -121,7 +121,7 @@ class LibraryMapMatcherTest {
                 ),
             ),
         )
-        val book = sampleBook(letter = "", displayNumber = "3", color = "צהוב", place = BookPlace.OTZAR)
+        val book = sampleBook(letter = "", displayNumber = "3", color = "צהוב", place = BookPlaceText.OTZAR_LABEL)
         val section = LibraryMapMatcher.findSection(otzar, book)
         assertTrue(section?.id == "yellow_tefila")
         assertTrue(section?.hotspot?.x == 1719f)
@@ -147,7 +147,7 @@ class LibraryMapMatcherTest {
                 ),
             ),
         )
-        val book = sampleBook(letter = "א", displayNumber = "3", color = "צהוב", place = BookPlace.OTZAR)
+        val book = sampleBook(letter = "א", displayNumber = "3", color = "צהוב", place = BookPlaceText.OTZAR_LABEL)
         assertTrue(LibraryMapMatcher.findSection(map, book) == null)
     }
 
@@ -180,9 +180,9 @@ class LibraryMapMatcherTest {
                 ),
             ),
         )
-        val book = sampleBook(letter = "", displayNumber = "4", color = "לבן", place = BookPlace.OTZAR)
+        val book = sampleBook(letter = "", displayNumber = "4", color = "לבן", place = BookPlaceText.OTZAR_LABEL)
         assertTrue(LibraryMapMatcher.findSection(otzar, book)?.id == "white_yesod_1")
-        val book2 = sampleBook(letter = "", displayNumber = "9", color = "white", place = BookPlace.OTZAR)
+        val book2 = sampleBook(letter = "", displayNumber = "9", color = "white", place = BookPlaceText.OTZAR_LABEL)
         assertTrue(LibraryMapMatcher.findSection(otzar, book2)?.id == "white_yesod_2")
     }
 
@@ -206,7 +206,7 @@ class LibraryMapMatcherTest {
                 ),
             ),
         )
-        val book = sampleBook(letter = "", displayNumber = "5", color = "ורוד", place = BookPlace.OTZAR)
+        val book = sampleBook(letter = "", displayNumber = "5", color = "ורוד", place = BookPlaceText.OTZAR_LABEL)
         assertTrue(LibraryMapMatcher.findSection(otzar, book)?.id == "pink_moedim")
     }
 
@@ -214,7 +214,7 @@ class LibraryMapMatcherTest {
         letter: String,
         displayNumber: String,
         color: String,
-        place: BookPlace = BookPlace.BEIS_MIDRASH,
+        place: String = BookPlaceText.BEIS_MIDRASH_LABEL,
     ) = Book(
         id = "1",
         logicalBookId = "1",

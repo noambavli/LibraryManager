@@ -3,7 +3,7 @@ package com.mh.librarymanager.data.xlsx
 import android.content.Context
 import com.mh.librarymanager.data.BookRepository
 import com.mh.librarymanager.domain.Book
-import com.mh.librarymanager.domain.BookPlace
+import com.mh.librarymanager.domain.BookPlaceText
 import com.mh.librarymanager.domain.BookState
 import com.mh.librarymanager.search.HebrewText
 import java.io.InputStream
@@ -94,6 +94,7 @@ class CatalogImporter(
             val category = map[row, HeaderKey.CATEGORY]
             val subcategory = map[row, HeaderKey.SUBCATEGORY]
             val notes = map[row, HeaderKey.NOTES]
+            val place = BookPlaceText.normalize(map[row, HeaderKey.PLACE])
 
             if (name.isEmpty() && topics.isEmpty() && writer.isEmpty() && number.isEmpty()) {
                 blankRows++
@@ -116,7 +117,7 @@ class CatalogImporter(
                 category = category,
                 subcategories = if (subcategory.isEmpty()) emptyList() else listOf(subcategory),
                 notes = notes,
-                place = BookPlace.OTZAR,
+                place = place,
                 state = BookState.AVAILABLE,
                 parentBookId = null,
                 relations = emptyList(),
@@ -127,7 +128,7 @@ class CatalogImporter(
         return ParsedRows(books, blankRows)
     }
 
-    private enum class HeaderKey { NAME, TOPICS, WRITER, NUMBER, LETTER, COLOR, CATEGORY, SUBCATEGORY, NOTES }
+    private enum class HeaderKey { NAME, TOPICS, WRITER, NUMBER, LETTER, COLOR, CATEGORY, SUBCATEGORY, NOTES, PLACE }
 
     private class HeaderMap private constructor(
         private val columns: Map<HeaderKey, Int>,
@@ -148,6 +149,7 @@ class CatalogImporter(
                 HeaderKey.CATEGORY to listOf("קטגוריה", "category"),
                 HeaderKey.SUBCATEGORY to listOf("תת קטגוריה", "תת-קטגוריה", "subcategory", "subcategories"),
                 HeaderKey.NOTES to listOf("הערות", "הערה", "notes", "note"),
+                HeaderKey.PLACE to listOf("מקום", "place", "location"),
             )
 
             fun from(header: List<String>): HeaderMap {
