@@ -41,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
 import com.mh.librarymanager.data.backup.BackupState
 import com.mh.librarymanager.data.backup.BackupTrigger
+import com.mh.librarymanager.domain.HomeOverviewMapKind
 import com.mh.librarymanager.ui.components.AppColors
 import com.mh.librarymanager.ui.components.AppScreenBackground
 import com.mh.librarymanager.ui.components.ManagementHeader
@@ -64,12 +65,17 @@ fun WindowsToolScreen(
     val backupState by viewModel.backupState.collectAsStateWithLifecycle()
     val opStatus by viewModel.opStatus.collectAsStateWithLifecycle()
     val lastBackup by viewModel.lastBackup.collectAsStateWithLifecycle()
+    val pendingHomeMap by viewModel.pendingHomeMap.collectAsStateWithLifecycle()
+    val homeMapConfirming by viewModel.homeMapConfirming.collectAsStateWithLifecycle()
+    val homeMapRevision by viewModel.homeMapRevision.collectAsStateWithLifecycle()
+    val lastExport by viewModel.lastExport.collectAsStateWithLifecycle()
 
     var pendingImport by remember { mutableStateOf<PendingImport?>(null) }
     var showRestoreConfirm by remember { mutableStateOf<Uri?>(null) }
     var pendingDelete by remember { mutableStateOf<PendingDelete?>(null) }
 
     val inExternalFlow = pendingImport != null ||
+        pendingHomeMap != null ||
         showRestoreConfirm != null ||
         pendingDelete != null ||
         opStatus !is WindowsToolViewModel.OpStatus.Idle ||
@@ -119,12 +125,28 @@ fun WindowsToolScreen(
             session.endExternalTask()
         }
     }
+    val otzarMapPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            viewModel.stageHomeMapUpload(HomeOverviewMapKind.OTZAR, uri)
+        } else {
+            session.endExternalTask()
+        }
+    }
+    val beisMidrashMapPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            viewModel.stageHomeMapUpload(HomeOverviewMapKind.BEIS_MIDRASH, uri)
+        } else {
+            session.endExternalTask()
+        }
+    }
 
     val xlsxTypes = arrayOf(
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "application/octet-stream",
         "*/*",
     )
+
+    val imageTypes = arrayOf("image/png", "image/jpeg", "image/jpg", "image/webp", "image/*", "*/*")
 
     AppScreenBackground {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -152,6 +174,21 @@ fun WindowsToolScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    HomeOverviewMapsSection(
+                        hasOtzarMap = remember(homeMapRevision) {
+                            viewModel.hasHomeMap(HomeOverviewMapKind.OTZAR)
+                        },
+                        hasBeisMidrashMap = remember(homeMapRevision) {
+                            viewModel.hasHomeMap(HomeOverviewMapKind.BEIS_MIDRASH)
+                        },
+                        onUploadOtzar = { pick(otzarMapPicker, imageTypes) },
+                        onUploadBeisMidrash = { pick(beisMidrashMapPicker, imageTypes) },
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    PcExportGuideCard()
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     TransferSection(
                         title = stringResource(R.string.windows_tool_books_section),
                         format = stringResource(R.string.windows_tool_books_format),
@@ -165,6 +202,15 @@ fun WindowsToolScreen(
                         onExport = { viewModel.exportMatchings() },
                         onImport = { pick(matchingsPicker, xlsxTypes) },
                     )
+
+                    lastExport?.let { export ->
+                        Spacer(modifier = Modifier.height(16.dp))
+                        ExportResultCard(
+                            export = export,
+                            onDismiss = { viewModel.dismissExport() },
+                        )
+                    }
+
                     Spacer(modifier = Modifier.height(16.dp))
 
                     RestoreCard(onRestore = { pick(restorePicker, arrayOf("application/zip", "application/octet-stream", "*/*")) })
@@ -176,33 +222,31 @@ fun WindowsToolScreen(
                         onDeleteAllMatchings = { pendingDelete = PendingDelete.Matchings },
                     )
 
-                    Spacer(modifier = Modifier.height(28.dp))
-                }
+                    when (val status = opStatus) {
+                        is WindowsToolViewModel.OpStatus.Working -> {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            WorkingCard(message = status.message)
+                        }
+                        is WindowsToolViewModel.OpStatus.Success -> {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            FeedbackCard(
+                                message = status.message,
+                                isError = false,
+                                onDismiss = { viewModel.dismissStatus() },
+                            )
+                        }
+                        is WindowsToolViewModel.OpStatus.Error -> {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            FeedbackCard(
+                                message = status.message,
+                                isError = true,
+                                onDismiss = { viewModel.dismissStatus() },
+                            )
+                        }
+                        WindowsToolViewModel.OpStatus.Idle -> Unit
+                    }
 
-                when (val status = opStatus) {
-                    is WindowsToolViewModel.OpStatus.Working -> {
-                        WorkingCard(
-                            message = status.message,
-                            modifier = Modifier.padding(horizontal = 28.dp, vertical = 12.dp),
-                        )
-                    }
-                    is WindowsToolViewModel.OpStatus.Success -> {
-                        FeedbackCard(
-                            message = status.message,
-                            isError = false,
-                            modifier = Modifier.padding(horizontal = 28.dp, vertical = 12.dp),
-                            onDismiss = { viewModel.dismissStatus() },
-                        )
-                    }
-                    is WindowsToolViewModel.OpStatus.Error -> {
-                        FeedbackCard(
-                            message = status.message,
-                            isError = true,
-                            modifier = Modifier.padding(horizontal = 28.dp, vertical = 12.dp),
-                            onDismiss = { viewModel.dismissStatus() },
-                        )
-                    }
-                    WindowsToolViewModel.OpStatus.Idle -> Unit
+                    Spacer(modifier = Modifier.height(48.dp))
                 }
             }
         }
@@ -272,6 +316,16 @@ fun WindowsToolScreen(
             },
         )
         null -> Unit
+    }
+
+    pendingHomeMap?.let { pending ->
+        HomeOverviewMapImportDialog(
+            kind = pending.kind,
+            preview = pending.preview,
+            onDismiss = { viewModel.cancelHomeMapUpload() },
+            onConfirm = { viewModel.confirmHomeMapUpload() },
+            confirmEnabled = !homeMapConfirming,
+        )
     }
 }
 
@@ -378,6 +432,178 @@ private fun BackupCard(
                     isError = true,
                     onDismiss = onDismissBackup,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeOverviewMapsSection(
+    hasOtzarMap: Boolean,
+    hasBeisMidrashMap: Boolean,
+    onUploadOtzar: () -> Unit,
+    onUploadBeisMidrash: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = AppColors.Panel,
+        shape = RoundedCornerShape(14.dp),
+        shadowElevation = 1.dp,
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Text(
+                text = stringResource(R.string.windows_tool_home_maps_section),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = AppColors.TextPrimary,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.windows_tool_home_maps_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = AppColors.TextMuted,
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+            HomeOverviewMapUploadRow(
+                title = stringResource(R.string.home_map_otzar),
+                hasMap = hasOtzarMap,
+                onUpload = onUploadOtzar,
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            HomeOverviewMapUploadRow(
+                title = stringResource(R.string.home_map_beis_midrash),
+                hasMap = hasBeisMidrashMap,
+                onUpload = onUploadBeisMidrash,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeOverviewMapUploadRow(
+    title: String,
+    hasMap: Boolean,
+    onUpload: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = AppColors.TextPrimary,
+            )
+            Text(
+                text = if (hasMap) {
+                    stringResource(R.string.windows_tool_home_map_uploaded)
+                } else {
+                    stringResource(R.string.windows_tool_home_map_not_uploaded)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (hasMap) AppColors.Accent else AppColors.TextMuted,
+            )
+        }
+        OutlinedButton(
+            onClick = onUpload,
+            modifier = Modifier.height(48.dp),
+        ) { Text(stringResource(R.string.windows_tool_home_map_upload)) }
+    }
+}
+
+@Composable
+private fun PcExportGuideCard() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = AppColors.Panel,
+        shape = RoundedCornerShape(14.dp),
+        shadowElevation = 1.dp,
+        border = BorderStroke(1.dp, AppColors.Accent.copy(alpha = 0.35f)),
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Text(
+                text = stringResource(R.string.windows_tool_export_pc_guide_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = AppColors.TextPrimary,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.windows_tool_export_pc_guide_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = AppColors.TextSecondary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExportResultCard(
+    export: WindowsToolViewModel.LastExport,
+    onDismiss: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val titleRes = when (export.kind) {
+        WindowsToolViewModel.ExportKind.Books -> R.string.windows_tool_export_result_title_books
+        WindowsToolViewModel.ExportKind.Matchings -> R.string.windows_tool_export_result_title_matchings
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = cs.primaryContainer,
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, cs.primary.copy(alpha = 0.35f)),
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Text(
+                text = stringResource(titleRes),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = AppColors.TextPrimary,
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = stringResource(R.string.windows_tool_export_result_file, export.fileName),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = AppColors.TextPrimary,
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = if (export.isEmpty) {
+                    stringResource(R.string.windows_tool_export_result_empty)
+                } else {
+                    stringResource(R.string.windows_tool_export_result_rows, export.rowCount)
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = AppColors.TextSecondary,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.windows_tool_export_result_where),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = AppColors.TextPrimary,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.windows_tool_export_result_steps, export.fileName),
+                style = MaterialTheme.typography.bodyMedium,
+                color = AppColors.TextSecondary,
+            )
+            if (export.absolutePath.isNotBlank() && export.absolutePath.contains('/')) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.windows_tool_export_result_path, export.absolutePath),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = AppColors.TextMuted,
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.windows_tool_dismiss))
             }
         }
     }

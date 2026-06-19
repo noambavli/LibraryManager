@@ -12,11 +12,14 @@ import com.mh.librarymanager.data.backup.BackupTrigger
 import com.mh.librarymanager.data.export.DownloadsWriter
 import com.mh.librarymanager.data.excel.ExcelImportIO
 import com.mh.librarymanager.data.excel.MatchingsImportIO
+import com.mh.librarymanager.data.homemap.HomeOverviewMapProcessor
+import com.mh.librarymanager.data.homemap.HomeOverviewMapStore
 import com.mh.librarymanager.data.store.SearchMatchingStore
 import com.mh.librarymanager.data.xlsx.CatalogImporter
 import com.mh.librarymanager.data.xlsx.WindowsToolCodec
 import com.mh.librarymanager.data.xlsx.XlsxReader
 import com.mh.librarymanager.data.xlsx.XlsxWriter
+import com.mh.librarymanager.domain.HomeOverviewMapKind
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,7 +56,39 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
     private val _lastBackup = MutableStateFlow(BackupInfo(backup.lastBackupAt(), backup.lastBackupName()))
     val lastBackup: StateFlow<BackupInfo> = _lastBackup.asStateFlow()
 
+    private val homeMapStore get() = container.homeOverviewMapStore
+
+    private val _pendingHomeMap = MutableStateFlow<PendingHomeMapUpload?>(null)
+    val pendingHomeMap: StateFlow<PendingHomeMapUpload?> = _pendingHomeMap.asStateFlow()
+
+    private val _homeMapConfirming = MutableStateFlow(false)
+    val homeMapConfirming: StateFlow<Boolean> = _homeMapConfirming.asStateFlow()
+
+    private val _homeMapRevision = MutableStateFlow(0)
+    val homeMapRevision: StateFlow<Int> = _homeMapRevision.asStateFlow()
+
+    private val _lastExport = MutableStateFlow<LastExport?>(null)
+    val lastExport: StateFlow<LastExport?> = _lastExport.asStateFlow()
+
+    fun hasHomeMap(kind: HomeOverviewMapKind): Boolean = homeMapStore.hasCustomMap(kind)
+
     data class BackupInfo(val at: Long, val name: String)
+
+    enum class ExportKind { Books, Matchings }
+
+    data class LastExport(
+        val kind: ExportKind,
+        val fileName: String,
+        val rowCount: Int,
+        val absolutePath: String,
+        val pcHint: String,
+        val isEmpty: Boolean,
+    )
+
+    data class PendingHomeMapUpload(
+        val kind: HomeOverviewMapKind,
+        val preview: HomeOverviewMapProcessor.Preview,
+    )
 
     sealed interface OpStatus {
         data object Idle : OpStatus
@@ -64,6 +99,10 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
 
     fun dismissStatus() {
         if (_opStatus.value !is OpStatus.Working) _opStatus.value = OpStatus.Idle
+    }
+
+    fun dismissExport() {
+        _lastExport.value = null
     }
 
     fun dismissBackup() = backup.dismiss()
@@ -81,7 +120,8 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
     // ---- Exports ----------------------------------------------------------
 
     fun exportBooks() = export(
-        working = "מייצא ספרים…",
+        kind = ExportKind.Books,
+        workingRes = R.string.windows_tool_export_books_working,
         baseName = "books",
         sheet = "books",
     ) {
@@ -90,7 +130,8 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun exportMatchings() = export(
-        working = "מייצא התאמות…",
+        kind = ExportKind.Matchings,
+        workingRes = R.string.windows_tool_export_matchings_working,
         baseName = "matchings",
         sheet = "matchings",
     ) {
@@ -99,7 +140,8 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun export(
-        working: String,
+        kind: ExportKind,
+        workingRes: Int,
         baseName: String,
         sheet: String,
         buildRows: suspend () -> List<List<String>>,
@@ -110,7 +152,8 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
             )
             return
         }
-        _opStatus.value = OpStatus.Working(working)
+        val app = getApplication<Application>()
+        _opStatus.value = OpStatus.Working(app.getString(workingRes))
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
@@ -118,35 +161,34 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
                     val bytes = XlsxWriter.toBytes(rows, sheet)
                     val name = "${baseName}_${stamp()}.xlsx"
                     DownloadsWriter.write(
-                        getApplication(),
+                        app,
                         name,
                         DownloadsWriter.MIME_XLSX,
                     ) { out -> out.write(bytes) } to (rows.size - 1).coerceAtLeast(0)
                 }
             }
-            _opStatus.value = result.fold(
+            result.fold(
                 onSuccess = { (outcome, count) ->
                     when (outcome) {
-                        is DownloadsWriter.Result.Ok ->
-                            OpStatus.Success(exportSuccessMessage(count, outcome))
+                        is DownloadsWriter.Result.Ok -> {
+                            _lastExport.value = LastExport(
+                                kind = kind,
+                                fileName = outcome.displayName,
+                                rowCount = count,
+                                absolutePath = outcome.absolutePath.ifBlank { outcome.location },
+                                pcHint = outcome.pcHint,
+                                isEmpty = count <= 0,
+                            )
+                            _opStatus.value = OpStatus.Idle
+                        }
                         is DownloadsWriter.Result.Failed ->
-                            OpStatus.Error(outcome.message)
+                            _opStatus.value = OpStatus.Error(outcome.message)
                     }
                 },
-                onFailure = { OpStatus.Error(it.message ?: "שגיאה בייצוא") },
+                onFailure = {
+                    _opStatus.value = OpStatus.Error(it.message ?: "שגיאה בייצוא")
+                },
             )
-        }
-    }
-
-    private fun exportSuccessMessage(count: Int, outcome: DownloadsWriter.Result.Ok): String {
-        val app = getApplication<Application>()
-        return when {
-            count <= 0 ->
-                app.getString(R.string.windows_tool_export_empty, outcome.displayName)
-            outcome.location == "Download" ->
-                app.getString(R.string.windows_tool_export_success, count, outcome.displayName)
-            else ->
-                app.getString(R.string.windows_tool_export_success_path, count, outcome.location)
         }
     }
 
@@ -435,6 +477,71 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
         if (_adbMatchingsConfirming.value) return
         _adbMatchingsPending.value = null
         matchingsIo.discardPendingImport()
+    }
+
+    // ---- Home overview maps (separate from book-location maps) -----------
+
+    fun stageHomeMapUpload(kind: HomeOverviewMapKind, uri: Uri) {
+        if (isBusy()) {
+            _opStatus.value = OpStatus.Error(
+                getApplication<Application>().getString(R.string.windows_tool_busy),
+            )
+            return
+        }
+        _opStatus.value = OpStatus.Working(
+            getApplication<Application>().getString(R.string.windows_tool_home_map_processing),
+        )
+        viewModelScope.launch {
+            val status = runCatching {
+                withContext(Dispatchers.IO) {
+                    when (val result = HomeOverviewMapProcessor.process(getApplication(), uri)) {
+                        is HomeOverviewMapProcessor.Result.Ok -> {
+                            _pendingHomeMap.value = PendingHomeMapUpload(kind, result.preview)
+                            OpStatus.Idle
+                        }
+                        is HomeOverviewMapProcessor.Result.Error -> OpStatus.Error(result.message)
+                    }
+                }
+            }.getOrElse { OpStatus.Error(it.message ?: "שגיאה בעיבוד התמונה") }
+            _opStatus.value = status
+        }
+    }
+
+    fun confirmHomeMapUpload() {
+        val pending = _pendingHomeMap.value ?: return
+        if (_homeMapConfirming.value) return
+        _homeMapConfirming.value = true
+        _pendingHomeMap.value = null
+        _opStatus.value = OpStatus.Working("יוצר גיבוי מלא לפני שמירת המפה…")
+        viewModelScope.launch {
+            try {
+                val status = runCatching {
+                    withContext(Dispatchers.IO) {
+                        ensurePreChangeBackup()?.let { return@withContext it }
+                        _opStatus.value = OpStatus.Working(
+                            getApplication<Application>().getString(R.string.windows_tool_home_map_saving),
+                        )
+                        homeMapStore.saveMap(pending.kind, pending.preview.pngBytes)
+                        _homeMapRevision.value++
+                        OpStatus.Success(
+                            getApplication<Application>().getString(
+                                R.string.windows_tool_home_map_saved,
+                                getApplication<Application>().getString(pending.kind.titleRes()),
+                            ),
+                        )
+                    }
+                }.getOrElse { OpStatus.Error(it.message ?: "שגיאה בשמירת המפה") }
+                _opStatus.value = status
+                refreshLastBackup()
+            } finally {
+                _homeMapConfirming.value = false
+            }
+        }
+    }
+
+    fun cancelHomeMapUpload() {
+        if (_homeMapConfirming.value) return
+        _pendingHomeMap.value = null
     }
 
     // ---- Restore ----------------------------------------------------------

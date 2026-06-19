@@ -57,6 +57,8 @@ fun HomeScreen(
     onOpenManagement: () -> Unit,
     onOpenRequests: () -> Unit,
     onOpenTechSupport: () -> Unit,
+    onOpenOtzarMap: () -> Unit,
+    onOpenBeisMidrashMap: () -> Unit,
     onOpenAnnouncement: (String) -> Unit,
     onOpenAllAnnouncements: () -> Unit,
 ) {
@@ -95,6 +97,13 @@ fun HomeScreen(
                     onOpenManagement = onOpenManagement,
                 )
 
+                Spacer(modifier = Modifier.height(16.dp))
+
+                MapOverviewButtonsRow(
+                    onOpenOtzarMap = onOpenOtzarMap,
+                    onOpenBeisMidrashMap = onOpenBeisMidrashMap,
+                )
+
                 if (!catalogLoaded) {
                     Spacer(modifier = Modifier.height(24.dp))
                     HomeFeedPanel(title = stringResource(R.string.home_whats_new)) {
@@ -114,6 +123,51 @@ fun HomeScreen(
                     WhatsNewSection(
                         books = recentlyAdded,
                         customColors = customColors,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MapOverviewButtonsRow(
+    onOpenOtzarMap: () -> Unit,
+    onOpenBeisMidrashMap: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val wide = maxWidth > 640.dp
+        val maps = listOf(
+            Triple(stringResource(R.string.home_map_otzar), stringResource(R.string.home_map_otzar_subtitle), onOpenOtzarMap),
+            Triple(stringResource(R.string.home_map_beis_midrash), stringResource(R.string.home_map_beis_midrash_subtitle), onOpenBeisMidrashMap),
+        )
+        val accents = listOf(cs.primary, cs.secondary)
+
+        if (wide) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                maps.forEachIndexed { i, (title, subtitle, onClick) ->
+                    AppActionTile(
+                        title = title,
+                        subtitle = subtitle,
+                        accent = accents[i],
+                        onClick = onClick,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                maps.forEachIndexed { i, (title, subtitle, onClick) ->
+                    AppActionTile(
+                        title = title,
+                        subtitle = subtitle,
+                        accent = accents[i],
+                        onClick = onClick,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
