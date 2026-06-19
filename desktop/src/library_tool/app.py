@@ -68,7 +68,9 @@ class LibraryToolApp:
     # ------------------------------------------------------------------ UI
 
     def _configure_hebrew_ui(self, root: tk.Tk) -> None:
-        root.option_add("*Font", "Segoe UI 10")
+        # Fonts are set per-widget via ttk.Style and font= tuples — do not use
+        # option_add("*Font", "Segoe UI 10"): Tcl splits on spaces and treats
+        # "UI" as the size, causing TclError on startup.
         root.option_add("*Label.justify", "right")
         root.option_add("*Label.anchor", "e")
 
