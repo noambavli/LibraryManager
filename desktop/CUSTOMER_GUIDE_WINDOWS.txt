@@ -1,36 +1,36 @@
 ================================================================================
-  ExcelTool — Update the tablet catalog (Windows)
+  ExcelTool — עדכון קטלוג הספרים בטאבלט (Windows)
 ================================================================================
 
-WHAT'S ON THE USB STICK
------------------------
-  ExcelTool.exe          the program
-  adb\                   USB connection tools (keep together!)
-  authorize_tablet.bat   technician runs once per tablet
-  CUSTOMER_GUIDE_WINDOWS.txt   this file
+מה יש בדיסק-און-קי / בתיקייה
+-----------------------------
+  ExcelTool.exe          התוכנה
+  adb\                   כלי חיבור USB (השאירו יחד!)
+  authorize_tablet.bat   טכנאי מריץ פעם אחת לכל טאבלט
+  CUSTOMER_GUIDE_WINDOWS.txt   קובץ זה
 
-WHAT YOU NEED
--------------
-  • Windows PC
-  • USB cable to the library tablet
-  • Excel file (.xlsx) with the catalog columns (see README.md)
+מה צריך
+-------
+  • מחשב Windows
+  • כבל USB לטאבלט הספרייה
+  • קובץ Excel (.xlsx) עם עמודות הקטלוג (ראו README.md)
 
-DAILY WORKFLOW
---------------
-  1. Connect tablet by USB (File transfer / MTP if asked)
-  2. Double-click ExcelTool.exe
-  3. Step 1 — Import catalog (.xlsx)…  → pick your Excel file
-  4. Review warnings in the table (fix sheet if needed)
-  5. Step 2 — Send to tablet…
-     → Confirm on the tablet when asked
-     → The PC shows which file was sent (e.g. 3.xlsx)
+שגרת עבודה יומית
+----------------
+  1. חברו את הטאבלט ב-USB (מעבר קבצים / MTP אם נשאל)
+  2. לחצו פעמיים על ExcelTool.exe
+  3. שלב 1 — ייבוא קטלוג (.xlsx)…  → בחרו את קובץ האקסל
+  4. בדקו אזהרות בטבלה (תקנו בגיליון אם צריך)
+  5. שלב 2 — שליחה לטאבלט…
+     → אשרו בטאבלט כשמופיע הדיאלוג
+     → במחשב יוצג איזה קובץ נשלח (למשל 3.xlsx)
 
-  Only NEW books are added. Duplicates are skipped automatically.
+  רק ספרים חדשים מתווספים. כפילויות מדולגות אוטומטית.
 
-TROUBLESHOOTING
----------------
-  • "No tablet detected" — replug USB, run authorize_tablet.bat once
-  • Keep ExcelTool.exe and the whole adb\ folder together
-  • Tablet must show the confirm dialog — tap Add to finish
+פתרון בעיות
+-----------
+  • "אין טאבלט" — נתקו וחברו USB, הריצו authorize_tablet.bat פעם אחת
+  • השאירו את ExcelTool.exe ואת כל תיקיית adb\ יחד
+  • בטאבלט חייב להופיע דיאלוג אישור — לחצו הוסף לסיום
 
 ================================================================================

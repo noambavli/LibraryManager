@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from . import APP_NAME
+from . import strings_he as S
 from .model import Book
 
 MAX_BACKUPS = 50
@@ -55,12 +56,12 @@ class BackupEntry:
 
     def label(self) -> str:
         nice_kind = {
-            KIND_IMPORT: "Before import",
-            KIND_EXPORT: "Before export",
-            KIND_DELETE_ALL: "Before delete-all",
-            KIND_MANUAL: "Manual checkpoint",
+            KIND_IMPORT: S.BACKUP_KIND_IMPORT,
+            KIND_EXPORT: S.BACKUP_KIND_EXPORT,
+            KIND_DELETE_ALL: S.BACKUP_KIND_DELETE,
+            KIND_MANUAL: S.BACKUP_KIND_MANUAL,
         }.get(self.kind, self.kind)
-        return f"{self.when} · {nice_kind} · {self.book_count} books"
+        return S.BACKUP_LABEL.format(when=self.when, kind=nice_kind, n=self.book_count)
 
 
 def _write_backup_file(path: str, books: List[Book]) -> None:

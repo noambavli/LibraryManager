@@ -1,7 +1,7 @@
 package com.mh.librarymanager.search
 
 import com.mh.librarymanager.domain.Book
-import com.mh.librarymanager.domain.BookPlace
+import com.mh.librarymanager.domain.BookPlaceText
 import com.mh.librarymanager.domain.BookState
 import com.mh.librarymanager.domain.MatchingDirection
 import com.mh.librarymanager.domain.SearchMatching
@@ -158,7 +158,7 @@ class SearchEngineTest {
         category = "קט",
         subcategories = emptyList(),
         notes = "",
-        place = BookPlace.OTZAR,
+        place = BookPlaceText.OTZAR_LABEL,
         state = BookState.AVAILABLE,
         parentBookId = null,
         relations = emptyList(),

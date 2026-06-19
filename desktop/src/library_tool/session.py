@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Callable, List, Optional
 
 from . import adb_transfer, backups, validation
+from . import strings_he as S
 from .export_counter import peek_next_batch_number, peek_next_matchings_batch_number
 from .converter import ConvertResult, convert_rows
 from .matchings_converter import MatchingsConvertResult, rows_to_matchings
@@ -34,7 +35,7 @@ class AbortFlag:
 
     def check(self) -> None:
         if self._event.is_set():
-            raise AbortError("Operation aborted by the user.")
+            raise AbortError(S.ABORT_BY_USER)
 
 
 ProgressFn = Callable[[str, float], None]
@@ -77,7 +78,7 @@ class Session:
     ) -> ImportOutcome:
         abort = abort or AbortFlag()
 
-        progress("Snapshotting current catalog…", 0.05)
+        progress(S.PROGRESS_SNAPSHOT, 0.05)
         restore_point = None
         if self.books:
             restore_point = backups.create_backup(
@@ -85,15 +86,15 @@ class Session:
             )
         abort.check()
 
-        progress("Reading workbook…", 0.25)
+        progress(S.PROGRESS_READ_WORKBOOK, 0.25)
         rows = read_first_sheet(path)
         abort.check()
 
-        progress("Converting rows…", 0.55)
+        progress(S.PROGRESS_CONVERT, 0.55)
         result = convert_rows(rows)
         abort.check()
 
-        progress("Checking for duplicates and problems…", 0.8)
+        progress(S.PROGRESS_VALIDATE, 0.8)
         report = validation.validate(result.books, skipped=result.skipped)
         abort.check()
 
@@ -103,7 +104,7 @@ class Session:
         self.last_import_restore = restore_point
         self.last_report = report
 
-        progress("Done.", 1.0)
+        progress(S.PROGRESS_DONE, 1.0)
         return ImportOutcome(result, report, restore_point)
 
     def import_matchings_xlsx(
@@ -114,18 +115,18 @@ class Session:
     ) -> MatchingsImportOutcome:
         abort = abort or AbortFlag()
 
-        progress("Reading matchings workbook…", 0.35)
+        progress(S.PROGRESS_READ_MATCHINGS, 0.35)
         rows = read_first_sheet(path)
         abort.check()
 
-        progress("Converting rows…", 0.7)
+        progress(S.PROGRESS_CONVERT, 0.7)
         result = rows_to_matchings(rows)
         abort.check()
 
         self.matchings = result.matchings
         self.matchings_source_path = path
 
-        progress("Done.", 1.0)
+        progress(S.PROGRESS_DONE, 1.0)
         return MatchingsImportOutcome(result, path)
 
     def next_matchings_send_batch(self) -> int:
@@ -134,16 +135,10 @@ class Session:
     def matchings_tablet_pick_hint(self) -> str:
         if self.last_sent_matchings_batch is not None:
             batch = self.last_sent_matchings_batch
-            return (
-                f"Last matchings send: matchings-{batch}.xlsx. "
-                f"Confirm on the tablet when prompted."
-            )
+            return S.HINT_LAST_MATCHINGS.format(batch=batch)
         if self.matchings:
             n = self.next_matchings_send_batch()
-            return (
-                f"After Send matchings: matchings-{n}.xlsx is archived. "
-                f"Confirm on the tablet. USB must stay connected."
-            )
+            return S.HINT_AFTER_MATCHINGS.format(n=n)
         return ""
 
     def send_matchings_to_tablet(
@@ -152,11 +147,11 @@ class Session:
         abort: Optional[AbortFlag] = None,
     ) -> adb_transfer.AdbSendResult:
         abort = abort or AbortFlag()
-        progress("Looking for tablet (adb)…", 0.1)
+        progress(S.PROGRESS_FIND_TABLET, 0.1)
         abort.check()
         batch = peek_next_matchings_batch_number()
-        progress("Sending matchings Excel to tablet…", 0.4)
-        progress("Waiting for confirmation on the tablet…", 0.55)
+        progress(S.PROGRESS_SEND_MATCHINGS, 0.4)
+        progress(S.PROGRESS_WAIT_CONFIRM, 0.55)
         result = adb_transfer.send_matchings(
             self.matchings,
             source_file=self.matchings_source_path or "",
@@ -166,13 +161,13 @@ class Session:
         abort.check()
         line = result.result_line or ""
         if line.startswith("OK:"):
-            progress("Tablet confirmed — matchings merged.", 1.0)
+            progress(S.PROGRESS_CONFIRMED_MATCHINGS, 1.0)
         elif line.startswith("ERR:cancelled"):
-            progress("Cancelled on the tablet.", 1.0)
+            progress(S.PROGRESS_CANCELLED_TABLET, 1.0)
         elif line.startswith("ERR:confirm_timeout"):
-            progress("Tablet did not confirm in time — approve on tablet.", 1.0)
+            progress(S.PROGRESS_CONFIRM_TIMEOUT, 1.0)
         else:
-            progress("Send finished.", 1.0)
+            progress(S.PROGRESS_SEND_FINISHED, 1.0)
         return result
 
     def can_restore_import(self) -> bool:
@@ -180,7 +175,7 @@ class Session:
 
     def restore_import(self) -> int:
         if self.last_import_restore is None:
-            raise ValueError("There is no import to restore.")
+            raise ValueError(S.NO_IMPORT_TO_RESTORE)
         self.books = backups.restore_backup(self.last_import_restore)
         self.dirty = False
         self.last_report = validation.validate(self.books)
@@ -203,17 +198,11 @@ class Session:
     def tablet_pick_hint(self) -> str:
         if self.last_sent_batch is not None:
             batch = self.last_sent_batch
-            return (
-                f"Last send: {batch}.xlsx (saved on PC + tablet Download). "
-                f"Confirm on the tablet when prompted."
-            )
+            return S.HINT_LAST_SEND.format(batch=batch)
         if self.books:
             n = self.next_send_batch()
-            return (
-                f"After Send: file {n}.xlsx is archived (never overwritten). "
-                f"Confirm on the tablet. USB must stay connected."
-            )
-        return "Step 1: import Excel · Step 2: Send to tablet (USB connected)"
+            return S.HINT_AFTER_SEND.format(n=n)
+        return S.HINT_STEPS
 
     def send_to_tablet(
         self,
@@ -221,11 +210,11 @@ class Session:
         abort: Optional[AbortFlag] = None,
     ) -> adb_transfer.AdbSendResult:
         abort = abort or AbortFlag()
-        progress("Looking for tablet (adb)…", 0.1)
+        progress(S.PROGRESS_FIND_TABLET, 0.1)
         abort.check()
         batch = peek_next_batch_number()
-        progress("Sending Excel to tablet…", 0.4)
-        progress("Waiting for confirmation on the tablet…", 0.55)
+        progress(S.PROGRESS_SEND_EXCEL, 0.4)
+        progress(S.PROGRESS_WAIT_CONFIRM, 0.55)
         result = adb_transfer.send_books(
             self.books,
             source_file=self.source_path or "",
@@ -235,11 +224,11 @@ class Session:
         abort.check()
         line = result.result_line or ""
         if line.startswith("OK:"):
-            progress("Tablet confirmed — books merged.", 1.0)
+            progress(S.PROGRESS_CONFIRMED_BOOKS, 1.0)
         elif line.startswith("ERR:cancelled"):
-            progress("Cancelled on the tablet.", 1.0)
+            progress(S.PROGRESS_CANCELLED_TABLET, 1.0)
         elif line.startswith("ERR:confirm_timeout"):
-            progress("Tablet did not confirm in time — approve on tablet.", 1.0)
+            progress(S.PROGRESS_CONFIRM_TIMEOUT, 1.0)
         else:
-            progress("Send finished.", 1.0)
+            progress(S.PROGRESS_SEND_FINISHED, 1.0)
         return result

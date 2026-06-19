@@ -47,7 +47,7 @@ import com.mh.librarymanager.ui.components.AppScreenBackground
 import com.mh.librarymanager.ui.components.ManagementHeader
 import com.mh.librarymanager.domain.AuditEvent
 import com.mh.librarymanager.domain.Book
-import com.mh.librarymanager.domain.BookPlace
+import com.mh.librarymanager.domain.BookPlaceText
 import com.mh.librarymanager.domain.BookState
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -467,12 +467,8 @@ private fun diffBooks(before: Book, after: Book): List<FieldDiff> {
 private fun parentSummary(book: Book): String =
     book.parentBookName.ifBlank { book.parentBookId.orEmpty() }.ifBlank { "—" }
 
-private fun placeLabel(place: BookPlace): String = when (place) {
-    BookPlace.OTZAR -> "אוצר הספרים"
-    BookPlace.BEIS_MIDRASH -> "בית מדרש"
-    BookPlace.OTHER -> "אחר"
-    BookPlace.UNSPECIFIED -> "לא צוין"
-}
+private fun placeLabel(place: String): String =
+    BookPlaceText.displayLabel(place) ?: "לא צוין"
 
 private fun stateLabel(state: BookState): String = when (state) {
     BookState.AVAILABLE -> "זמין"

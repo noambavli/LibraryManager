@@ -2,7 +2,7 @@ package com.mh.librarymanager.ui.management
 
 import com.mh.librarymanager.domain.Book
 import com.mh.librarymanager.domain.BookLocationPressEntry
-import com.mh.librarymanager.domain.BookPlace
+import com.mh.librarymanager.domain.BookPlaceText
 import com.mh.librarymanager.domain.BookState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -71,7 +71,7 @@ class PopularBooksRankingTest {
         displayNumber = "",
         bookNumber = "",
         notes = "",
-        place = BookPlace.OTZAR,
+        place = BookPlaceText.OTZAR_LABEL,
         state = BookState.AVAILABLE,
         parentBookId = null,
         relations = emptyList(),

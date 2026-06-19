@@ -24,6 +24,7 @@ from tkinter import filedialog, messagebox, ttk
 from typing import Callable, Optional
 
 from . import __version__, adb_transfer, backups
+from . import strings_he as S
 from .session import AbortError, AbortFlag, Session
 from .converter import books_to_rows
 from .matchings_converter import matchings_to_rows
@@ -47,9 +48,10 @@ class LibraryToolApp:
         self._busy = False
         self._tablet_ready = False
 
-        root.title(f"ExcelTool {__version__} — Excel ↔ Tablet")
+        root.title(S.app_title(__version__))
         root.geometry("960x760")
         root.minsize(820, 680)
+        self._configure_hebrew_ui(root)
 
         self._build_styles()
         self._build_header()
@@ -65,6 +67,11 @@ class LibraryToolApp:
 
     # ------------------------------------------------------------------ UI
 
+    def _configure_hebrew_ui(self, root: tk.Tk) -> None:
+        root.option_add("*Font", "Segoe UI 10")
+        root.option_add("*Label.justify", "right")
+        root.option_add("*Label.anchor", "e")
+
     def _build_styles(self) -> None:
         style = ttk.Style()
         try:
@@ -79,31 +86,33 @@ class LibraryToolApp:
     def _build_header(self) -> None:
         top = ttk.Frame(self.root, padding=(16, 12, 16, 4))
         top.pack(fill="x")
-        ttk.Label(top, text="Library Catalog Manager", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(top, text=S.APP_HEADLINE, style="Title.TLabel").pack(anchor="e")
         ttk.Label(
             top,
-            text="Offline · import Excel → send .xlsx to tablet over USB-C → confirm on tablet",
+            text=S.APP_SUBTITLE,
             style="Sub.TLabel",
-        ).pack(anchor="w")
+        ).pack(anchor="e")
 
-        self.chosen_var = tk.StringVar(value="No Excel file chosen yet — click step 1.")
-        ttk.Label(top, textvariable=self.chosen_var, style="Sub.TLabel").pack(anchor="w", pady=(6, 0))
+        self.chosen_var = tk.StringVar(value=S.NO_FILE_CHOSEN)
+        ttk.Label(top, textvariable=self.chosen_var, style="Sub.TLabel").pack(anchor="e", pady=(6, 0))
 
         self.status_var = tk.StringVar()
         status = ttk.Label(top, textvariable=self.status_var, style="Status.TLabel")
-        status.pack(anchor="w", pady=(4, 0))
+        status.pack(anchor="e", pady=(4, 0))
 
         tablet_row = ttk.Frame(top)
-        tablet_row.pack(anchor="w", pady=(6, 0))
-        ttk.Label(tablet_row, text="Tablet USB:", style="Sub.TLabel").pack(side="left")
-        self.tablet_status_var = tk.StringVar(value="Checking connection…")
+        tablet_row.pack(anchor="e", pady=(6, 0))
+        ttk.Label(tablet_row, text=S.TABLET_USB_LABEL, style="Sub.TLabel").pack(side="right")
+        self.tablet_status_var = tk.StringVar(value=S.TABLET_CHECKING)
         self.tablet_status_label = tk.Label(
             tablet_row,
             textvariable=self.tablet_status_var,
             font=("Segoe UI", 10, "bold"),
             fg="#666666",
+            anchor="e",
+            justify="right",
         )
-        self.tablet_status_label.pack(side="left", padx=(6, 0))
+        self.tablet_status_label.pack(side="right", padx=(6, 0))
 
         self.tablet_pick_var = tk.StringVar(value=self.session.tablet_pick_hint())
         self.tablet_pick_label = tk.Label(
@@ -112,50 +121,50 @@ class LibraryToolApp:
             font=("Segoe UI", 11, "bold"),
             fg="#1a4a8a",
             wraplength=900,
-            justify="left",
+            justify="right",
+            anchor="e",
         )
-        self.tablet_pick_label.pack(anchor="w", pady=(8, 0))
+        self.tablet_pick_label.pack(anchor="e", pady=(8, 0))
 
     def _build_actions(self) -> None:
-        frame = ttk.LabelFrame(self.root, text="Steps", padding=12, style="Step.TLabelframe")
+        frame = ttk.LabelFrame(self.root, text=S.STEPS_FRAME, padding=12, style="Step.TLabelframe")
         frame.pack(fill="x", padx=16, pady=8)
 
         row1 = ttk.Frame(frame)
         row1.pack(fill="x")
-        self.btn_import = ttk.Button(
-            row1, text="1 · Import catalog (.xlsx)…", style="Accent.TButton",
-            command=self.on_import,
-        )
-        self.btn_import.pack(side="left")
-
-        self.btn_save = ttk.Button(
-            row1, text="Save .xlsx locally…", command=self.on_save_local, state="disabled",
-        )
-        self.btn_save.pack(side="left", padx=(8, 0))
-
         self.btn_export = ttk.Button(
-            row1, text="2 · Send to tablet…", style="Accent.TButton",
+            row1, text=S.BTN_SEND_TABLET, style="Accent.TButton",
             command=self.on_send_to_tablet, state="disabled",
         )
         self.btn_export.pack(side="right")
 
-        # Safety row.
+        self.btn_save = ttk.Button(
+            row1, text=S.BTN_SAVE_LOCAL, command=self.on_save_local, state="disabled",
+        )
+        self.btn_save.pack(side="right", padx=(8, 0))
+
+        self.btn_import = ttk.Button(
+            row1, text=S.BTN_IMPORT_CATALOG, style="Accent.TButton",
+            command=self.on_import,
+        )
+        self.btn_import.pack(side="right", padx=(8, 0))
+
         row2 = ttk.Frame(frame)
         row2.pack(fill="x", pady=(10, 0))
-        self.btn_restore_import = ttk.Button(
-            row2, text="Restore last import", command=self.on_restore_import, state="disabled",
-        )
-        self.btn_restore_import.pack(side="left")
-
         self.btn_restore_backup = ttk.Button(
-            row2, text="Restore from backup…", command=self.on_restore_backup,
+            row2, text=S.BTN_RESTORE_BACKUP, command=self.on_restore_backup,
         )
-        self.btn_restore_backup.pack(side="left", padx=(8, 0))
+        self.btn_restore_backup.pack(side="right")
+
+        self.btn_restore_import = ttk.Button(
+            row2, text=S.BTN_RESTORE_IMPORT, command=self.on_restore_import, state="disabled",
+        )
+        self.btn_restore_import.pack(side="right", padx=(8, 0))
 
     def _build_matchings_actions(self) -> None:
         frame = ttk.LabelFrame(
             self.root,
-            text="Search matchings (synonyms / shortcuts)",
+            text=S.MATCHINGS_FRAME,
             padding=12,
             style="Step.TLabelframe",
         )
@@ -163,45 +172,43 @@ class LibraryToolApp:
 
         ttk.Label(
             frame,
-            text="Columns: shortcut · words · direction. Merge adds new shortcuts and updates existing ones.",
+            text=S.MATCHINGS_DESC,
             style="Sub.TLabel",
             wraplength=900,
-            justify="left",
-        ).pack(anchor="w", pady=(0, 8))
+            justify="right",
+        ).pack(anchor="e", pady=(0, 8))
 
-        self.matchings_chosen_var = tk.StringVar(
-            value="No matchings file chosen yet — click Import matchings.",
-        )
+        self.matchings_chosen_var = tk.StringVar(value=S.NO_MATCHINGS_CHOSEN)
         ttk.Label(frame, textvariable=self.matchings_chosen_var, style="Sub.TLabel").pack(
-            anchor="w", pady=(0, 6),
+            anchor="e", pady=(0, 6),
         )
 
         row = ttk.Frame(frame)
         row.pack(fill="x")
-        self.btn_import_matchings = ttk.Button(
-            row,
-            text="Import matchings (.xlsx)…",
-            style="Accent.TButton",
-            command=self.on_import_matchings,
-        )
-        self.btn_import_matchings.pack(side="left")
-
-        self.btn_save_matchings = ttk.Button(
-            row,
-            text="Save matchings locally…",
-            command=self.on_save_matchings_local,
-            state="disabled",
-        )
-        self.btn_save_matchings.pack(side="left", padx=(8, 0))
-
         self.btn_send_matchings = ttk.Button(
             row,
-            text="Send matchings to tablet…",
+            text=S.BTN_SEND_MATCHINGS,
             style="Accent.TButton",
             command=self.on_send_matchings_to_tablet,
             state="disabled",
         )
         self.btn_send_matchings.pack(side="right")
+
+        self.btn_save_matchings = ttk.Button(
+            row,
+            text=S.BTN_SAVE_MATCHINGS,
+            command=self.on_save_matchings_local,
+            state="disabled",
+        )
+        self.btn_save_matchings.pack(side="right", padx=(8, 0))
+
+        self.btn_import_matchings = ttk.Button(
+            row,
+            text=S.BTN_IMPORT_MATCHINGS,
+            style="Accent.TButton",
+            command=self.on_import_matchings,
+        )
+        self.btn_import_matchings.pack(side="right", padx=(8, 0))
 
         self.matchings_hint_var = tk.StringVar(value="")
         ttk.Label(frame, textvariable=self.matchings_hint_var, style="Sub.TLabel").pack(
@@ -209,20 +216,20 @@ class LibraryToolApp:
         )
 
     def _build_findings(self) -> None:
-        frame = ttk.LabelFrame(self.root, text="Review — duplicates & potential problems",
+        frame = ttk.LabelFrame(self.root, text=S.REVIEW_FRAME,
                                padding=10, style="Step.TLabelframe")
         frame.pack(fill="both", expand=True, padx=16, pady=4)
 
-        self.summary_var = tk.StringVar(value="No catalog loaded yet.")
-        ttk.Label(frame, textvariable=self.summary_var, style="Sub.TLabel").pack(anchor="w")
+        self.summary_var = tk.StringVar(value=S.NO_CATALOG_LOADED)
+        ttk.Label(frame, textvariable=self.summary_var, style="Sub.TLabel").pack(anchor="e")
 
         cols = ("severity", "message", "count")
         tree = ttk.Treeview(frame, columns=cols, show="headings", height=8)
-        tree.heading("severity", text="Level")
-        tree.heading("message", text="Finding")
-        tree.heading("count", text="Books")
-        tree.column("severity", width=90, anchor="w", stretch=False)
-        tree.column("message", width=680, anchor="w")
+        tree.heading("severity", text=S.COL_LEVEL, anchor="e")
+        tree.heading("message", text=S.COL_FINDING, anchor="e")
+        tree.heading("count", text=S.COL_BOOKS, anchor="center")
+        tree.column("severity", width=90, anchor="e", stretch=False)
+        tree.column("message", width=680, anchor="e")
         tree.column("count", width=70, anchor="center", stretch=False)
         for tag, color in _SEVERITY_COLOR.items():
             tree.tag_configure(tag, foreground=color)
@@ -236,25 +243,25 @@ class LibraryToolApp:
 
         self.detail_var = tk.StringVar(value="")
         ttk.Label(frame, textvariable=self.detail_var, style="Sub.TLabel",
-                  wraplength=900, justify="left").pack(anchor="w", pady=(6, 0))
+                  wraplength=900, justify="right").pack(anchor="e", pady=(6, 0))
 
     def _build_progress(self) -> None:
         frame = ttk.Frame(self.root, padding=(16, 4))
         frame.pack(fill="x")
+        self.btn_abort = ttk.Button(frame, text=S.BTN_ABORT, command=self.on_abort, state="disabled")
+        self.btn_abort.pack(side="right", padx=(8, 0))
         self.progress = ttk.Progressbar(frame, mode="determinate", maximum=1.0)
-        self.progress.pack(side="left", fill="x", expand=True)
-        self.btn_abort = ttk.Button(frame, text="Abort", command=self.on_abort, state="disabled")
-        self.btn_abort.pack(side="left", padx=(8, 0))
+        self.progress.pack(side="right", fill="x", expand=True)
         self.progress_var = tk.StringVar(value="")
         ttk.Label(self.root, textvariable=self.progress_var, style="Sub.TLabel",
-                  padding=(16, 0)).pack(anchor="w")
+                  padding=(16, 0)).pack(anchor="e")
 
     def _build_footer(self) -> None:
         bar = ttk.Frame(self.root, padding=(16, 6))
         bar.pack(fill="x", side="bottom")
-        self.footer_var = tk.StringVar(value="Ready.")
-        ttk.Label(bar, textvariable=self.footer_var, style="Sub.TLabel").pack(side="left")
-        ttk.Label(bar, text="Fully offline · no internet required", style="Sub.TLabel").pack(side="right")
+        self.footer_var = tk.StringVar(value=S.FOOTER_READY)
+        ttk.Label(bar, text=S.FOOTER_OFFLINE, style="Sub.TLabel").pack(side="right")
+        ttk.Label(bar, textvariable=self.footer_var, style="Sub.TLabel").pack(side="right", padx=(0, 12))
 
     # ------------------------------------------------------------- helpers
 
@@ -263,11 +270,11 @@ class LibraryToolApp:
         n = len(s.books)
         if s.source_path:
             src = os.path.basename(s.source_path)
-            self.chosen_var.set(f"Chosen: {src}  —  {n} books ready to send")
+            self.chosen_var.set(S.CHOSEN_BOOKS.format(src=src, n=n))
         else:
-            self.chosen_var.set("No Excel file chosen yet — click step 1.")
-        dirty = " · unsaved changes" if s.dirty else ""
-        self.status_var.set(f"Working catalog: {n} books{dirty}")
+            self.chosen_var.set(S.NO_FILE_CHOSEN)
+        dirty = S.UNSAVED_CHANGES if s.dirty else ""
+        self.status_var.set(S.WORKING_CATALOG.format(n=n, dirty=dirty))
         self.tablet_pick_var.set(s.tablet_pick_hint())
 
         has_books = n > 0 and not self._busy
@@ -281,9 +288,9 @@ class LibraryToolApp:
         mn = len(s.matchings)
         if s.matchings_source_path:
             src = os.path.basename(s.matchings_source_path)
-            self.matchings_chosen_var.set(f"Chosen: {src}  —  {mn} matchings ready to send")
+            self.matchings_chosen_var.set(S.CHOSEN_MATCHINGS.format(src=src, n=mn))
         else:
-            self.matchings_chosen_var.set("No matchings file chosen yet — click Import matchings.")
+            self.matchings_chosen_var.set(S.NO_MATCHINGS_CHOSEN)
         self.matchings_hint_var.set(s.matchings_tablet_pick_hint())
 
         has_matchings = mn > 0 and not self._busy
@@ -307,7 +314,8 @@ class LibraryToolApp:
         for f in self._findings:
             tag = _SEVERITY_TAG.get(f.severity, "info")
             count = str(f.count) if f.count else ""
-            self.tree.insert("", "end", values=(f.severity, f.message, count), tags=(tag,))
+            severity = S.SEVERITY_DISPLAY.get(f.severity, f.severity)
+            self.tree.insert("", "end", values=(severity, f.message, count), tags=(tag,))
         self.summary_var.set(report.summary_line())
         self.detail_var.set("")
 
@@ -320,14 +328,14 @@ class LibraryToolApp:
         if 0 <= idx < len(findings):
             f = findings[idx]
             if f.examples:
-                self.detail_var.set("Examples: " + " | ".join(f.examples))
+                self.detail_var.set(S.EXAMPLES_PREFIX + " | ".join(f.examples))
             else:
                 self.detail_var.set("")
 
     # ------------------------------------------- worker-thread plumbing
 
     def _run_worker(self, fn: Callable, on_done: Callable, on_error: Optional[Callable] = None,
-                    progress_label: str = "Working…") -> None:
+                    progress_label: str = S.WORKING) -> None:
         """Run ``fn`` on a thread; ``fn`` receives (progress, abort)."""
         self._set_busy(True)
         self.progress.config(value=0.0)
@@ -365,9 +373,8 @@ class LibraryToolApp:
                     self._set_busy(False)
                     self.progress.config(value=0.0)
                     self.progress_var.set("")
-                    self.footer_var.set("Operation aborted — no changes were committed.")
-                    messagebox.showinfo("Aborted", "The operation was aborted safely. "
-                                                    "Nothing was changed.")
+                    self.footer_var.set(S.FOOTER_ABORTED)
+                    messagebox.showinfo(S.DLG_ABORTED_TITLE, S.DLG_ABORTED_BODY)
                 elif kind == "error":
                     on_error, exc = payload
                     self._set_busy(False)
@@ -376,8 +383,8 @@ class LibraryToolApp:
                     if on_error:
                         on_error(exc)
                     else:
-                        self.footer_var.set("Error.")
-                        messagebox.showerror("Error", str(exc))
+                        self.footer_var.set(S.FOOTER_ERROR)
+                        messagebox.showerror(S.DLG_ERROR_TITLE, str(exc))
                 elif kind == "tablet_status":
                     self._apply_tablet_status(payload)
         except queue.Empty:
@@ -402,20 +409,20 @@ class LibraryToolApp:
     def _apply_tablet_status(self, diag: adb_transfer.AdbDiagnosis) -> None:
         self._tablet_ready = bool(diag.ready)
         if not diag.adb_path:
-            text = "adb not found — keep adb\\ folder next to LibraryTool.exe"
+            text = S.TABLET_ADB_MISSING
             color = "#b00020"
         elif diag.ready:
             d = diag.ready[0]
-            text = f"Connected & authorized — {d.model}"
+            text = S.TABLET_CONNECTED.format(model=d.model)
             color = "#1b7a3d"
         elif any(d.state == "unauthorized" for d in diag.devices):
-            text = "Tablet found but NOT authorized — run authorize_tablet.bat once"
+            text = S.TABLET_UNAUTHORIZED
             color = "#9a6700"
         elif diag.devices:
-            text = "Tablet detected but not ready — replug USB cable"
+            text = S.TABLET_NOT_READY
             color = "#9a6700"
         else:
-            text = "No tablet — plug in USB-C cable"
+            text = S.TABLET_NONE
             color = "#b00020"
         self.tablet_status_var.set(text)
         self.tablet_status_label.config(fg=color)
@@ -439,20 +446,19 @@ class LibraryToolApp:
     def on_abort(self) -> None:
         if self._busy:
             self.abort.request()
-            self.progress_var.set("Aborting at the next safe point…")
+            self.progress_var.set(S.ABORTING)
 
     def on_import(self) -> None:
         path = filedialog.askopenfilename(
-            title="Choose the catalog workbook",
-            filetypes=[("Excel workbook", "*.xlsx"), ("All files", "*.*")],
+            title=S.DLG_CHOOSE_CATALOG,
+            filetypes=[(S.FILETYPE_XLSX, "*.xlsx"), (S.FILETYPE_ALL, "*.*")],
         )
         if not path:
             return
         if self.session.books and self.session.dirty:
             if not messagebox.askyesno(
-                "Replace current catalog?",
-                "You have unsaved changes. Importing replaces the whole working "
-                "catalog (a backup is taken first). Continue?",
+                S.DLG_REPLACE_CATALOG_TITLE,
+                S.DLG_REPLACE_CATALOG_BODY,
             ):
                 return
 
@@ -464,40 +470,37 @@ class LibraryToolApp:
             rep = outcome.report
             src = os.path.basename(path)
             self.footer_var.set(
-                f"Chosen: {src} — {outcome.convert.imported} books loaded."
+                S.FOOTER_IMPORTED.format(src=src, n=outcome.convert.imported)
             )
             if rep.has_errors:
                 messagebox.showwarning(
-                    "Import finished with problems",
-                    "The catalog imported, but there are ERRORS that should be "
-                    "fixed in the source sheet before exporting to the tablet. "
-                    "See the review table.",
+                    S.DLG_IMPORT_PROBLEMS_TITLE,
+                    S.DLG_IMPORT_PROBLEMS_BODY,
                 )
             self._refresh_status()
 
-        self._run_worker(work, done, progress_label="Importing…")
+        self._run_worker(work, done, progress_label=S.PROGRESS_IMPORTING)
 
     def on_save_local(self) -> None:
         initial = os.path.basename(self.session.source_path or "books.xlsx")
         path = filedialog.asksaveasfilename(
-            title="Save Excel workbook",
+            title=S.DLG_SAVE_WORKBOOK,
             defaultextension=".xlsx",
             initialfile=initial,
-            filetypes=[("Excel workbook", "*.xlsx")],
+            filetypes=[(S.FILETYPE_XLSX, "*.xlsx")],
         )
         if not path:
             return
         try:
             write_xlsx(path, books_to_rows(self.session.books))
         except Exception as exc:
-            messagebox.showerror("Save failed", str(exc))
+            messagebox.showerror(S.DLG_SAVE_FAILED_TITLE, str(exc))
             return
         fname = os.path.basename(path)
-        self.footer_var.set(f"Saved {len(self.session.books)} books → {fname}")
+        self.footer_var.set(S.FOOTER_SAVED_BOOKS.format(n=len(self.session.books), fname=fname))
         messagebox.showinfo(
-            "Saved",
-            f"Saved {len(self.session.books)} books to:\n{path}\n\n"
-            f"Prefer step 2 (Send to tablet) for automatic transfer.",
+            S.DLG_SAVED_TITLE,
+            S.DLG_SAVED_BOOKS.format(n=len(self.session.books), path=path),
         )
 
     def on_send_to_tablet(self) -> None:
@@ -505,10 +508,8 @@ class LibraryToolApp:
         self._show_report(report)
         if report.has_errors:
             if not messagebox.askyesno(
-                "Errors present — send anyway?",
-                f"There are {len(report.errors)} ERROR-level problems "
-                "(see the review table). Sending them to the tablet may cause "
-                "wrong behaviour.\n\nSend anyway?",
+                S.DLG_ERRORS_SEND_TITLE,
+                S.DLG_ERRORS_SEND_BODY.format(n=len(report.errors)),
             ):
                 return
 
@@ -516,14 +517,8 @@ class LibraryToolApp:
         batch = self.session.next_send_batch()
         src = os.path.basename(self.session.source_path or "") or "catalog"
         if not messagebox.askyesno(
-            "Send to tablet",
-            f"Connect the tablet with USB-C, then click Yes.\n\n"
-            f"You chose: {src}\n"
-            f"This send creates file: {batch}.xlsx\n"
-            f"Books to send: {n}\n\n"
-            f"A confirmation dialog will appear on the tablet — approve it to add new books.\n"
-            f"(Only adds new books; existing catalog is kept.)\n\n"
-            "Continue?",
+            S.DLG_SEND_TABLET_TITLE,
+            S.DLG_SEND_TABLET_BODY.format(src=src, batch=batch, n=n),
         ):
             return
 
@@ -535,53 +530,52 @@ class LibraryToolApp:
             count = result.imported_count
             line = result.result_line or ""
             if line.startswith("ERR:cancelled"):
-                msg = f"Send cancelled on the tablet ({batch}.xlsx was not merged)."
+                msg = S.SEND_CANCELLED.format(batch=batch)
             elif line.startswith("ERR:confirm_timeout"):
-                msg = (
-                    f"Sent {batch}.xlsx — tablet did not confirm in time. "
-                    "Open the tablet app and approve the dialog, or use Management → Sync."
-                )
+                msg = S.SEND_TIMEOUT.format(batch=batch)
             elif count is not None:
-                msg = (
-                    f"Done. Sent {batch}.xlsx — {count} new books merged "
-                    "(existing books were kept)."
-                )
+                msg = S.SEND_DONE.format(batch=batch, count=count)
             else:
-                msg = f"Sent {batch}.xlsx — confirm on the tablet to finish."
+                msg = S.SEND_PENDING.format(batch=batch)
             self.footer_var.set(msg)
             self._refresh_status()
             src = os.path.basename(self.session.source_path or "") or "catalog"
             if line.startswith("ERR:"):
-                messagebox.showwarning("Tablet sync", f"{msg}\n\nDevice: {result.device.serial}")
+                messagebox.showwarning(
+                    S.DLG_TABLET_SYNC_TITLE,
+                    S.SYNC_DEVICE_ONLY.format(msg=msg, serial=result.device.serial),
+                )
             else:
                 from .exports import exports_dir
 
                 messagebox.showinfo(
-                    "Tablet sync",
-                    f"{msg}\n\n"
-                    f"Excel on PC: {src}\n"
-                    f"Batch file: {batch}.xlsx\n"
-                    f"PC archive: {exports_dir()}\n"
-                    f"Device: {result.device.model} ({result.device.serial})\n\n"
-                    f"If the dialog was missed: approve the import when the tablet shows it.",
+                    S.DLG_TABLET_SYNC_TITLE,
+                    S.DLG_TABLET_SYNC_BODY.format(
+                        msg=msg,
+                        src=src,
+                        batch=batch,
+                        archive=exports_dir(),
+                        model=result.device.model,
+                        serial=result.device.serial,
+                    ),
                 )
 
         def error(exc):
             diag = adb_transfer.diagnose()
             extra = ""
             if diag.devices_raw:
-                extra = f"\n\nadb devices -l:\n{diag.devices_raw}"
+                extra = S.ADB_DEVICES_HEADER.format(raw=diag.devices_raw)
             messagebox.showerror(
-                "Could not send to tablet",
+                S.DLG_SEND_FAILED_TITLE,
                 f"{exc}{extra}",
             )
 
-        self._run_worker(work, done, on_error=error, progress_label="Sending to tablet…")
+        self._run_worker(work, done, on_error=error, progress_label=S.PROGRESS_SENDING)
 
     def on_import_matchings(self) -> None:
         path = filedialog.askopenfilename(
-            title="Choose the matchings workbook",
-            filetypes=[("Excel workbook", "*.xlsx"), ("All files", "*.*")],
+            title=S.DLG_CHOOSE_MATCHINGS,
+            filetypes=[(S.FILETYPE_XLSX, "*.xlsx"), (S.FILETYPE_ALL, "*.*")],
         )
         if not path:
             return
@@ -593,40 +587,41 @@ class LibraryToolApp:
             src = os.path.basename(path)
             n = len(outcome.convert.matchings)
             invalid = outcome.convert.invalid
-            msg = f"Chosen: {src} — {n} matchings loaded."
+            msg = S.FOOTER_MATCHINGS_LOADED.format(src=src, n=n)
             if invalid:
-                msg += f" ({invalid} invalid rows skipped.)"
+                msg += S.FOOTER_MATCHINGS_INVALID.format(invalid=invalid)
             self.footer_var.set(msg)
             if n == 0:
                 messagebox.showwarning(
-                    "No matchings",
-                    "The workbook had no valid matchings rows "
-                    "(need shortcut + words on each row).",
+                    S.DLG_NO_MATCHINGS_TITLE,
+                    S.DLG_NO_MATCHINGS_BODY,
                 )
             self._refresh_status()
 
-        self._run_worker(work, done, progress_label="Importing matchings…")
+        self._run_worker(work, done, progress_label=S.PROGRESS_IMPORT_MATCHINGS)
 
     def on_save_matchings_local(self) -> None:
         initial = os.path.basename(self.session.matchings_source_path or "matchings.xlsx")
         path = filedialog.asksaveasfilename(
-            title="Save matchings workbook",
+            title=S.DLG_SAVE_MATCHINGS,
             defaultextension=".xlsx",
             initialfile=initial,
-            filetypes=[("Excel workbook", "*.xlsx")],
+            filetypes=[(S.FILETYPE_XLSX, "*.xlsx")],
         )
         if not path:
             return
         try:
             write_xlsx(path, matchings_to_rows(self.session.matchings))
         except Exception as exc:
-            messagebox.showerror("Save failed", str(exc))
+            messagebox.showerror(S.DLG_SAVE_FAILED_TITLE, str(exc))
             return
         fname = os.path.basename(path)
-        self.footer_var.set(f"Saved {len(self.session.matchings)} matchings → {fname}")
+        self.footer_var.set(
+            S.FOOTER_SAVED_MATCHINGS.format(n=len(self.session.matchings), fname=fname)
+        )
         messagebox.showinfo(
-            "Saved",
-            f"Saved {len(self.session.matchings)} matchings to:\n{path}",
+            S.DLG_SAVED_TITLE,
+            S.DLG_SAVED_MATCHINGS.format(n=len(self.session.matchings), path=path),
         )
 
     def on_send_matchings_to_tablet(self) -> None:
@@ -634,14 +629,8 @@ class LibraryToolApp:
         batch = self.session.next_matchings_send_batch()
         src = os.path.basename(self.session.matchings_source_path or "") or "matchings"
         if not messagebox.askyesno(
-            "Send matchings to tablet",
-            f"Connect the tablet with USB-C, then click Yes.\n\n"
-            f"You chose: {src}\n"
-            f"This send creates file: matchings-{batch}.xlsx\n"
-            f"Matchings to send: {n}\n\n"
-            f"A confirmation dialog will appear on the tablet.\n"
-            f"New shortcuts are added; existing ones get updated words/direction.\n\n"
-            "Continue?",
+            S.DLG_SEND_MATCHINGS_TITLE,
+            S.DLG_SEND_MATCHINGS_BODY.format(src=src, batch=batch, n=n),
         ):
             return
 
@@ -656,29 +645,32 @@ class LibraryToolApp:
             count = result.imported_count
             line = result.result_line or ""
             if line.startswith("ERR:cancelled"):
-                msg = f"Send cancelled on the tablet (matchings-{batch}.xlsx was not merged)."
+                msg = S.MATCHINGS_SEND_CANCELLED.format(batch=batch)
             elif line.startswith("ERR:confirm_timeout"):
-                msg = (
-                    f"Sent matchings-{batch}.xlsx — tablet did not confirm in time. "
-                    "Open the tablet app and approve the dialog."
-                )
+                msg = S.MATCHINGS_SEND_TIMEOUT.format(batch=batch)
             elif count is not None:
-                msg = f"Done. Sent matchings-{batch}.xlsx — {count} new matchings merged."
+                msg = S.MATCHINGS_SEND_DONE.format(batch=batch, count=count)
             else:
-                msg = f"Sent matchings-{batch}.xlsx — confirm on the tablet to finish."
+                msg = S.MATCHINGS_SEND_PENDING.format(batch=batch)
             self.footer_var.set(msg)
             if line.startswith("ERR:"):
-                messagebox.showwarning("Tablet sync", f"{msg}\n\nDevice: {result.device.serial}")
+                messagebox.showwarning(
+                    S.DLG_TABLET_SYNC_TITLE,
+                    S.SYNC_DEVICE_ONLY.format(msg=msg, serial=result.device.serial),
+                )
             else:
                 from .exports import matchings_exports_dir
 
                 messagebox.showinfo(
-                    "Tablet sync",
-                    f"{msg}\n\n"
-                    f"Excel on PC: {src}\n"
-                    f"Batch file: matchings-{batch}.xlsx\n"
-                    f"PC archive: {matchings_exports_dir()}\n"
-                    f"Device: {result.device.model} ({result.device.serial})",
+                    S.DLG_TABLET_SYNC_TITLE,
+                    S.MATCHINGS_SYNC_BODY.format(
+                        msg=msg,
+                        src=src,
+                        batch=batch,
+                        archive=matchings_exports_dir(),
+                        model=result.device.model,
+                        serial=result.device.serial,
+                    ),
                 )
             self._refresh_status()
 
@@ -686,44 +678,43 @@ class LibraryToolApp:
             diag = adb_transfer.diagnose()
             extra = ""
             if diag.devices_raw:
-                extra = f"\n\nadb devices -l:\n{diag.devices_raw}"
-            messagebox.showerror("Could not send matchings to tablet", f"{exc}{extra}")
+                extra = S.ADB_DEVICES_HEADER.format(raw=diag.devices_raw)
+            messagebox.showerror(S.DLG_SEND_MATCHINGS_FAILED, f"{exc}{extra}")
 
         self._run_worker(
-            work, done, on_error=error, progress_label="Sending matchings to tablet…",
+            work, done, on_error=error, progress_label=S.PROGRESS_SEND_MATCHINGS,
         )
 
     def on_restore_import(self) -> None:
         if not self.session.can_restore_import():
             return
         if not messagebox.askyesno(
-            "Restore last import",
-            "Revert to the catalog that was loaded before the most recent "
-            "import? This is safe because nothing has changed since.",
+            S.DLG_RESTORE_IMPORT_TITLE,
+            S.DLG_RESTORE_IMPORT_BODY,
         ):
             return
         try:
             n = self.session.restore_import()
         except Exception as exc:
-            messagebox.showerror("Restore failed", str(exc))
+            messagebox.showerror(S.DLG_RESTORE_FAILED, str(exc))
             return
         self._show_report(self.session.last_report)
-        self.footer_var.set(f"Restored {n} books from before the last import.")
+        self.footer_var.set(S.FOOTER_RESTORED_IMPORT.format(n=n))
         self._refresh_status()
 
     def on_restore_backup(self) -> None:
         entries = backups.list_backups()
         if not entries:
-            messagebox.showinfo("No backups", "There are no backups yet.")
+            messagebox.showinfo(S.DLG_NO_BACKUPS_TITLE, S.DLG_NO_BACKUPS_BODY)
             return
 
         win = tk.Toplevel(self.root)
-        win.title("Restore from backup")
+        win.title(S.DLG_RESTORE_BACKUP_TITLE)
         win.geometry("620x400")
         win.transient(self.root)
         win.grab_set()
-        ttk.Label(win, text="Pick a restore point", style="Status.TLabel",
-                  padding=12).pack(anchor="w")
+        ttk.Label(win, text=S.DLG_RESTORE_BACKUP_PICK, style="Status.TLabel",
+                  padding=12).pack(anchor="e")
         lb = tk.Listbox(win, height=12)
         for e in entries:
             lb.insert("end", e.label())
@@ -737,14 +728,14 @@ class LibraryToolApp:
             win.destroy()
             n = self.session.restore_from_backup(entry)
             self._show_report(self.session.last_report)
-            self.footer_var.set(f"Restored {n} books from backup ({entry.when}).")
+            self.footer_var.set(S.FOOTER_RESTORED_BACKUP.format(n=n, when=entry.when))
             self._refresh_status()
 
         btns = ttk.Frame(win, padding=12)
         btns.pack(fill="x")
-        ttk.Button(btns, text="Restore selected", style="Accent.TButton",
+        ttk.Button(btns, text=S.BTN_RESTORE_SELECTED, style="Accent.TButton",
                    command=do_restore).pack(side="right")
-        ttk.Button(btns, text="Cancel", command=win.destroy).pack(side="right", padx=(0, 8))
+        ttk.Button(btns, text=S.BTN_CANCEL, command=win.destroy).pack(side="right", padx=(0, 8))
         self.root.wait_window(win)
 
 def main() -> None:

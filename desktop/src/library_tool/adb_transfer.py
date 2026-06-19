@@ -24,6 +24,8 @@ import time
 from dataclasses import dataclass
 from typing import List, Optional, Sequence, Tuple
 
+from . import strings_he as S
+
 REMOTE_XLSX_TMP = "/data/local/tmp/books-import.xlsx"
 REMOTE_XLSX_DOWNLOAD = "/sdcard/Download/books-import.xlsx"
 REMOTE_RESULT_TMP = "/data/local/tmp/catalog-import-result.txt"
@@ -256,13 +258,7 @@ def diagnose(*, restart_server: bool = True) -> AdbDiagnosis:
             devices_raw="",
             devices=[],
             ready=[],
-            error=(
-                "adb not found.\n"
-                "Keep the whole package folder together:\n"
-                "  LibraryTool.exe\n"
-                "  adb\\adb.exe  (+ AdbWinApi.dll, AdbWinUsbApi.dll)\n"
-                "  adb\\.android\\adbkey"
-            ),
+            error=S.ADB_NOT_FOUND,
         )
 
     if restart_server:
@@ -287,42 +283,22 @@ def diagnose(*, restart_server: bool = True) -> AdbDiagnosis:
 
 def _explain_devices(parsed: List[RawDevice], adb: str, raw: str) -> str:
     if not parsed:
-        lines = [
-            "No USB device seen by adb.",
-            "",
-            "On Windows, try in order:",
-            "  1. Unplug and replug the USB cable (direct port, not a hub)",
-            "  2. Install the Samsung / Android USB driver for the tablet",
-            "  3. Keep LibraryTool.exe and the adb\\ folder in the same place",
-            "  4. Ask your technician to run authorize_tablet.bat once",
-            "",
-            f"adb used: {adb}",
-        ]
+        text = S.ADB_NO_DEVICE.format(adb=adb)
         if raw.strip():
-            lines.append(f"adb devices: {raw.strip()}")
-        return "\n".join(lines)
+            text += "\n" + S.ADB_DEVICES_LINE.format(raw=raw.strip())
+        return text
 
     unauthorized = [d for d in parsed if d.state == "unauthorized"]
     if unauthorized:
         serials = ", ".join(d.serial for d in unauthorized)
-        return (
-            f"Tablet found ({serials}) but this PC is not authorized yet.\n\n"
-            "Technician — run once per tablet:\n"
-            "  authorize_tablet.bat   (in the same folder as LibraryTool.exe)\n\n"
-            "Or from a Mac that already works with the tablet:\n"
-            "  authorize_from_mac.sh\n\n"
-            "Daily staff do not need to touch the tablet."
-        )
+        return S.ADB_UNAUTHORIZED.format(serials=serials)
 
     offline = [d for d in parsed if d.state == "offline"]
     if offline:
-        return (
-            "Tablet is offline. Unplug the USB cable, wait 3 seconds, plug back in, "
-            "then try again."
-        )
+        return S.ADB_OFFLINE
 
     other = ", ".join(f"{d.serial} ({d.state})" for d in parsed)
-    return f"Tablet found but not ready: {other}"
+    return S.ADB_NOT_READY.format(details=other)
 
 
 def prepare_usb(adb: str, serial: str) -> None:
@@ -367,9 +343,7 @@ def _verify_remote_file(adb: str, serial: str, local_path: str, remote_path: str
         except ValueError:
             pass
 
-    raise IOError(
-        "Push verification failed: the file on the tablet does not match the PC copy."
-    )
+    raise IOError(S.ADB_PUSH_VERIFY_FAILED)
 
 
 def _is_final_result(line: str) -> bool:
@@ -511,7 +485,7 @@ def _trigger_import(
         timeout=30,
     )
     if code != 0:
-        raise IOError(f"adb broadcast failed: {err or out or 'unknown error'}")
+        raise IOError(S.ADB_BROADCAST_FAILED.format(detail=err or out or S.ADB_UNKNOWN_ERROR))
     _run(
         adb,
         [
@@ -542,7 +516,7 @@ def push_and_import(
         adb, ["-s", serial, "push", local_xlsx, channel.remote_xlsx_tmp], timeout=180,
     )
     if code != 0:
-        raise IOError(f"adb push failed: {err or 'unknown error'}")
+        raise IOError(S.ADB_PUSH_FAILED.format(detail=err or S.ADB_UNKNOWN_ERROR))
 
     _verify_remote_file(adb, serial, local_xlsx, channel.remote_xlsx_tmp)
 
@@ -721,14 +695,12 @@ def send_books(
 
     diag = diagnose(restart_server=False)
     if not diag.adb_path:
-        raise FileNotFoundError(diag.error or "adb not found")
+        raise FileNotFoundError(diag.error or S.ADB_NOT_FOUND.split("\n")[0])
     if not diag.ready:
-        raise ConnectionError(diag.error or "No tablet detected")
+        raise ConnectionError(diag.error or S.ADB_NO_DEVICE.split("\n")[0])
 
     if len(diag.ready) > 1:
-        raise ConnectionError(
-            f"Multiple tablets connected ({len(diag.ready)}). Unplug extras and try again."
-        )
+        raise ConnectionError(S.ADB_MULTIPLE_TABLETS.format(n=len(diag.ready)))
 
     device = diag.ready[0]
     adb = diag.adb_path
@@ -755,10 +727,7 @@ def send_books(
         return result
     # Hard rejection (wrong version / invalid / etc.) — discard and surface it.
     _quiet_remove(archive_path)
-    raise IOError(
-        f"Tablet rejected the catalog: {line}. "
-        "The file was pushed but import failed."
-    )
+    raise IOError(S.ADB_TABLET_REJECTED_BOOKS.format(line=line))
 
 
 def send_matchings(
@@ -777,14 +746,12 @@ def send_matchings(
 
     diag = diagnose(restart_server=False)
     if not diag.adb_path:
-        raise FileNotFoundError(diag.error or "adb not found")
+        raise FileNotFoundError(diag.error or S.ADB_NOT_FOUND.split("\n")[0])
     if not diag.ready:
-        raise ConnectionError(diag.error or "No tablet detected")
+        raise ConnectionError(diag.error or S.ADB_NO_DEVICE.split("\n")[0])
 
     if len(diag.ready) > 1:
-        raise ConnectionError(
-            f"Multiple tablets connected ({len(diag.ready)}). Unplug extras and try again."
-        )
+        raise ConnectionError(S.ADB_MULTIPLE_TABLETS.format(n=len(diag.ready)))
 
     device = diag.ready[0]
     adb = diag.adb_path
@@ -815,7 +782,4 @@ def send_matchings(
     if line.startswith("ERR:confirm_timeout"):
         return result
     _quiet_remove(archive_path)
-    raise IOError(
-        f"Tablet rejected the matchings import: {line}. "
-        "The file was pushed but import failed."
-    )
+    raise IOError(S.ADB_TABLET_REJECTED_MATCHINGS.format(line=line))

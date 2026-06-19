@@ -6,6 +6,7 @@ import android.util.Log
 import com.mh.librarymanager.BuildConfig
 import com.mh.librarymanager.LibraryApp
 import com.mh.librarymanager.data.export.DownloadsWriter
+import com.mh.librarymanager.data.homemap.HomeOverviewMapStore
 import com.mh.librarymanager.data.store.CatalogStore
 import com.mh.librarymanager.data.store.atomicWriteText
 import com.mh.librarymanager.data.xlsx.WindowsToolCodec
@@ -87,6 +88,12 @@ class BackupManager(
             "search_history.json",
             "book_location_presses.json",
             "civ_import_log.json",
+        )
+
+        /** Overview map PNGs uploaded via Windows Tool (home page only). */
+        private val HOME_MAP_FILES = listOf(
+            HomeOverviewMapStore.DIR_NAME + "/otzar.png",
+            HomeOverviewMapStore.DIR_NAME + "/beis_midrash.png",
         )
     }
 
@@ -252,6 +259,13 @@ class BackupManager(
             file.inputStream().use { it.copyTo(zip) }
             zip.closeEntry()
         }
+        for (name in HOME_MAP_FILES) {
+            val file = File(context.filesDir, name)
+            if (!file.exists() || file.length() == 0L) continue
+            zip.putNextEntry(ZipEntry("restore/$name"))
+            file.inputStream().use { it.copyTo(zip) }
+            zip.closeEntry()
+        }
     }
 
     private fun writeReadable(zip: ZipOutputStream) {
@@ -316,7 +330,7 @@ class BackupManager(
                         }
                         name.startsWith("restore/") -> {
                             val leaf = name.removePrefix("restore/")
-                            if (leaf in STORE_FILES) {
+                            if (leaf in STORE_FILES || leaf in HOME_MAP_FILES) {
                                 staged[leaf] = zip.readBoundedEntry { total += it; total }
                             }
                         }
@@ -345,6 +359,17 @@ class BackupManager(
             val bytes = staged[name]
             if (bytes != null) {
                 atomicWriteText(target, String(bytes, Charsets.UTF_8))
+            } else if (target.exists()) {
+                try { target.delete() } catch (_: Exception) {}
+            }
+        }
+
+        for (name in HOME_MAP_FILES) {
+            val target = File(context.filesDir, name)
+            val bytes = staged[name]
+            if (bytes != null) {
+                target.parentFile?.mkdirs()
+                target.writeBytes(bytes)
             } else if (target.exists()) {
                 try { target.delete() } catch (_: Exception) {}
             }

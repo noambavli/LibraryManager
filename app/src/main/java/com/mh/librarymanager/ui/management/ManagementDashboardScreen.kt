@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.mh.librarymanager.R
+import com.mh.librarymanager.domain.ManagementBadgeSection
 import com.mh.librarymanager.ui.components.AppBrandHeader
 import com.mh.librarymanager.ui.components.AppColors
 import com.mh.librarymanager.ui.components.AppDashboardTopBar
@@ -28,6 +29,7 @@ private data class DashboardEntry(
     val title: String,
     val subtitle: String,
     val accent: Color,
+    val badgeCount: Int = 0,
     val onClick: () -> Unit,
 )
 
@@ -35,6 +37,7 @@ private data class DashboardEntry(
 fun ManagementDashboardScreen(
     outOfOrderCount: Int,
     catalogLoaded: Boolean,
+    badgeCounts: Map<ManagementBadgeSection, Int>,
     onOpenBooks: () -> Unit,
     onOpenOutOfOrder: () -> Unit,
     onOpenHistory: () -> Unit,
@@ -46,6 +49,7 @@ fun ManagementDashboardScreen(
     onOpenMatchings: () -> Unit,
     onOpenTechSupport: () -> Unit,
     onOpenWindowsTool: () -> Unit,
+    onOpenStorageBrowser: () -> Unit,
     onLogout: () -> Unit,
 ) {
     AppScreenBackground {
@@ -69,6 +73,7 @@ fun ManagementDashboardScreen(
                 DashboardGrid(
                     outOfOrderCount = outOfOrderCount,
                     catalogLoaded = catalogLoaded,
+                    badgeCounts = badgeCounts,
                     onOpenBooks = onOpenBooks,
                     onOpenOutOfOrder = onOpenOutOfOrder,
                     onOpenHistory = onOpenHistory,
@@ -80,6 +85,7 @@ fun ManagementDashboardScreen(
                     onOpenMatchings = onOpenMatchings,
                     onOpenTechSupport = onOpenTechSupport,
                     onOpenWindowsTool = onOpenWindowsTool,
+                    onOpenStorageBrowser = onOpenStorageBrowser,
                 )
             }
         }
@@ -90,6 +96,7 @@ fun ManagementDashboardScreen(
 private fun DashboardGrid(
     outOfOrderCount: Int,
     catalogLoaded: Boolean,
+    badgeCounts: Map<ManagementBadgeSection, Int>,
     onOpenBooks: () -> Unit,
     onOpenOutOfOrder: () -> Unit,
     onOpenHistory: () -> Unit,
@@ -101,13 +108,14 @@ private fun DashboardGrid(
     onOpenMatchings: () -> Unit,
     onOpenTechSupport: () -> Unit,
     onOpenWindowsTool: () -> Unit,
+    onOpenStorageBrowser: () -> Unit,
 ) {
     val tiles = listOf(
         DashboardEntry(
             stringResource(R.string.management_books),
             stringResource(R.string.management_books_subtitle),
             AppColors.Accent,
-            onOpenBooks,
+            onClick = onOpenBooks,
         ),
         DashboardEntry(
             stringResource(R.string.management_out_of_order),
@@ -122,61 +130,70 @@ private fun DashboardGrid(
                 outOfOrderCount > 0 -> AppColors.Warning
                 else -> AppColors.Accent
             },
-            onOpenOutOfOrder,
+            badgeCount = badgeCounts[ManagementBadgeSection.OUT_OF_ORDER] ?: 0,
+            onClick = onOpenOutOfOrder,
         ),
         DashboardEntry(
             stringResource(R.string.management_requests),
             stringResource(R.string.management_requests_subtitle),
             AppColors.Accent,
-            onOpenRequests,
+            badgeCount = badgeCounts[ManagementBadgeSection.REQUESTS] ?: 0,
+            onClick = onOpenRequests,
         ),
         DashboardEntry(
             stringResource(R.string.management_announcements),
             stringResource(R.string.management_announcements_subtitle),
             AppColors.Accent,
-            onOpenAnnouncements,
+            onClick = onOpenAnnouncements,
         ),
         DashboardEntry(
             stringResource(R.string.management_shortcuts),
             stringResource(R.string.management_shortcuts_subtitle),
             AppColors.Accent,
-            onOpenShortcuts,
+            onClick = onOpenShortcuts,
         ),
         DashboardEntry(
             stringResource(R.string.management_matchings),
             stringResource(R.string.management_matchings_subtitle),
             AppColors.Accent,
-            onOpenMatchings,
+            onClick = onOpenMatchings,
         ),
         DashboardEntry(
             stringResource(R.string.management_search_history),
             stringResource(R.string.management_search_history_subtitle),
             AppColors.Accent,
-            onOpenSearchHistory,
+            onClick = onOpenSearchHistory,
         ),
         DashboardEntry(
             stringResource(R.string.management_popular_books),
             stringResource(R.string.management_popular_books_subtitle),
             AppColors.Accent,
-            onOpenPopularBooks,
+            onClick = onOpenPopularBooks,
         ),
         DashboardEntry(
             stringResource(R.string.management_history),
             stringResource(R.string.management_history_subtitle),
             AppColors.Accent,
-            onOpenHistory,
+            onClick = onOpenHistory,
         ),
         DashboardEntry(
             stringResource(R.string.management_tech_support),
             stringResource(R.string.management_tech_support_subtitle),
             AppColors.Accent,
-            onOpenTechSupport,
+            badgeCount = badgeCounts[ManagementBadgeSection.TECH_SUPPORT] ?: 0,
+            onClick = onOpenTechSupport,
         ),
         DashboardEntry(
             stringResource(R.string.management_windows_tool),
             stringResource(R.string.management_windows_tool_subtitle),
             AppColors.Accent,
-            onOpenWindowsTool,
+            onClick = onOpenWindowsTool,
+        ),
+        DashboardEntry(
+            stringResource(R.string.management_storage_browser),
+            stringResource(R.string.management_storage_browser_subtitle),
+            AppColors.Accent,
+            onClick = onOpenStorageBrowser,
         ),
     )
 
@@ -194,6 +211,7 @@ private fun DashboardGrid(
                                 title = tile.title,
                                 subtitle = tile.subtitle,
                                 accent = tile.accent,
+                                badgeCount = tile.badgeCount,
                                 onClick = tile.onClick,
                                 modifier = Modifier.weight(1f),
                             )
@@ -209,6 +227,7 @@ private fun DashboardGrid(
                         title = tile.title,
                         subtitle = tile.subtitle,
                         accent = tile.accent,
+                        badgeCount = tile.badgeCount,
                         onClick = tile.onClick,
                         modifier = Modifier.fillMaxWidth(),
                     )
