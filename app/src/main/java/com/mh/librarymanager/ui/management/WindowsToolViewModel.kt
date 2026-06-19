@@ -716,7 +716,38 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
             resolver.openAssetFileDescriptor(uri, "r")?.use { it.length } ?: -1L
         } catch (_: Exception) { -1L }
         if (size > maxImportBytes) return null
-        return try { resolver.openInputStream(uri) } catch (_: Exception) { null }
+        val raw = try { resolver.openInputStream(uri) } catch (_: Exception) { null } ?: return null
+        // When the provider can't report a size up front, enforce the cap while
+        // reading so a huge/garbage file can't OOM the kiosk.
+        return BoundedInputStream(raw, maxImportBytes)
+    }
+
+    /** Throws once more than [limit] bytes are read from the wrapped stream. */
+    private class BoundedInputStream(
+        private val delegate: java.io.InputStream,
+        private val limit: Long,
+    ) : java.io.InputStream() {
+        private var read = 0L
+
+        private fun track(n: Int): Int {
+            if (n > 0) {
+                read += n
+                if (read > limit) throw java.io.IOException("הקובץ גדול מדי לייבוא.")
+            }
+            return n
+        }
+
+        override fun read(): Int {
+            val b = delegate.read()
+            if (b >= 0) track(1)
+            return b
+        }
+
+        override fun read(b: ByteArray, off: Int, len: Int): Int = track(delegate.read(b, off, len))
+
+        override fun available(): Int = delegate.available()
+
+        override fun close() = delegate.close()
     }
 
     private fun readSheet(uri: Uri): List<List<String>>? {

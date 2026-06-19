@@ -31,8 +31,6 @@ class MatchingsImportIO(
             "/data/local/tmp/$INCOMING_CANONICAL_NAME",
             "/sdcard/Download/$INCOMING_CANONICAL_NAME",
         )
-        /** Fallback when the PC archived copy is present but tmp was cleared. */
-        private const val DOWNLOAD_DIR = "/sdcard/Download"
         const val RESULT_FILE_NAME = "matchings-import-result.txt"
         const val RESULT_PROGRESS = "RUNNING"
         const val RESULT_PATH = "/sdcard/Download/$RESULT_FILE_NAME"
@@ -43,6 +41,7 @@ class MatchingsImportIO(
 
     private val mutex = Mutex()
     private val pendingFile: File get() = File(context.filesDir, PENDING_FILE_NAME)
+    private val pendingSourceFile: File get() = File(context.filesDir, "matchings-import-pending-source.txt")
 
     data class ImportPreview(
         val addedCount: Int,
@@ -84,30 +83,36 @@ class MatchingsImportIO(
 
     suspend fun stageIncomingFile(): ImportResult = mutex.withLock {
         withContext(Dispatchers.IO) {
+            val incoming = INCOMING_PATHS.map { File(it) }.firstOrNull { it.isFile && it.canRead() }
             if (hasPendingImport()) {
-                when (val existing = readPendingPreviewLocked()) {
-                    is PreviewOutcome.Ready ->
-                        return@withContext ImportResult.AwaitingConfirmation(existing.preview)
-                    is PreviewOutcome.Failed ->
-                        try { pendingFile.delete() } catch (_: Exception) {}
+                if (incoming == null) {
+                    when (val existing = readPendingPreviewLocked()) {
+                        is PreviewOutcome.Ready ->
+                            return@withContext ImportResult.AwaitingConfirmation(existing.preview)
+                        is PreviewOutcome.Failed -> clearPendingLocked()
+                    }
+                } else {
+                    clearPendingLocked()
                 }
             }
-            val incoming = findIncomingFile()
+            val file = incoming
                 ?: return@withContext ImportResult.Invalid(
                     "No $INCOMING_CANONICAL_NAME found. Expected one of: ${INCOMING_PATHS.joinToString()}",
                 )
-            if (incoming.length() > MAX_BYTES) {
+            if (file.length() > MAX_BYTES) {
                 return@withContext ImportResult.TooLarge(MAX_BYTES)
             }
             try {
-                incoming.inputStream().use { input ->
+                file.inputStream().use { input ->
                     pendingFile.outputStream().use { output -> input.copyTo(output) }
                 }
+                pendingSourceFile.writeText(file.name)
             } catch (e: Exception) {
+                clearPendingLocked()
                 return@withContext ImportResult.IoFailure(e.message ?: "Could not stage workbook")
             }
             deleteIncomingFiles()
-            publishArchive(pendingFile, archiveName(incoming.name))
+            publishArchive(pendingFile, archiveName(file.name))
             when (val preview = readPendingPreviewLocked()) {
                 is PreviewOutcome.Ready ->
                     ImportResult.AwaitingConfirmation(preview.preview)
@@ -135,6 +140,7 @@ class MatchingsImportIO(
             }
             try {
                 pendingFile.delete()
+                pendingSourceFile.delete()
             } catch (_: Exception) {
             }
             ImportResult.Ok(
@@ -147,10 +153,7 @@ class MatchingsImportIO(
     }
 
     fun discardPendingImport() {
-        try {
-            if (pendingFile.exists()) pendingFile.delete()
-        } catch (_: Exception) {
-        }
+        clearPendingLocked()
         deleteIncomingFiles()
         writeResultLine("ERR:cancelled")
     }
@@ -186,7 +189,7 @@ class MatchingsImportIO(
             if (parsed.isEmpty()) {
                 PreviewOutcome.Failed(ImportResult.Empty)
             } else {
-                PreviewOutcome.Ready(buildPreview(parsed, pendingFile.name))
+                PreviewOutcome.Ready(buildPreview(parsed, pendingSourceName()))
             }
         } catch (e: Exception) {
             PreviewOutcome.Failed(ImportResult.Invalid(e.message ?: "Could not read workbook"))
@@ -229,16 +232,23 @@ class MatchingsImportIO(
         }
     }
 
-    private fun findIncomingFile(): File? {
-        for (path in INCOMING_PATHS) {
-            val f = File(path)
-            if (f.isFile && f.canRead()) return f
+    private fun pendingSourceName(): String {
+        val stored = runCatching {
+            pendingSourceFile.takeIf { it.isFile }?.readText()?.trim()
+        }.getOrNull()
+        if (!stored.isNullOrBlank()) return stored
+        return pendingFile.name
+    }
+
+    private fun clearPendingLocked() {
+        try {
+            if (pendingFile.exists()) pendingFile.delete()
+        } catch (_: Exception) {
         }
-        val download = File(DOWNLOAD_DIR)
-        if (!download.isDirectory) return null
-        return download.listFiles()
-            ?.filter { it.isFile && it.name.startsWith("matchings-") && it.name.endsWith(".xlsx") }
-            ?.maxByOrNull { it.lastModified() }
+        try {
+            if (pendingSourceFile.exists()) pendingSourceFile.delete()
+        } catch (_: Exception) {
+        }
     }
 
     private fun deleteIncomingFiles() {

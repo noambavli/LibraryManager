@@ -43,6 +43,7 @@ class ExcelImportIO(
 
     private val mutex = Mutex()
     private val pendingFile: File get() = File(context.filesDir, PENDING_FILE_NAME)
+    private val pendingSourceFile: File get() = File(context.filesDir, "books-import-pending-source.txt")
 
     data class ImportPreview(
         val addedCount: Int,
@@ -82,30 +83,37 @@ class ExcelImportIO(
 
     suspend fun stageIncomingFile(): ImportResult = mutex.withLock {
         withContext(Dispatchers.IO) {
+            val incoming = INCOMING_PATHS.map { File(it) }.firstOrNull { it.isFile && it.canRead() }
             if (hasPendingImport()) {
-                when (val existing = readPendingPreviewLocked()) {
-                    is PreviewOutcome.Ready ->
-                        return@withContext ImportResult.AwaitingConfirmation(existing.preview)
-                    is PreviewOutcome.Failed ->
-                        try { pendingFile.delete() } catch (_: Exception) {}
+                if (incoming == null) {
+                    when (val existing = readPendingPreviewLocked()) {
+                        is PreviewOutcome.Ready ->
+                            return@withContext ImportResult.AwaitingConfirmation(existing.preview)
+                        is PreviewOutcome.Failed -> clearPendingLocked()
+                    }
+                } else {
+                    // New PC push while an old confirm is still pending — replace it.
+                    clearPendingLocked()
                 }
             }
-            val incoming = INCOMING_PATHS.map { File(it) }.firstOrNull { it.isFile && it.canRead() }
+            val file = incoming
                 ?: return@withContext ImportResult.Invalid(
                     "No $INCOMING_CANONICAL_NAME found. Expected one of: ${INCOMING_PATHS.joinToString()}",
                 )
-            if (incoming.length() > MAX_BYTES) {
+            if (file.length() > MAX_BYTES) {
                 return@withContext ImportResult.TooLarge(MAX_BYTES)
             }
             try {
-                incoming.inputStream().use { input ->
+                file.inputStream().use { input ->
                     pendingFile.outputStream().use { output -> input.copyTo(output) }
                 }
+                pendingSourceFile.writeText(file.name)
             } catch (e: Exception) {
+                clearPendingLocked()
                 return@withContext ImportResult.IoFailure(e.message ?: "Could not stage workbook")
             }
             deleteIncomingFiles()
-            publishArchive(pendingFile, archiveName(incoming.name))
+            publishArchive(pendingFile, archiveName(file.name))
             when (val preview = readPendingPreviewLocked()) {
                 is PreviewOutcome.Ready ->
                     ImportResult.AwaitingConfirmation(preview.preview)
@@ -132,6 +140,7 @@ class ExcelImportIO(
             }
             try {
                 pendingFile.delete()
+                pendingSourceFile.delete()
             } catch (_: Exception) {
             }
             ImportResult.Ok(
@@ -143,10 +152,7 @@ class ExcelImportIO(
     }
 
     fun discardPendingImport() {
-        try {
-            if (pendingFile.exists()) pendingFile.delete()
-        } catch (_: Exception) {
-        }
+        clearPendingLocked()
         deleteIncomingFiles()
         writeResultLine("ERR:cancelled")
     }
@@ -181,7 +187,7 @@ class ExcelImportIO(
             if (parsed.books.isEmpty()) {
                 PreviewOutcome.Failed(ImportResult.Empty)
             } else {
-                PreviewOutcome.Ready(buildPreview(parsed.books, pendingFile.name))
+                PreviewOutcome.Ready(buildPreview(parsed.books, pendingSourceName()))
             }
         } catch (e: Exception) {
             PreviewOutcome.Failed(ImportResult.Invalid(e.message ?: "Could not read workbook"))
@@ -209,6 +215,25 @@ class ExcelImportIO(
     private fun archiveName(incomingName: String): String {
         val batch = batchFromName(incomingName)
         return if (batch > 0) "$batch.xlsx" else incomingName.ifBlank { INCOMING_CANONICAL_NAME }
+    }
+
+    private fun pendingSourceName(): String {
+        val stored = runCatching {
+            pendingSourceFile.takeIf { it.isFile }?.readText()?.trim()
+        }.getOrNull()
+        if (!stored.isNullOrBlank()) return stored
+        return pendingFile.name
+    }
+
+    private fun clearPendingLocked() {
+        try {
+            if (pendingFile.exists()) pendingFile.delete()
+        } catch (_: Exception) {
+        }
+        try {
+            if (pendingSourceFile.exists()) pendingSourceFile.delete()
+        } catch (_: Exception) {
+        }
     }
 
     private fun publishArchive(source: File, displayName: String) {

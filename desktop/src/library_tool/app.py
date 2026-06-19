@@ -637,6 +637,11 @@ class LibraryToolApp:
         )
         if not path:
             return
+        if self.session.matchings and not messagebox.askyesno(
+            S.DLG_REPLACE_MATCHINGS_TITLE,
+            S.DLG_REPLACE_MATCHINGS_BODY.format(n=len(self.session.matchings)),
+        ):
+            return
 
         def work(progress, abort):
             return self.session.import_matchings_xlsx(path, progress, abort)
@@ -819,6 +824,12 @@ class LibraryToolApp:
                 messagebox.showwarning(S.DLG_RESTORE_BACKUP_TITLE, S.DLG_RESTORE_BACKUP_PICK)
                 return
             entry = entries[sel[0]]
+            if not messagebox.askyesno(
+                S.DLG_RESTORE_CONFIRM_TITLE,
+                S.DLG_RESTORE_CONFIRM_BODY.format(when=entry.when),
+                parent=win,
+            ):
+                return
             win.destroy()
             try:
                 n = self.session.restore_from_backup(entry)

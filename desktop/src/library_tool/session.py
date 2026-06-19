@@ -179,10 +179,10 @@ class Session:
             source_file=self.matchings_source_path or "",
             batch_number=batch,
         )
-        self.last_sent_matchings_batch = batch
         abort.check()
         line = result.result_line or ""
         if line.startswith("OK:"):
+            self.last_sent_matchings_batch = batch
             progress(S.PROGRESS_CONFIRMED_MATCHINGS, 1.0)
         elif line.startswith("ERR:cancelled"):
             progress(S.PROGRESS_CANCELLED_TABLET, 1.0)
@@ -199,12 +199,14 @@ class Session:
         if self.last_import_restore is None:
             raise ValueError(S.NO_IMPORT_TO_RESTORE)
         self.books = backups.restore_backup(self.last_import_restore)
+        self.source_path = self.last_import_restore.source or None
         self.dirty = False
         self.last_report = validation.validate(self.books)
         return len(self.books)
 
     def restore_from_backup(self, entry: backups.BackupEntry) -> int:
         self.books = backups.restore_backup(entry)
+        self.source_path = entry.source or None
         self.dirty = True
         self.last_report = validation.validate(self.books)
         return len(self.books)
@@ -242,10 +244,10 @@ class Session:
             source_file=self.source_path or "",
             batch_number=batch,
         )
-        self.last_sent_batch = batch
         abort.check()
         line = result.result_line or ""
         if line.startswith("OK:"):
+            self.last_sent_batch = batch
             progress(S.PROGRESS_CONFIRMED_BOOKS, 1.0)
         elif line.startswith("ERR:cancelled"):
             progress(S.PROGRESS_CANCELLED_TABLET, 1.0)

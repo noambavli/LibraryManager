@@ -400,7 +400,10 @@
     <string name="matchings_import_confirm_ok">ייבא</string>
 
     <string name="windows_tool_title">כלי Windows</string>
-    <string name="windows_tool_intro">מרכז הניהול מול המחשב. כל פעולה כאן בטוחה — לפני כל שינוי נשמר אוטומטית גיבוי שאפשר לחזור אליו.</string>
+    <string name="windows_tool_intro">ניהול בטאבלט: גיבוי, שחזור, מפות ועוד.\n\nלייבוא וייצוא מול המחשב — פתחו את ExcelTool במחשב (כבל USB). לא צריך את המסך הזה בשביל זה.</string>
+
+    <string name="windows_tool_local_import_section">ייבוא מקובץ על הטאבלט</string>
+    <string name="windows_tool_local_import_note">רק כשקובץ האקסל כבר נמצא על הטאבלט.\nלייבוא מהמחשב — השתמשו ב-ExcelTool במחשב, לא כאן.</string>
 
     <string name="windows_tool_backup_section">גיבוי</string>
     <string name="windows_tool_backup_desc">שומר עותק של כל הנתונים, ליתר ביטחון.\nלחצו ״צור גיבוי עכשיו״ והמתינו עד שמופיעה הודעה שהגיבוי נשמר.</string>
@@ -410,15 +413,15 @@
     <string name="windows_tool_backup_done">הגיבוי נשמר: %1$s (בתיקיית Download)</string>
     <string name="windows_tool_backup_failed">הגיבוי נכשל: %1$s</string>
 
-    <string name="windows_tool_books_section">ייבוא ספרים</string>
-    <string name="windows_tool_books_format">טוען ספרים מקובץ אקסל שהוכן במחשב. ספרים חדשים יתווספו, וקיימים יישארו כמו שהם.\nלחצו ״ייבוא מאקסל״ ובחרו את הקובץ.</string>
-    <string name="windows_tool_matchings_section">ייבוא קיצורי חיפוש</string>
-    <string name="windows_tool_matchings_format">טוען קיצורי חיפוש (מילים נרדפות) מקובץ אקסל.\nלחצו ״ייבוא מאקסל״ ובחרו את הקובץ.</string>
+    <string name="windows_tool_books_section">ספרים</string>
+    <string name="windows_tool_books_format">בוחרים קובץ אקסל שנמצא על הטאבלט. ספרים חדשים יתווספו — קיימים לא יוחלפו.</string>
+    <string name="windows_tool_matchings_section">קיצורי חיפוש</string>
+    <string name="windows_tool_matchings_format">בוחרים קובץ התאמות שנמצא על הטאבלט.</string>
 
     <string name="windows_tool_export">ייצוא למחשב</string>
-    <string name="windows_tool_import">ייבוא מאקסל</string>
+    <string name="windows_tool_import">בחר קובץ על הטאבלט…</string>
     <string name="windows_tool_export_section_title">הורדת קובץ למחשב</string>
-    <string name="windows_tool_export_section_subtitle">שומרים את הקובץ בטאבלט (מומלץ: תיקיית Download) — ואז מעתיקים אותו למחשב דרך כבל USB</string>
+    <string name="windows_tool_export_section_subtitle">להעתקה ידנית של קובץ מהטאבלט למחשב (USB).\nלעדכון קטלוג דרך המחשב — ExcelTool, לא כאן.</string>
     <string name="windows_tool_export_step_tap">לחצו על סוג הקובץ להורדה (ספרים או התאמות)</string>
     <string name="windows_tool_export_step_save">בחלון השמירה שנפתח — בחרו ״Download״ ולחצו ״שמירה״</string>
     <string name="windows_tool_export_step_copy">חברו את הטאבלט למחשב ב-USB ← פתחו את הטאבלט ← העתיקו את הקובץ</string>

@@ -114,6 +114,8 @@ def list_backups() -> List[BackupEntry]:
     for name in os.listdir(d):
         if not name.endswith(BACKUP_EXTENSION):
             continue
+        if name.endswith(".meta.json"):
+            continue
         path = os.path.join(d, name)
         meta_path = path + ".meta.json"
         ts = int(os.path.getmtime(path) * 1000)
@@ -136,7 +138,10 @@ def list_backups() -> List[BackupEntry]:
 
 
 def restore_backup(entry: BackupEntry) -> List[Book]:
-    return _read_backup_file(entry.path)
+    books = _read_backup_file(entry.path)
+    if not books:
+        raise ValueError("הגיבוי ריק — אין ספרים לשחזור.")
+    return books
 
 
 def latest_backup() -> Optional[BackupEntry]:

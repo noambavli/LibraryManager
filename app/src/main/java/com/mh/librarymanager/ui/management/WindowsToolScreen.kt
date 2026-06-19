@@ -225,16 +225,9 @@ fun WindowsToolScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    ImportSection(
-                        title = stringResource(R.string.windows_tool_books_section),
-                        format = stringResource(R.string.windows_tool_books_format),
-                        onImport = { pick(booksPicker, xlsxTypes) },
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    ImportSection(
-                        title = stringResource(R.string.windows_tool_matchings_section),
-                        format = stringResource(R.string.windows_tool_matchings_format),
-                        onImport = { pick(matchingsPicker, xlsxTypes) },
+                    LocalImportSection(
+                        onImportBooks = { pick(booksPicker, xlsxTypes) },
+                        onImportMatchings = { pick(matchingsPicker, xlsxTypes) },
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -676,17 +669,60 @@ private fun ExportStepRow(number: String, text: String) {
 }
 
 @Composable
-private fun ImportSection(
+private fun LocalImportSection(
+    onImportBooks: () -> Unit,
+    onImportMatchings: () -> Unit,
+) {
+    ToolSection(
+        title = stringResource(R.string.windows_tool_local_import_section),
+        subtitle = stringResource(R.string.windows_tool_local_import_note),
+    ) {
+        LocalImportRow(
+            title = stringResource(R.string.windows_tool_books_section),
+            hint = stringResource(R.string.windows_tool_books_format),
+            onImport = onImportBooks,
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        LocalImportRow(
+            title = stringResource(R.string.windows_tool_matchings_section),
+            hint = stringResource(R.string.windows_tool_matchings_format),
+            onImport = onImportMatchings,
+        )
+    }
+}
+
+@Composable
+private fun LocalImportRow(
     title: String,
-    format: String,
+    hint: String,
     onImport: () -> Unit,
 ) {
-    ToolSection(title = title, subtitle = format) {
-        SecondaryActionButton(
-            text = stringResource(R.string.windows_tool_import),
-            onClick = onImport,
-            modifier = Modifier.fillMaxWidth(),
-        )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = AppColors.Panel,
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, AppColors.BorderLight),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = AppColors.TextPrimary,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = hint,
+                style = MaterialTheme.typography.bodySmall,
+                color = AppColors.TextSecondary,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            SecondaryActionButton(
+                text = stringResource(R.string.windows_tool_import),
+                onClick = onImport,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 

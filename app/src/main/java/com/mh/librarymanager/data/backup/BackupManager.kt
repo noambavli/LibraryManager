@@ -8,7 +8,6 @@ import com.mh.librarymanager.LibraryApp
 import com.mh.librarymanager.data.export.DownloadsWriter
 import com.mh.librarymanager.data.homemap.HomeOverviewMapStore
 import com.mh.librarymanager.data.store.CatalogStore
-import com.mh.librarymanager.data.store.atomicWriteText
 import com.mh.librarymanager.data.xlsx.WindowsToolCodec
 import com.mh.librarymanager.data.xlsx.XlsxWriter
 import com.mh.librarymanager.domain.Announcement
@@ -298,6 +297,17 @@ class BackupManager(
 
     suspend fun restoreFromZip(uri: Uri): RestoreResult = mutex.withLock {
         withContext(Dispatchers.IO) {
+            // Safety net: snapshot current data before overwriting it, so a bad
+            // restore (or wrong file) can still be undone from the backups list.
+            if (hasAnyData()) {
+                val snapshot = performBackup(BackupTrigger.BeforeImport)
+                if (snapshot is BackupState.Failed) {
+                    _state.value = BackupState.Idle
+                    return@withContext RestoreResult.Failed(
+                        "השחזור בוטל — לא ניתן היה לשמור גיבוי בטיחות לפני השחזור: ${snapshot.message}",
+                    )
+                }
+            }
             _state.value = BackupState.Running(BackupTrigger.Manual, BackupStep.RESTORING)
             val result = try {
                 doRestore(uri)
@@ -351,28 +361,85 @@ class BackupManager(
             return RestoreResult.Failed("הקובץ אינו גיבוי תקין (לא נמצאו נתונים לשחזור).")
         }
 
-        // Replace every known store file. Files absent from the archive are
-        // cleared so the restored state matches the backup exactly rather than
-        // leaving stale data behind.
-        for (name in STORE_FILES) {
-            val target = File(context.filesDir, name)
-            val bytes = staged[name]
-            if (bytes != null) {
-                atomicWriteText(target, String(bytes, Charsets.UTF_8))
-            } else if (target.exists()) {
-                try { target.delete() } catch (_: Exception) {}
+        // Apply atomically: write everything to side files first, then swap
+        // them in with rollback. A crash or failure can no longer leave a
+        // half-restored mix of old and new store files.
+        return applyRestoreAtomically(staged, manifest)
+    }
+
+    /**
+     * Two-phase apply. Phase 1: stage every change to `<file>.restore-new` and
+     * move current files aside to `<file>.restore-bak`. Phase 2: swap new files
+     * into place. Any failure rolls every file back to its backed-up original.
+     */
+    private suspend fun applyRestoreAtomically(
+        staged: Map<String, ByteArray>,
+        manifest: JSONObject?,
+    ): RestoreResult {
+        val allNames = STORE_FILES + HOME_MAP_FILES
+        val backups = ArrayList<Pair<File, File>>() // original -> .restore-bak
+        val newFiles = ArrayList<Pair<File, File>>() // .restore-new -> original
+        val toDelete = ArrayList<File>()
+
+        try {
+            // Phase 1 — prepare side files (no destructive change yet).
+            for (name in allNames) {
+                val target = File(context.filesDir, name)
+                val bytes = staged[name]
+                if (bytes != null) {
+                    target.parentFile?.mkdirs()
+                    val tmp = File(target.parentFile, target.name + ".restore-new")
+                    if (tmp.exists()) tmp.delete()
+                    tmp.writeBytes(bytes)
+                    newFiles += tmp to target
+                } else if (target.exists()) {
+                    toDelete += target
+                }
             }
+
+            // Phase 2 — move current files aside, then swap new ones in.
+            for ((_, target) in newFiles) {
+                if (target.exists()) {
+                    val bak = File(target.parentFile, target.name + ".restore-bak")
+                    if (bak.exists()) bak.delete()
+                    if (target.renameTo(bak)) backups += target to bak
+                    else {
+                        target.copyTo(bak, overwrite = true)
+                        backups += target to bak
+                        target.delete()
+                    }
+                }
+            }
+            for (target in toDelete) {
+                val bak = File(target.parentFile, target.name + ".restore-bak")
+                if (bak.exists()) bak.delete()
+                if (target.renameTo(bak)) backups += target to bak
+            }
+            for ((tmp, target) in newFiles) {
+                if (!tmp.renameTo(target)) {
+                    tmp.copyTo(target, overwrite = true)
+                    tmp.delete()
+                }
+            }
+        } catch (e: Exception) {
+            // Roll back: restore every original we moved aside, drop side files.
+            for ((target, bak) in backups) {
+                try {
+                    if (target.exists()) target.delete()
+                    bak.renameTo(target)
+                } catch (_: Exception) {}
+            }
+            for ((tmp, _) in newFiles) {
+                try { if (tmp.exists()) tmp.delete() } catch (_: Exception) {}
+            }
+            reloadAllStores()
+            Log.e(TAG, "Restore apply failed; rolled back", e)
+            return RestoreResult.Failed("השחזור נכשל — הנתונים הוחזרו למצב הקודם.")
         }
 
-        for (name in HOME_MAP_FILES) {
-            val target = File(context.filesDir, name)
-            val bytes = staged[name]
-            if (bytes != null) {
-                target.parentFile?.mkdirs()
-                target.writeBytes(bytes)
-            } else if (target.exists()) {
-                try { target.delete() } catch (_: Exception) {}
-            }
+        // Success — discard the backed-up originals.
+        for ((_, bak) in backups) {
+            try { if (bak.exists()) bak.delete() } catch (_: Exception) {}
         }
 
         reloadAllStores()
