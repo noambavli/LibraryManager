@@ -60,9 +60,74 @@ object HebrewText {
         return out.toString()
     }
 
+    /** True for geresh / gershayim characters that distinguish abbreviations. */
+    fun isAbbreviationMark(c: Char): Boolean {
+        val code = c.code
+        if (code == 0x05F3 || code == 0x05F4) return true
+        return c == '\'' || c == '"' || c == '’' || c == '‘' || c == '“' || c == '”'
+    }
+
+    /** True when the raw text carries a Hebrew geresh / gershayim (or ASCII quote). */
+    fun hasAbbreviationMark(input: String?): Boolean {
+        if (input.isNullOrEmpty()) return false
+        for (raw in input) {
+            if (isAbbreviationMark(raw)) return true
+        }
+        return false
+    }
+
+    /**
+     * Like [normalize], but keeps geresh / gershayim in the output so acronyms
+     * such as שמו״ת stay distinct from unrelated words like שמות.
+     */
+    fun normalizeShortcut(input: String?): String {
+        if (input.isNullOrEmpty()) return ""
+        val out = StringBuilder(input.length)
+        var lastWasSpace = true
+        for (raw in input) {
+            val c = raw.lowercaseChar()
+            val code = c.code
+
+            if (code in 0x0591..0x05C7 && code != 0x05BE) continue
+            if (code in 0x200E..0x200F) continue
+            if (code == 0x05F3 || code == 0x05F4) {
+                out.append(raw)
+                lastWasSpace = false
+                continue
+            }
+            if (c == '\'' || c == '"' || c == '’' || c == '‘' || c == '“' || c == '”') {
+                out.append(raw)
+                lastWasSpace = false
+                continue
+            }
+
+            val folded = finalLetters[c] ?: c
+
+            val isHebrew = code in 0x05D0..0x05EA
+            val isDigit = folded.isDigit()
+            val isAsciiLetter = folded in 'a'..'z'
+
+            if (isHebrew || isDigit || isAsciiLetter) {
+                out.append(folded)
+                lastWasSpace = false
+            } else if (folded.isWhitespace() || folded == '-' || code == 0x05BE || folded == '.' || folded == ',' ||
+                folded == '(' || folded == ')' || folded == '[' || folded == ']' ||
+                folded == '/' || folded == '\\' || folded == ':' || folded == ';' ||
+                folded == '!' || folded == '?'
+            ) {
+                if (!lastWasSpace) {
+                    out.append(' ')
+                    lastWasSpace = true
+                }
+            }
+        }
+        while (out.isNotEmpty() && out.last() == ' ') out.deleteCharAt(out.length - 1)
+        return out.toString()
+    }
+
     /** Normalised whitespace-separated tokens. Empty result for empty input. */
     fun tokens(input: String?): List<String> {
-        val n = normalize(input)
+        val n = if (hasAbbreviationMark(input)) normalizeShortcut(input) else normalize(input)
         if (n.isEmpty()) return emptyList()
         return n.split(' ').filter { it.isNotEmpty() }
     }

@@ -116,7 +116,7 @@ class SearchEngine(
             if (candidates.isEmpty()) return true
             if (field.isEmpty()) return false
             for (c in candidates) {
-                if (c.tokens.all { field.contains(it) }) return true
+                if (c.tokens.all { fieldContainsToken(field, it) }) return true
             }
             return false
         }
@@ -135,7 +135,7 @@ class SearchEngine(
             if (field.isEmpty()) return null
             var best: Int? = null
             for (c in candidates) {
-                if (!c.tokens.all { field.contains(it) }) continue
+                if (!c.tokens.all { fieldContainsToken(field, it) }) continue
                 var s = 0
                 for (t in c.tokens) s += scoreToken(t, field, weight)
                 s -= c.rank * RANK_PENALTY
@@ -176,7 +176,7 @@ class SearchEngine(
             for (t in tokens) {
                 var found = false
                 for (field in searchable) {
-                    if (field.contains(t)) { found = true; break }
+                    if (fieldContainsToken(field, t)) { found = true; break }
                 }
                 if (!found) return false
             }
@@ -198,17 +198,49 @@ class SearchEngine(
 
         private fun scoreToken(token: String, field: String, weight: Int): Int {
             if (token.isEmpty() || field.isEmpty()) return 0
-            val idx = field.indexOf(token)
-            if (idx < 0) return 0
-            val isStartOfField = idx == 0
-            val isWordStart = isStartOfField || isHebrewWordBoundary(field[idx - 1])
-            val base = when {
-                field == token -> weight * 4
-                isStartOfField -> weight * 3
-                isWordStart -> weight * 2
-                else -> weight
+            var start = 0
+            while (start <= field.length - token.length) {
+                val idx = field.indexOf(token, start)
+                if (idx < 0) return 0
+                if (tokenMatchAllowed(field, token, idx)) {
+                    val isStartOfField = idx == 0
+                    val isWordStart = isStartOfField || isHebrewWordBoundary(field[idx - 1])
+                    val base = when {
+                        field == token -> weight * 4
+                        isStartOfField -> weight * 3
+                        isWordStart -> weight * 2
+                        else -> weight
+                    }
+                    return base + (token.length / 2)
+                }
+                start = idx + 1
             }
-            return base + (token.length / 2)
+            return 0
+        }
+
+        /**
+         * Substring match that respects abbreviation marks: a query token without
+         * ׳/״ must not match the bare prefix of a marked acronym (e.g. "מס" must
+         * not match "מס׳").
+         */
+        private fun fieldContainsToken(field: String, token: String): Boolean {
+            if (token.isEmpty() || field.isEmpty()) return false
+            var start = 0
+            while (start <= field.length - token.length) {
+                val idx = field.indexOf(token, start)
+                if (idx < 0) return false
+                if (tokenMatchAllowed(field, token, idx)) return true
+                start = idx + 1
+            }
+            return false
+        }
+
+        private fun tokenMatchAllowed(field: String, token: String, idx: Int): Boolean {
+            val end = idx + token.length
+            if (end < field.length && HebrewText.isAbbreviationMark(field[end])) {
+                return HebrewText.hasAbbreviationMark(token)
+            }
+            return true
         }
 
         /**
@@ -226,18 +258,16 @@ class SearchEngine(
         companion object {
             fun from(book: Book, synonyms: SearchSynonyms = SearchSynonyms.EMPTY): IndexedBook = IndexedBook(
                 book = book,
-                name = synonyms.augmentField(HebrewText.normalize(book.name)),
-                topics = synonyms.augmentField(HebrewText.normalize(book.topics)),
-                writer = synonyms.augmentField(HebrewText.normalize(book.writer)),
-                letter = synonyms.augmentField(HebrewText.normalize(book.letter)),
-                color = synonyms.augmentField(HebrewText.normalize(book.color)),
-                category = synonyms.augmentField(HebrewText.normalize(book.category)),
-                subcategory = synonyms.augmentField(
-                    HebrewText.normalize(book.subcategories.joinToString(" ")),
-                ),
+                name = synonyms.augmentField(book.name),
+                topics = synonyms.augmentField(book.topics),
+                writer = synonyms.augmentField(book.writer),
+                letter = synonyms.augmentField(book.letter),
+                color = synonyms.augmentField(book.color),
+                category = synonyms.augmentField(book.category),
+                subcategory = synonyms.augmentField(book.subcategories.joinToString(" ")),
                 displayNumber = HebrewText.normalizeNumberKey(book.displayNumber),
                 bookNumber = HebrewText.normalizeNumberKey(book.bookNumber),
-                notes = synonyms.augmentField(HebrewText.normalize(book.notes)),
+                notes = synonyms.augmentField(book.notes),
             )
         }
     }

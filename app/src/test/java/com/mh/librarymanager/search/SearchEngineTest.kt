@@ -50,7 +50,7 @@ class SearchEngineTest {
             SearchMatching(shortcut = "פי׳", words = listOf("פירוש", "פירושי", "פירושים")),
         ))
         // Searching the shortcut finds a book whose name is one of the words.
-        assertEquals(1, engine.search(SearchQuery(general = "פי")).size)
+        assertEquals(1, engine.search(SearchQuery(general = "פי׳")).size)
     }
 
     @Test
@@ -69,7 +69,7 @@ class SearchEngineTest {
         val engine = SearchEngine(books, synonymsOf(
             SearchMatching(shortcut = "רמב״ם", words = listOf("רבי משה בן מימון")),
         ))
-        assertEquals(1, engine.search(SearchQuery(general = "רמבם")).size)
+        assertEquals(1, engine.search(SearchQuery(general = "רמב״ם")).size)
     }
 
     @Test
@@ -112,10 +112,57 @@ class SearchEngineTest {
     }
 
     @Test
-    fun synonym_partialShortcutPrefix_expandsToWords() {
+    fun synonym_partialShortcutPrefix_doesNotExpandWhenShortcutHasMark() {
         val books = listOf(sample(name = "ספר", writer = "רבי משה בן מימון", id = "b1"))
         val engine = SearchEngine(books, synonymsOf(
             SearchMatching(shortcut = "רמב״ם", words = listOf("רבי משה בן מימון")),
+        ))
+        assertTrue(engine.search(SearchQuery(general = "רמב")).isEmpty())
+    }
+
+    @Test
+    fun synonym_gershayimShortcut_doesNotMatchUnrelatedWord() {
+        val target = sample(name = "שניים מקרא ואחד תרגום", id = "shmot-targum")
+        val decoy = sample(name = "ספר שמות", id = "sefer-shmot")
+        val engine = SearchEngine(listOf(target, decoy), synonymsOf(
+            SearchMatching(
+                shortcut = "שמו״ת",
+                words = listOf("שניים מקרא ואחד תרגום"),
+            ),
+        ))
+        val results = engine.search(SearchQuery(general = "שמו״ת"))
+        assertEquals(1, results.size)
+        assertEquals("shmot-targum", results.first().id)
+    }
+
+    @Test
+    fun synonym_gereshShortcut_wordFindsMarkedLabel() {
+        val abbreviated = sample(name = "פרק א", writer = "מס׳ שבת", id = "abbrev")
+        val engine = SearchEngine(listOf(abbreviated), synonymsOf(
+            SearchMatching(shortcut = "מס׳", words = listOf("מסכת")),
+        ))
+        assertEquals(1, engine.search(SearchQuery(general = "מסכת")).size)
+    }
+
+    @Test
+    fun synonym_gereshShortcut_onlyMatchesWithMark() {
+        val target = sample(name = "מסכת שבת", id = "masechet")
+        val abbreviated = sample(name = "פרק א", writer = "מס׳ שבת", id = "abbrev")
+        val engine = SearchEngine(listOf(target, abbreviated), synonymsOf(
+            SearchMatching(shortcut = "מס׳", words = listOf("מסכת")),
+        ))
+        assertEquals("masechet", engine.search(SearchQuery(general = "מס׳")).first().id)
+        assertTrue(engine.search(SearchQuery(general = "מס")).none { it.id == "abbrev" })
+        val masechetHits = engine.search(SearchQuery(general = "מסכת"))
+        assertEquals(2, masechetHits.size)
+        assertTrue(masechetHits.any { it.id == "abbrev" })
+    }
+
+    @Test
+    fun synonym_partialShortcutPrefix_expandsWhenShortcutHasNoMark() {
+        val books = listOf(sample(name = "ספר", writer = "רבי משה בן מימון", id = "b1"))
+        val engine = SearchEngine(books, synonymsOf(
+            SearchMatching(shortcut = "רמבם", words = listOf("רבי משה בן מימון")),
         ))
         assertEquals(1, engine.search(SearchQuery(general = "רמב")).size)
     }

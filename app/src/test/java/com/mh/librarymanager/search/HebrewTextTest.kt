@@ -10,6 +10,14 @@ import org.junit.Test
 class HebrewTextTest {
 
     @Test
+    fun normalizeShortcut_preservesGershayim() {
+        assertEquals("שמו״ת", HebrewText.normalizeShortcut("שמו״ת"))
+        assertEquals("מס׳", HebrewText.normalizeShortcut("מס׳"))
+        assertEquals("שמות", HebrewText.normalize("שמו״ת"))
+        assertEquals("מס", HebrewText.normalize("מס׳"))
+    }
+
+    @Test
     fun normalize_matchesGoldenVectors() {
         NORMALIZE_VECTORS.forEach { (input, expected) ->
             assertEquals("normalize($input)", expected, HebrewText.normalize(input))

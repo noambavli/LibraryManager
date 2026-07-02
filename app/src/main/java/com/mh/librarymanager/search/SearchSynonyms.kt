@@ -25,6 +25,7 @@ class SearchSynonyms private constructor(
     private class CompiledRule(
         val shortcut: String,
         val shortcutTokens: List<String>,
+        val shortcutHasMark: Boolean,
         val words: List<String>,
         val wordTokenLists: List<List<String>>,
         val direction: MatchingDirection,
@@ -34,22 +35,41 @@ class SearchSynonyms private constructor(
         val source: List<String>,
         val target: List<String>,
         val rank: Int,
+        /** When true, only an exact token match fires (no prefix expansion). */
+        val exactOnly: Boolean = false,
     )
 
     val isEmpty: Boolean get() = rules.isEmpty()
 
     /**
-     * Appends synonym aliases to a normalised catalog field so cross-form
-     * searches hit without relying on query expansion alone.
+     * Appends synonym aliases to a catalog field so cross-form searches hit
+     * without relying on query expansion alone. [rawField] is the original
+     * text; abbreviation marks (׳ ״) are preserved when matching shortcuts.
      */
-    fun augmentField(normalizedField: String): String {
-        if (normalizedField.isEmpty() || rules.isEmpty()) return normalizedField
+    fun augmentField(rawField: String): String {
+        val normalizedField = if (HebrewText.hasAbbreviationMark(rawField)) {
+            HebrewText.normalizeShortcut(rawField)
+        } else {
+            HebrewText.normalize(rawField)
+        }
+        if (rules.isEmpty()) return normalizedField
+        val shortcutField = normalizedField
         val extras = LinkedHashSet<String>()
         for (rule in rules) {
             // Field contains the shortcut → index all word forms so word searches
             // find this book (always, including one-directional).
-            if (rule.shortcut.isNotEmpty() && normalizedField.contains(rule.shortcut)) {
-                extras.addAll(rule.words)
+            val fieldHasShortcut = if (rule.shortcutHasMark) {
+                rule.shortcut.isNotEmpty() && shortcutField.contains(rule.shortcut)
+            } else {
+                rule.shortcut.isNotEmpty() && normalizedField.contains(rule.shortcut)
+            }
+            if (fieldHasShortcut) {
+                // Marked shortcuts (מס׳, שמו״ת, …) are resolved at query time only.
+                // Indexing the word forms here would let bare prefixes like "מס"
+                // match "מסכת" on the augmented field.
+                if (!rule.shortcutHasMark) {
+                    extras.addAll(rule.words)
+                }
             }
             // Field contains a word form → index the shortcut too, but only when
             // bidirectional (one-directional must not let shortcut searches hit
@@ -57,7 +77,11 @@ class SearchSynonyms private constructor(
             if (rule.direction == MatchingDirection.Bidirectional) {
                 for (word in rule.words) {
                     if (word.isNotEmpty() && normalizedField.contains(word)) {
-                        extras += rule.shortcut
+                        // Do not index a gershayim-marked shortcut from a word hit —
+                        // that would let bare prefixes like "רמב" match "רמב״ם".
+                        if (!rule.shortcutHasMark) {
+                            extras += rule.shortcut
+                        }
                     }
                 }
             }
@@ -81,7 +105,7 @@ class SearchSynonyms private constructor(
         val seen = HashSet<String>()
         seen += queryTokens.joinToString(" ")
         for (e in expansions) {
-            val match = findMatch(queryTokens, e.source) ?: continue
+            val match = findMatch(queryTokens, e.source, e.exactOnly) ?: continue
             val replaced = ArrayList<String>(queryTokens.size - match.consumed + e.target.size)
             replaced.addAll(queryTokens.subList(0, match.start))
             replaced.addAll(e.target)
@@ -103,8 +127,17 @@ class SearchSynonyms private constructor(
             val compiled = ArrayList<CompiledRule>()
             val list = ArrayList<Expansion>()
             for (m in matchings) {
-                val shortcutNorm = HebrewText.normalize(m.shortcut)
-                val shortcutTokens = HebrewText.tokens(m.shortcut)
+                val shortcutHasMark = HebrewText.hasAbbreviationMark(m.shortcut)
+                val shortcutNorm = if (shortcutHasMark) {
+                    HebrewText.normalizeShortcut(m.shortcut)
+                } else {
+                    HebrewText.normalize(m.shortcut)
+                }
+                val shortcutTokens = if (shortcutHasMark) {
+                    listOf(shortcutNorm)
+                } else {
+                    HebrewText.tokens(m.shortcut)
+                }
                 if (shortcutNorm.isEmpty() || shortcutTokens.isEmpty()) continue
 
                 val wordNorms = m.words
@@ -118,26 +151,42 @@ class SearchSynonyms private constructor(
                 compiled += CompiledRule(
                     shortcut = shortcutNorm,
                     shortcutTokens = shortcutTokens,
+                    shortcutHasMark = shortcutHasMark,
                     words = wordNorms,
                     wordTokenLists = wordTokenLists,
                     direction = m.direction,
                 )
 
                 for (w in wordTokenLists) {
-                    list += Expansion(source = w, target = shortcutTokens, rank = 0)
+                    list += Expansion(
+                        source = w,
+                        target = shortcutTokens,
+                        rank = 0,
+                        exactOnly = shortcutHasMark,
+                    )
                 }
                 if (m.direction == MatchingDirection.Bidirectional) {
                     wordTokenLists.forEachIndexed { index, w ->
-                        list += Expansion(source = shortcutTokens, target = w, rank = index)
+                        list += Expansion(
+                            source = shortcutTokens,
+                            target = w,
+                            rank = index,
+                            exactOnly = shortcutHasMark,
+                        )
                     }
                 }
             }
             return if (compiled.isEmpty()) EMPTY else SearchSynonyms(compiled, list)
         }
 
-        private fun findMatch(haystack: List<String>, needle: List<String>): Match? {
+        private fun findMatch(
+            haystack: List<String>,
+            needle: List<String>,
+            exactOnly: Boolean,
+        ): Match? {
             val exact = indexOfSubsequence(haystack, needle)
             if (exact >= 0) return Match(exact, needle.size)
+            if (exactOnly) return null
             if (needle.size != 1) return null
             val canonical = needle[0]
             if (canonical.length < 2) return null
