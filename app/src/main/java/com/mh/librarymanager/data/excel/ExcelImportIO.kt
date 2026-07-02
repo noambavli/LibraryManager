@@ -6,6 +6,7 @@ import com.mh.librarymanager.data.BookRepository
 import com.mh.librarymanager.data.civ.CivDownloadPublisher
 import com.mh.librarymanager.data.xlsx.CatalogImporter
 import com.mh.librarymanager.domain.Book
+import com.mh.librarymanager.domain.BookPlace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -16,18 +17,28 @@ import java.io.File
  * Stages a PC-pushed books `.xlsx` (via adb) for on-tablet confirmation, then
  * merges through [CatalogImporter] after the user approves.
  *
- * Uses the same result-file protocol as the legacy `.civ` tool so the Windows
- * desktop exe can wait for OK / PENDING / ERR lines.
+ * One instance drives one **library channel**: the Otzar catalog (default) or
+ * the Beis-Midrash catalog ([beis]). The channel decides which library the rows
+ * are stamped with and which incoming/result file names are used, so the Windows
+ * ExcelTool can push each library on its own path without collision. The
+ * result-file protocol (OK / PENDING / ERR lines) is identical for both.
  */
 class ExcelImportIO(
     private val context: Context,
     private val repository: BookRepository,
+    private val place: BookPlace = BookPlace.OTZAR,
+    private val incomingCanonicalName: String = INCOMING_CANONICAL_NAME,
+    private val pendingFileName: String = PENDING_FILE_NAME,
+    private val pendingSourceFileName: String = PENDING_SOURCE_NAME,
+    private val resultFileName: String = RESULT_FILE_NAME,
+    private val archivePrefix: String = "",
 ) {
 
     companion object {
         private const val TAG = "ExcelImportIO"
         const val MAX_BYTES: Long = 64L * 1024L * 1024L
         const val PENDING_FILE_NAME = "books-import-pending.xlsx"
+        const val PENDING_SOURCE_NAME = "books-import-pending-source.txt"
         const val INCOMING_CANONICAL_NAME = "books-import.xlsx"
         val INCOMING_PATHS = listOf(
             "/data/local/tmp/$INCOMING_CANONICAL_NAME",
@@ -39,11 +50,37 @@ class ExcelImportIO(
         const val RESULT_PATH_TMP = "/data/local/tmp/$RESULT_FILE_NAME"
         const val RESULT_PATH_APP_FILES =
             "/sdcard/Android/data/com.mh.librarymanager/files/$RESULT_FILE_NAME"
+
+        // ---- Beis-Midrash channel (parallel adb path) --------------------
+        const val BEIS_INCOMING_CANONICAL_NAME = "beis-import.xlsx"
+        const val BEIS_PENDING_FILE_NAME = "beis-import-pending.xlsx"
+        const val BEIS_PENDING_SOURCE_NAME = "beis-import-pending-source.txt"
+        const val BEIS_RESULT_FILE_NAME = "beis-import-result.txt"
+
+        /** Beis-Midrash channel: stamps books as בית מדרש and uses beis-* files. */
+        fun beis(context: Context, repository: BookRepository): ExcelImportIO =
+            ExcelImportIO(
+                context = context,
+                repository = repository,
+                place = BookPlace.BEIS_MIDRASH,
+                incomingCanonicalName = BEIS_INCOMING_CANONICAL_NAME,
+                pendingFileName = BEIS_PENDING_FILE_NAME,
+                pendingSourceFileName = BEIS_PENDING_SOURCE_NAME,
+                resultFileName = BEIS_RESULT_FILE_NAME,
+                archivePrefix = "beis-",
+            )
     }
 
+    private val incomingPaths = listOf(
+        "/data/local/tmp/$incomingCanonicalName",
+        "/sdcard/Download/$incomingCanonicalName",
+    )
+    private val resultPathDownload = "/sdcard/Download/$resultFileName"
+    private val resultPathTmp = "/data/local/tmp/$resultFileName"
+
     private val mutex = Mutex()
-    private val pendingFile: File get() = File(context.filesDir, PENDING_FILE_NAME)
-    private val pendingSourceFile: File get() = File(context.filesDir, "books-import-pending-source.txt")
+    private val pendingFile: File get() = File(context.filesDir, pendingFileName)
+    private val pendingSourceFile: File get() = File(context.filesDir, pendingSourceFileName)
 
     data class ImportPreview(
         val addedCount: Int,
@@ -83,7 +120,7 @@ class ExcelImportIO(
 
     suspend fun stageIncomingFile(): ImportResult = mutex.withLock {
         withContext(Dispatchers.IO) {
-            val incoming = INCOMING_PATHS.map { File(it) }.firstOrNull { it.isFile && it.canRead() }
+            val incoming = incomingPaths.map { File(it) }.firstOrNull { it.isFile && it.canRead() }
             if (hasPendingImport()) {
                 if (incoming == null) {
                     when (val existing = readPendingPreviewLocked()) {
@@ -98,7 +135,7 @@ class ExcelImportIO(
             }
             val file = incoming
                 ?: return@withContext ImportResult.Invalid(
-                    "No $INCOMING_CANONICAL_NAME found. Expected one of: ${INCOMING_PATHS.joinToString()}",
+                    "No $incomingCanonicalName found. Expected one of: ${incomingPaths.joinToString()}",
                 )
             if (file.length() > MAX_BYTES) {
                 return@withContext ImportResult.TooLarge(MAX_BYTES)
@@ -133,7 +170,7 @@ class ExcelImportIO(
             }
             val merge = try {
                 pendingFile.inputStream().use {
-                    CatalogImporter(context, repository).mergeFromStream(it)
+                    CatalogImporter(context, repository).mergeFromStream(it, place)
                 }
             } catch (e: Exception) {
                 return@withContext ImportResult.IoFailure(e.message ?: "Import failed")
@@ -182,7 +219,7 @@ class ExcelImportIO(
         }
         return try {
             val parsed = pendingFile.inputStream().use {
-                CatalogImporter(context, repository).parseBooksFromStream(it)
+                CatalogImporter(context, repository).parseBooksFromStream(it, place)
             }
             if (parsed.books.isEmpty()) {
                 PreviewOutcome.Failed(ImportResult.Empty)
@@ -214,7 +251,7 @@ class ExcelImportIO(
 
     private fun archiveName(incomingName: String): String {
         val batch = batchFromName(incomingName)
-        return if (batch > 0) "$batch.xlsx" else incomingName.ifBlank { INCOMING_CANONICAL_NAME }
+        return if (batch > 0) "$archivePrefix$batch.xlsx" else incomingName.ifBlank { incomingCanonicalName }
     }
 
     private fun pendingSourceName(): String {
@@ -246,7 +283,7 @@ class ExcelImportIO(
     }
 
     private fun deleteIncomingFiles() {
-        for (path in INCOMING_PATHS) {
+        for (path in incomingPaths) {
             try {
                 val f = File(path)
                 if (f.exists()) f.delete()
@@ -258,7 +295,7 @@ class ExcelImportIO(
     private fun writeResultLine(line: String) {
         var wrote = false
         runCatching {
-            CivDownloadPublisher.publish(context, line, RESULT_FILE_NAME)
+            CivDownloadPublisher.publish(context, line, resultFileName)
             wrote = true
             Log.i(TAG, "Import result published to Downloads: $line")
         }.onFailure {
@@ -266,13 +303,13 @@ class ExcelImportIO(
         }
         context.getExternalFilesDir(null)?.let { dir ->
             runCatching {
-                File(dir, RESULT_FILE_NAME).writeText(line, Charsets.UTF_8)
+                File(dir, resultFileName).writeText(line, Charsets.UTF_8)
                 wrote = true
             }.onFailure {
                 Log.w(TAG, "Could not write import result to app files", it)
             }
         }
-        for (path in listOf(RESULT_PATH, RESULT_PATH_TMP)) {
+        for (path in listOf(resultPathDownload, resultPathTmp)) {
             runCatching {
                 File(path).writeText(line, Charsets.UTF_8)
                 wrote = true

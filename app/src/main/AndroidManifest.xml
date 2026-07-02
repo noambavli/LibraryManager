@@ -46,6 +46,10 @@
                 <action android:name="com.mh.librarymanager.IMPORT_MATCHINGS_EXCEL" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="com.mh.librarymanager.IMPORT_BEIS_EXCEL" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
 
         <receiver
@@ -93,6 +97,15 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="com.mh.librarymanager.IMPORT_MATCHINGS_EXCEL" />
+            </intent-filter>
+        </receiver>
+
+        <!-- PC ExcelTool: adb push beis-import.xlsx + broadcast to stage import. -->
+        <receiver
+            android:name=".BeisImportReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.mh.librarymanager.IMPORT_BEIS_EXCEL" />
             </intent-filter>
         </receiver>
 

@@ -3,6 +3,7 @@ package com.mh.librarymanager.data.xlsx
 import android.content.Context
 import com.mh.librarymanager.data.BookRepository
 import com.mh.librarymanager.domain.Book
+import com.mh.librarymanager.domain.BookPlace
 import com.mh.librarymanager.domain.BookPlaceText
 import com.mh.librarymanager.domain.BookState
 import com.mh.librarymanager.search.HebrewText
@@ -15,22 +16,27 @@ import java.util.Locale
  * The mapping is **driven by the header row**, not column position. Two modes:
  *  * [importFromStream] — replaces the whole catalog (bundled seed xlsx only).
  *  * [mergeFromStream] — adds new books and skips rows whose content already
- *    exists on the tablet (same dedup as `.civ` sync).
+ *    exists on the tablet.
+ *
+ * Every import targets one library ([BookPlace]). The sheet itself is
+ * **placeless** — the library is chosen by which upload the staff use — so the
+ * importer stamps the matching `place` on every row and reads the address
+ * columns for that library (Otzar: אות/מספר; Beis-Midrash: עמודה/מדף).
  */
 class CatalogImporter(
     private val context: Context,
     private val repository: BookRepository,
 ) {
 
-    suspend fun importFromAsset(assetName: String): ImportResult {
+    suspend fun importFromAsset(assetName: String, place: BookPlace = BookPlace.OTZAR): ImportResult {
         context.assets.open(assetName).use { stream ->
-            return importFromStream(stream)
+            return importFromStream(stream, place)
         }
     }
 
     /** Replace the entire catalog — used only for the bundled seed import. */
-    suspend fun importFromStream(stream: InputStream): ImportResult {
-        val parsed = parseRows(XlsxReader.readFirstSheet(stream))
+    suspend fun importFromStream(stream: InputStream, place: BookPlace = BookPlace.OTZAR): ImportResult {
+        val parsed = parseRows(XlsxReader.readFirstSheet(stream), place)
         if (parsed.books.isEmpty()) {
             repository.replaceAll(emptyList())
             return ImportResult(added = 0, duplicates = 0, blankRows = parsed.blankRows, totalAfter = 0)
@@ -45,8 +51,8 @@ class CatalogImporter(
     }
 
     /** Merge new rows into the existing catalog; duplicates are skipped. */
-    suspend fun mergeFromStream(stream: InputStream): ImportResult {
-        val parsed = parseRows(XlsxReader.readFirstSheet(stream))
+    suspend fun mergeFromStream(stream: InputStream, place: BookPlace = BookPlace.OTZAR): ImportResult {
+        val parsed = parseRows(XlsxReader.readFirstSheet(stream), place)
         if (parsed.books.isEmpty()) {
             val count = repository.count()
             return ImportResult(added = 0, duplicates = 0, blankRows = parsed.blankRows, totalAfter = count)
@@ -70,16 +76,20 @@ class CatalogImporter(
     )
 
     /** Parse rows from a workbook stream without writing to the catalog. */
-    fun parseBooksFromStream(stream: InputStream): ParsedRows =
-        parseRows(XlsxReader.readFirstSheet(stream))
+    fun parseBooksFromStream(stream: InputStream, place: BookPlace = BookPlace.OTZAR): ParsedRows =
+        parseRows(XlsxReader.readFirstSheet(stream), place)
 
     data class ParsedRows(val books: List<Book>, val blankRows: Int)
 
-    private fun parseRows(rows: List<List<String>>): ParsedRows {
+    private fun parseRows(rows: List<List<String>>, place: BookPlace): ParsedRows {
         if (rows.isEmpty()) return ParsedRows(emptyList(), 0)
         val header = rows.first()
         val map = HeaderMap.from(header)
         val now = System.currentTimeMillis()
+        val placeLabel = when (place) {
+            BookPlace.OTZAR -> BookPlaceText.OTZAR_LABEL
+            BookPlace.BEIS_MIDRASH -> BookPlaceText.BEIS_MIDRASH_LABEL
+        }
         val books = ArrayList<Book>(rows.size - 1)
         var blankRows = 0
 
@@ -88,15 +98,20 @@ class CatalogImporter(
             val name = map[row, HeaderKey.NAME]
             val topics = map[row, HeaderKey.TOPICS]
             val writer = map[row, HeaderKey.WRITER]
-            val number = map[row, HeaderKey.NUMBER]
-            val letter = map[row, HeaderKey.LETTER]
             val color = map[row, HeaderKey.COLOR]
-            val category = map[row, HeaderKey.CATEGORY]
-            val subcategory = map[row, HeaderKey.SUBCATEGORY]
             val notes = map[row, HeaderKey.NOTES]
-            val place = BookPlaceText.normalize(map[row, HeaderKey.PLACE])
 
-            if (name.isEmpty() && topics.isEmpty() && writer.isEmpty() && number.isEmpty()) {
+            // Address columns differ per library; the other library's columns
+            // are always blank so a book carries exactly one location scheme.
+            val number = if (place == BookPlace.OTZAR) map[row, HeaderKey.NUMBER] else ""
+            val letter = if (place == BookPlace.OTZAR) map[row, HeaderKey.LETTER] else ""
+            val category = if (place == BookPlace.OTZAR) map[row, HeaderKey.CATEGORY] else ""
+            val subcategory = if (place == BookPlace.OTZAR) map[row, HeaderKey.SUBCATEGORY] else ""
+            val column = if (place == BookPlace.BEIS_MIDRASH) map[row, HeaderKey.COLUMN] else ""
+            val shelf = if (place == BookPlace.BEIS_MIDRASH) map[row, HeaderKey.SHELF] else ""
+
+            val locationEmpty = if (place == BookPlace.OTZAR) number.isEmpty() else column.isEmpty()
+            if (name.isEmpty() && topics.isEmpty() && writer.isEmpty() && locationEmpty) {
                 blankRows++
                 continue
             }
@@ -117,7 +132,9 @@ class CatalogImporter(
                 category = category,
                 subcategories = if (subcategory.isEmpty()) emptyList() else listOf(subcategory),
                 notes = notes,
-                place = place,
+                column = column,
+                shelf = shelf,
+                place = placeLabel,
                 state = BookState.AVAILABLE,
                 parentBookId = null,
                 relations = emptyList(),
@@ -128,7 +145,9 @@ class CatalogImporter(
         return ParsedRows(books, blankRows)
     }
 
-    private enum class HeaderKey { NAME, TOPICS, WRITER, NUMBER, LETTER, COLOR, CATEGORY, SUBCATEGORY, NOTES, PLACE }
+    private enum class HeaderKey {
+        NAME, TOPICS, WRITER, NUMBER, LETTER, COLOR, CATEGORY, SUBCATEGORY, NOTES, COLUMN, SHELF
+    }
 
     private class HeaderMap private constructor(
         private val columns: Map<HeaderKey, Int>,
@@ -149,7 +168,8 @@ class CatalogImporter(
                 HeaderKey.CATEGORY to listOf("קטגוריה", "category"),
                 HeaderKey.SUBCATEGORY to listOf("תת קטגוריה", "תת-קטגוריה", "subcategory", "subcategories"),
                 HeaderKey.NOTES to listOf("הערות", "הערה", "notes", "note"),
-                HeaderKey.PLACE to listOf("מקום", "place", "location"),
+                HeaderKey.COLUMN to listOf("עמודה", "עמוד", "column", "pillar"),
+                HeaderKey.SHELF to listOf("מדף", "shelf"),
             )
 
             fun from(header: List<String>): HeaderMap {

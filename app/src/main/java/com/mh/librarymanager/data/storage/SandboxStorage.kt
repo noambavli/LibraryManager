@@ -198,13 +198,16 @@ class SandboxStorage(private val context: Context) {
             "book_location_presses.json",
             "civ_import_log.json",
             ExcelImportIO.PENDING_FILE_NAME,
+            ExcelImportIO.BEIS_PENDING_FILE_NAME,
             MatchingsImportIO.PENDING_FILE_NAME,
         )
 
         private val PROTECTED_DOWNLOAD_NAMES = setOf(
             ExcelImportIO.INCOMING_CANONICAL_NAME,
+            ExcelImportIO.BEIS_INCOMING_CANONICAL_NAME,
             MatchingsImportIO.INCOMING_CANONICAL_NAME,
             ExcelImportIO.PENDING_FILE_NAME,
+            ExcelImportIO.BEIS_PENDING_FILE_NAME,
             MatchingsImportIO.PENDING_FILE_NAME,
         )
 
@@ -213,6 +216,8 @@ class SandboxStorage(private val context: Context) {
         private val DELETABLE_DOWNLOAD_PATTERNS = listOf(
             Regex("^LibraryBackup_.*\\.zip$", RegexOption.IGNORE_CASE),
             Regex("^books_.*\\.xlsx$", RegexOption.IGNORE_CASE),
+            Regex("^beis_.*\\.xlsx$", RegexOption.IGNORE_CASE),
+            Regex("^beis-\\d+\\.xlsx$", RegexOption.IGNORE_CASE),
             Regex("^matchings_.*\\.xlsx$", RegexOption.IGNORE_CASE),
             Regex(".*-import-result\\.txt$", RegexOption.IGNORE_CASE),
             Regex(".*\\.civ$", RegexOption.IGNORE_CASE),

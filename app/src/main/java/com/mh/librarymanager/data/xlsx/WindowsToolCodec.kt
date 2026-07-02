@@ -20,10 +20,14 @@ import java.util.Locale
  */
 object WindowsToolCodec {
 
-    // ---- Books ------------------------------------------------------------
+    // ---- Books: Otzar (אוצר הספרים) --------------------------------------
+    //
+    // Placeless by design: the library a book belongs to is decided by which
+    // upload the staff use (Otzar import vs. Beis-Midrash import), not by a
+    // column in the sheet. Otzar addresses a slot by אות (letter) + מספר.
 
     val BOOK_HEADERS = listOf(
-        "שם הספר", "ענינים", "המחבר", "מספר", "אות", "צבע", "קטגוריה", "תת קטגוריה", "הערות", "מקום",
+        "שם הספר", "ענינים", "המחבר", "מספר", "אות", "צבע", "קטגוריה", "תת קטגוריה", "הערות",
     )
 
     fun booksToRows(books: List<Book>): List<List<String>> {
@@ -40,7 +44,33 @@ object WindowsToolCodec {
                 b.category,
                 b.subcategories.firstOrNull().orEmpty(),
                 b.notes,
-                b.place,
+            )
+        }
+        return rows
+    }
+
+    // ---- Books: Beis Midrash (בית מדרש) ----------------------------------
+    //
+    // A different physical library with its own address scheme: עמודה (column /
+    // pillar) + צבע locate the shelf sign on the map, and מדף (shelf) is written
+    // beside the sign. No letter/number/category here.
+
+    val BEIS_HEADERS = listOf(
+        "שם הספר", "ענינים", "המחבר", "עמודה", "מדף", "צבע", "הערות",
+    )
+
+    fun beisToRows(books: List<Book>): List<List<String>> {
+        val rows = ArrayList<List<String>>(books.size + 1)
+        rows += BEIS_HEADERS
+        for (b in books) {
+            rows += listOf(
+                b.name,
+                b.topics,
+                b.writer,
+                b.column,
+                b.shelf,
+                b.color,
+                b.notes,
             )
         }
         return rows

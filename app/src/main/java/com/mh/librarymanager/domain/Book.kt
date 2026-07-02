@@ -31,6 +31,15 @@ data class Book(
     val subcategories: List<String>,
     val notes: String,
 
+    /**
+     * Beis-midrash shelf address. Otzar books address a slot by [letter] +
+     * [displayNumber]; beis-midrash books instead use [column] (עמודה) for the
+     * physical pillar/column and [shelf] (מדף) for the finer shelf within it.
+     * Each place populates only its own location fields; the other stays blank.
+     */
+    val column: String = "",
+    val shelf: String = "",
+
     /** Free-text location (e.g. אוצר הספרים, בית מדרש, or any custom place). */
     val place: String,
     val state: BookState,

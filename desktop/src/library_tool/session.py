@@ -10,8 +10,13 @@ from typing import Callable, List, Optional
 
 from . import adb_transfer, backups, validation
 from . import strings_he as S
-from .export_counter import peek_next_batch_number, peek_next_matchings_batch_number
+from .export_counter import (
+    peek_next_batch_number,
+    peek_next_beis_batch_number,
+    peek_next_matchings_batch_number,
+)
 from .converter import ConvertResult, convert_rows
+from .beis_converter import BeisConvertResult, convert_beis_rows
 from .matchings_converter import MatchingsConvertResult, rows_to_matchings
 from .model import Book, Matching
 from .xlsx_reader import read_first_sheet
@@ -60,6 +65,12 @@ class MatchingsImportOutcome:
     source_path: str
 
 
+@dataclass
+class BeisImportOutcome:
+    convert: BeisConvertResult
+    source_path: str
+
+
 def _read_workbook(path: str) -> list:
     """Read xlsx with user-facing Hebrew errors."""
     if not os.path.isfile(path):
@@ -91,6 +102,9 @@ class Session:
         self.matchings: List[Matching] = []
         self.matchings_source_path: Optional[str] = None
         self.last_sent_matchings_batch: Optional[int] = None
+        self.beis_books: List[Book] = []
+        self.beis_source_path: Optional[str] = None
+        self.last_sent_beis_batch: Optional[int] = None
 
     def import_xlsx(
         self,
@@ -184,6 +198,67 @@ class Session:
         if line.startswith("OK:"):
             self.last_sent_matchings_batch = batch
             progress(S.PROGRESS_CONFIRMED_MATCHINGS, 1.0)
+        elif line.startswith("ERR:cancelled"):
+            progress(S.PROGRESS_CANCELLED_TABLET, 1.0)
+        elif line.startswith("ERR:confirm_timeout"):
+            progress(S.PROGRESS_CONFIRM_TIMEOUT, 1.0)
+        else:
+            progress(S.PROGRESS_SEND_FINISHED, 1.0)
+        return result
+
+    def import_beis_xlsx(
+        self,
+        path: str,
+        progress: ProgressFn = _noop_progress,
+        abort: Optional[AbortFlag] = None,
+    ) -> BeisImportOutcome:
+        abort = abort or AbortFlag()
+
+        progress(S.PROGRESS_READ_WORKBOOK, 0.35)
+        rows = _read_workbook(path)
+        abort.check()
+
+        progress(S.PROGRESS_CONVERT, 0.7)
+        result = convert_beis_rows(rows)
+        abort.check()
+
+        self.beis_books = result.books
+        self.beis_source_path = path
+
+        progress(S.PROGRESS_DONE, 1.0)
+        return BeisImportOutcome(result, path)
+
+    def next_beis_send_batch(self) -> int:
+        return peek_next_beis_batch_number()
+
+    def beis_tablet_pick_hint(self) -> str:
+        if self.last_sent_beis_batch is not None:
+            return S.HINT_LAST_BEIS.format(batch=self.last_sent_beis_batch)
+        if self.beis_books:
+            return S.HINT_AFTER_BEIS.format(n=self.next_beis_send_batch())
+        return ""
+
+    def send_beis_to_tablet(
+        self,
+        progress: ProgressFn = _noop_progress,
+        abort: Optional[AbortFlag] = None,
+    ) -> adb_transfer.AdbSendResult:
+        abort = abort or AbortFlag()
+        progress(S.PROGRESS_FIND_TABLET, 0.1)
+        abort.check()
+        batch = peek_next_beis_batch_number()
+        progress(S.PROGRESS_SEND_BEIS, 0.4)
+        progress(S.PROGRESS_WAIT_CONFIRM, 0.55)
+        result = adb_transfer.send_beis(
+            self.beis_books,
+            source_file=self.beis_source_path or "",
+            batch_number=batch,
+        )
+        abort.check()
+        line = result.result_line or ""
+        if line.startswith("OK:"):
+            self.last_sent_beis_batch = batch
+            progress(S.PROGRESS_CONFIRMED_BEIS, 1.0)
         elif line.startswith("ERR:cancelled"):
             progress(S.PROGRESS_CANCELLED_TABLET, 1.0)
         elif line.startswith("ERR:confirm_timeout"):

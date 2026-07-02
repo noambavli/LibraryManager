@@ -46,6 +46,12 @@ object BookMerge {
         HebrewText.normalize(book.color),
         book.subcategories.map { HebrewText.normalize(it) }.sorted().joinToString("|"),
         HebrewText.normalize(book.notes),
+        // Location identity: the same title placed in a different library (or a
+        // different column/shelf) is a distinct physical copy, so include place
+        // and the beis-midrash address in the dedup key.
+        HebrewText.normalize(book.place),
+        HebrewText.normalize(book.column),
+        HebrewText.normalize(book.shelf),
     ).joinToString("\u0000")
 
     fun plan(
@@ -88,6 +94,6 @@ object BookMerge {
 
     /** A row with nothing identifying — treated as padding, never imported. */
     private fun isBlank(book: Book): Boolean =
-        book.name.isBlank() && book.writer.isBlank() &&
-            book.displayNumber.isBlank() && book.topics.isBlank()
+        book.name.isBlank() && book.writer.isBlank() && book.topics.isBlank() &&
+            book.displayNumber.isBlank() && book.column.isBlank()
 }

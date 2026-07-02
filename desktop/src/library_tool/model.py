@@ -73,6 +73,9 @@ class Book:
     createdAt: int
     updatedAt: int
     parentBookName: str = ""
+    # Beis-Midrash address (עמודה / מדף); blank for Otzar books.
+    column: str = ""
+    shelf: str = ""
 
     def to_json(self) -> dict:
         """Serialise to the exact shape CatalogStore.writeBooks produces."""
@@ -91,6 +94,8 @@ class Book:
             "category": self.category,
             "subcategories": list(self.subcategories),
             "notes": self.notes,
+            "column": self.column,
+            "shelf": self.shelf,
             "place": self.place,
             "state": self.state,
             # The tablet stores an empty string (never null) for "no parent".
@@ -129,6 +134,8 @@ class Book:
             relations=[str(x) for x in (o.get("relations") or [])],
             createdAt=int(o.get("createdAt", 0) or 0),
             updatedAt=int(o.get("updatedAt", 0) or 0),
+            column=str(o.get("column") or ""),
+            shelf=str(o.get("shelf") or ""),
         )
 
     def copy(self, **changes) -> "Book":

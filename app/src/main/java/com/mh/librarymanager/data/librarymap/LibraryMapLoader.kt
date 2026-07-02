@@ -62,15 +62,18 @@ object LibraryMapLoader {
     }
 
     private fun parseSection(obj: JSONObject): LibraryMapSection {
-        val from = obj.getJSONObject("from")
-        val to = obj.getJSONObject("to")
         val hotspot = obj.getJSONObject("hotspot")
+        val from = obj.optJSONObject("from")
+        val to = obj.optJSONObject("to")
+        val columns = obj.optJSONArray("columns")?.let { arr ->
+            buildList { for (i in 0 until arr.length()) add(arr.getString(i)) }
+        } ?: emptyList()
         return LibraryMapSection(
             id = obj.getString("id"),
             label = obj.getString("label"),
             color = MapColorLabels.normalize(obj.getString("color")),
-            from = ShelfSlot(from.optString("letter"), from.getInt("number")),
-            to = ShelfSlot(to.optString("letter"), to.getInt("number")),
+            from = ShelfSlot(from?.optString("letter").orEmpty(), from?.optInt("number") ?: 0),
+            to = ShelfSlot(to?.optString("letter").orEmpty(), to?.optInt("number") ?: 0),
             hotspot = MapHotspot(
                 x = hotspot.getDouble("x").toFloat(),
                 y = hotspot.getDouble("y").toFloat(),
@@ -78,6 +81,10 @@ object LibraryMapLoader {
                 h = hotspot.getDouble("h").toFloat(),
             ),
             numberOnly = obj.optBoolean("numberOnly", false),
+            column = obj.optString("column").trim(),
+            columns = columns,
+            shelfFrom = obj.optInt("shelfFrom", 0),
+            shelfTo = obj.optInt("shelfTo", 0),
         )
     }
 }

@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.mh.librarymanager.R
 import com.mh.librarymanager.data.librarymap.LibraryMapLoader
 import com.mh.librarymanager.domain.Book
+import com.mh.librarymanager.domain.BookPlace
 import com.mh.librarymanager.domain.LibraryMap
 import com.mh.librarymanager.domain.LibraryMapMatcher
 import com.mh.librarymanager.domain.displayPlace
@@ -72,7 +73,19 @@ private fun BookLocationContent(
     libraryMap: LibraryMap?,
 ) {
     val highlightSection = libraryMap?.let { LibraryMapMatcher.findSection(it, book) }
-    val slotLabel = formatSlotLabel(book)
+    val isBeis = book.mapPlace() == BookPlace.BEIS_MIDRASH
+    val slotLabel = formatSlotLabel(
+        book = book,
+        columnPrefix = stringResource(R.string.book_location_column_prefix),
+        shelfPrefix = stringResource(R.string.book_location_shelf_prefix),
+    )
+    // Beis-Midrash signs the column on the map; the shelf (מדף) is written
+    // beside the red marker rather than moving it.
+    val calloutText = if (isBeis && book.shelf.isNotBlank()) {
+        stringResource(R.string.book_location_shelf_prefix) + " " + book.shelf
+    } else {
+        null
+    }
     val hasMapPlace = book.mapPlace() != null
 
     Column(
@@ -117,7 +130,11 @@ private fun BookLocationContent(
                         .weight(1f),
                 )
                 Text(
-                    text = stringResource(R.string.book_location_section_unknown),
+                    text = if (isBeis) {
+                        stringResource(R.string.book_location_section_unknown_beis)
+                    } else {
+                        stringResource(R.string.book_location_section_unknown)
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = AppColors.TextMuted,
                     modifier = Modifier.padding(top = 4.dp),
@@ -127,6 +144,7 @@ private fun BookLocationContent(
                 LibraryMapView(
                     map = libraryMap,
                     highlightSection = highlightSection,
+                    calloutText = calloutText,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
@@ -188,10 +206,19 @@ private fun BookLocationHeader(
     }
 }
 
-private fun formatSlotLabel(book: Book): String {
+private fun formatSlotLabel(
+    book: Book,
+    columnPrefix: String,
+    shelfPrefix: String,
+): String {
     val parts = buildList {
-        if (book.letter.isNotBlank()) add(book.letter)
-        if (book.displayNumber.isNotBlank()) add(book.displayNumber)
+        if (book.mapPlace() == BookPlace.BEIS_MIDRASH) {
+            if (book.column.isNotBlank()) add("$columnPrefix ${book.column}")
+            if (book.shelf.isNotBlank()) add("$shelfPrefix ${book.shelf}")
+        } else {
+            if (book.letter.isNotBlank()) add(book.letter)
+            if (book.displayNumber.isNotBlank()) add(book.displayNumber)
+        }
         if (book.color.isNotBlank()) add(book.color)
     }
     return parts.joinToString(" — ")

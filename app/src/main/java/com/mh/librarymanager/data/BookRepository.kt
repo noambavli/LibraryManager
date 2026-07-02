@@ -80,6 +80,21 @@ class BookRepository(
         count
     }
 
+    /**
+     * Remove every book (including history rows) matching [remove], keeping the
+     * rest. Used for per-library deletes (Otzar vs. Beis-Midrash). Returns how
+     * many *latest* rows were removed. No audit event is recorded, matching the
+     * behaviour of the full [clearCatalog].
+     */
+    suspend fun clearCatalogMatching(remove: (Book) -> Boolean): Int = catalogMutex.withLock {
+        store.loadFromDisk()
+        val all = store.books.value
+        val removedLatest = all.count { it.isLatest && remove(it) }
+        val kept = all.filterNot(remove)
+        if (kept.size != all.size) store.replaceAll(kept)
+        removedLatest
+    }
+
     data class MergeImportResult(
         val added: Int,
         val skipped: Int,

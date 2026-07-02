@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mh.librarymanager.R
 import com.mh.librarymanager.domain.Book
+import com.mh.librarymanager.domain.BookPlace
 import com.mh.librarymanager.domain.BookPlaceText
 import com.mh.librarymanager.domain.BookState
 import com.mh.librarymanager.domain.CustomColor
@@ -71,7 +72,7 @@ import java.util.UUID
  * in-app Hebrew keyboard via the focused-field pattern.
  */
 private enum class EditField {
-    NAME, WRITER, DISPLAY_NUMBER, LETTER, PLACE, CATEGORY, TOPICS, NOTES,
+    NAME, WRITER, DISPLAY_NUMBER, LETTER, COLUMN, SHELF, CATEGORY, TOPICS, NOTES,
 }
 
 /** Snapshot of the form. Stored as one struct so save is straightforward. */
@@ -89,7 +90,9 @@ private data class FormState(
     val topics: String = "",
     val notes: String = "",
     val color: String = "",
-    val place: String = "",
+    val column: String = "",
+    val shelf: String = "",
+    val place: BookPlace = BookPlace.OTZAR,
     val state: BookState = BookState.AVAILABLE,
     val subcategories: List<String> = emptyList(),
     val relations: List<String> = emptyList(),
@@ -111,7 +114,9 @@ private fun Book.toForm(): FormState = FormState(
     topics = topics,
     notes = notes,
     color = color,
-    place = place,
+    column = column,
+    shelf = shelf,
+    place = BookPlaceText.toMapPlace(place) ?: BookPlace.OTZAR,
     state = state,
     subcategories = subcategories,
     relations = relations,
@@ -119,29 +124,37 @@ private fun Book.toForm(): FormState = FormState(
     parentBookName = parentBookName,
 )
 
-private fun FormState.toBook(): Book = Book(
-    id = id,
-    logicalBookId = logicalBookId,
-    version = version,
-    isLatest = true,
-    name = name.trim(),
-    topics = topics.trim(),
-    writer = writer.trim(),
-    bookNumber = bookNumber.trim(),
-    displayNumber = displayNumber.trim(),
-    letter = letter.trim(),
-    color = color.trim(),
-    category = category.trim(),
-    subcategories = subcategories.map { it.trim() }.filter { it.isNotBlank() },
-    notes = notes.trim(),
-    place = BookPlaceText.normalize(place),
-    state = state,
-    parentBookId = parentBookId,
-    parentBookName = parentBookName.trim(),
-    relations = relations.map { it.trim() }.filter { it.isNotBlank() },
-    createdAt = createdAt,
-    updatedAt = System.currentTimeMillis(),
-)
+private fun FormState.toBook(): Book {
+    val isBeis = place == BookPlace.BEIS_MIDRASH
+    val placeLabel = if (isBeis) BookPlaceText.BEIS_MIDRASH_LABEL else BookPlaceText.OTZAR_LABEL
+    return Book(
+        id = id,
+        logicalBookId = logicalBookId,
+        version = version,
+        isLatest = true,
+        name = name.trim(),
+        topics = topics.trim(),
+        writer = writer.trim(),
+        bookNumber = bookNumber.trim(),
+        // Each library keeps only its own address fields so a book never
+        // carries a stale slot from the other scheme.
+        displayNumber = if (isBeis) "" else displayNumber.trim(),
+        letter = if (isBeis) "" else letter.trim(),
+        color = color.trim(),
+        category = if (isBeis) "" else category.trim(),
+        subcategories = if (isBeis) emptyList() else subcategories.map { it.trim() }.filter { it.isNotBlank() },
+        notes = notes.trim(),
+        column = if (isBeis) column.trim() else "",
+        shelf = if (isBeis) shelf.trim() else "",
+        place = placeLabel,
+        state = state,
+        parentBookId = parentBookId,
+        parentBookName = parentBookName.trim(),
+        relations = relations.map { it.trim() }.filter { it.isNotBlank() },
+        createdAt = createdAt,
+        updatedAt = System.currentTimeMillis(),
+    )
+}
 
 @Composable
 fun BookEditorScreen(
@@ -256,7 +269,8 @@ fun BookEditorScreen(
             writer = if (field == EditField.WRITER) value.text else form.writer,
             displayNumber = if (field == EditField.DISPLAY_NUMBER) value.text else form.displayNumber,
             letter = if (field == EditField.LETTER) value.text else form.letter,
-            place = if (field == EditField.PLACE) value.text else form.place,
+            column = if (field == EditField.COLUMN) value.text else form.column,
+            shelf = if (field == EditField.SHELF) value.text else form.shelf,
             category = if (field == EditField.CATEGORY) value.text else form.category,
             topics = if (field == EditField.TOPICS) value.text else form.topics,
             notes = if (field == EditField.NOTES) value.text else form.notes,
@@ -312,6 +326,12 @@ fun BookEditorScreen(
                     form = form.copy(relations = form.relations.filterIndexed { i, _ -> i != idx })
                 },
                 onSetState = { form = form.copy(state = it) },
+                onSetPlace = { newPlace ->
+                    form = form.copy(place = newPlace)
+                    // The opposite library's fields are now hidden — move focus
+                    // back to a field that is actually visible.
+                    focused = EditField.NAME
+                },
             )
 
             AppPaneDivider()
@@ -544,6 +564,7 @@ private fun FormColumn(
     onAddRelation: () -> Unit,
     onRemoveRelation: (Int) -> Unit,
     onSetState: (BookState) -> Unit,
+    onSetPlace: (BookPlace) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     Column(
@@ -588,12 +609,32 @@ private fun FormColumn(
             )
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            textField(EditField.DISPLAY_NUMBER, R.string.field_display_number, modifier = Modifier.weight(1f))
-            textField(EditField.LETTER, R.string.field_letter, modifier = Modifier.weight(1f))
+        // Library selector — decides which address scheme (and map) applies.
+        LabeledBlock(label = stringResource(R.string.field_place)) {
+            SegmentedRow(
+                options = listOf(BookPlace.OTZAR, BookPlace.BEIS_MIDRASH),
+                selected = form.place,
+                labelFor = {
+                    when (it) {
+                        BookPlace.OTZAR -> stringResource(R.string.book_place_otzar)
+                        BookPlace.BEIS_MIDRASH -> stringResource(R.string.book_place_beis_midrash)
+                    }
+                },
+                onSelect = onSetPlace,
+            )
         }
 
-        textField(EditField.PLACE, R.string.field_place)
+        if (form.place == BookPlace.BEIS_MIDRASH) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                textField(EditField.COLUMN, R.string.field_column, modifier = Modifier.weight(1f))
+                textField(EditField.SHELF, R.string.field_shelf, modifier = Modifier.weight(1f))
+            }
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                textField(EditField.DISPLAY_NUMBER, R.string.field_display_number, modifier = Modifier.weight(1f))
+                textField(EditField.LETTER, R.string.field_letter, modifier = Modifier.weight(1f))
+            }
+        }
 
         // State
         LabeledBlock(label = stringResource(R.string.field_state)) {
@@ -649,16 +690,18 @@ private fun FormColumn(
             }
         }
 
-        textField(EditField.CATEGORY, R.string.field_category)
+        // Category + subcategories only apply to the Otzar catalog.
+        if (form.place != BookPlace.BEIS_MIDRASH) {
+            textField(EditField.CATEGORY, R.string.field_category)
 
-        // Subcategories
-        LabeledBlock(label = stringResource(R.string.field_subcategories)) {
-            ChipListEditor(
-                items = form.subcategories,
-                emptyLabel = stringResource(R.string.none_selected),
-                onAdd = onAddSubcategory,
-                onRemove = onRemoveSubcategory,
-            )
+            LabeledBlock(label = stringResource(R.string.field_subcategories)) {
+                ChipListEditor(
+                    items = form.subcategories,
+                    emptyLabel = stringResource(R.string.none_selected),
+                    onAdd = onAddSubcategory,
+                    onRemove = onRemoveSubcategory,
+                )
+            }
         }
 
         textField(EditField.TOPICS, R.string.field_topics)
@@ -1118,7 +1161,8 @@ private fun initialFieldValues(form: FormState): Map<EditField, TextFieldValue> 
     EditField.WRITER to TextFieldValue(form.writer),
     EditField.DISPLAY_NUMBER to TextFieldValue(form.displayNumber),
     EditField.LETTER to TextFieldValue(form.letter),
-    EditField.PLACE to TextFieldValue(form.place),
+    EditField.COLUMN to TextFieldValue(form.column),
+    EditField.SHELF to TextFieldValue(form.shelf),
     EditField.CATEGORY to TextFieldValue(form.category),
     EditField.TOPICS to TextFieldValue(form.topics),
     EditField.NOTES to TextFieldValue(form.notes),

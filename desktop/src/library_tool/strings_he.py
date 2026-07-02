@@ -56,6 +56,20 @@ BTN_IMPORT_MATCHINGS = "בחר קובץ התאמות…"
 BTN_SAVE_MATCHINGS = "שמור עותק במחשב…"
 BTN_SEND_MATCHINGS = "שלח התאמות לטאבלט…"
 
+# --- Beis Midrash books (separate library) ----------------------------------
+
+BEIS_FRAME = "עדכון ספרי בית מדרש"
+BEIS_DESC = (
+    "ספרי בית המדרש הם ספרייה נפרדת מאוצר הספרים (מיקום לפי עמודה + צבע).\n"
+    "עמודות בקובץ: שם הספר · ענינים · המחבר · עמודה · מדף · צבע · הערות.\n"
+    "חדשים מתווספים, קיימים לא יוחלפו. הספרים ישויכו אוטומטית לבית המדרש."
+)
+NO_BEIS_CHOSEN = "עדיין לא נבחר קובץ ספרי בית מדרש"
+CHOSEN_BEIS = "קובץ נבחר: {src}  ·  {n} ספרי בית מדרש מוכנים לשליחה"
+BTN_IMPORT_BEIS = "בחר קובץ בית מדרש…"
+BTN_SAVE_BEIS = "שמור עותק במחשב…"
+BTN_SEND_BEIS = "שלח בית מדרש לטאבלט…"
+
 # --- Review table ------------------------------------------------------------
 
 REVIEW_FRAME = "בדיקה לפני שליחה"
@@ -236,6 +250,55 @@ MATCHINGS_SYNC_BODY = (
 )
 DLG_SEND_MATCHINGS_FAILED = "שליחת ההתאמות נכשלה"
 
+# --- Dialogs: beis midrash ---------------------------------------------------
+
+DLG_CHOOSE_BEIS = "בחירת קובץ ספרי בית מדרש"
+PROGRESS_IMPORT_BEIS = "טוען קובץ בית מדרש…"
+FOOTER_BEIS_LOADED = "נטענו {n} ספרי בית מדרש מקובץ {src}"
+DLG_NO_BEIS_TITLE = "לא נמצאו ספרי בית מדרש"
+DLG_NO_BEIS_BODY = (
+    "הקובץ ריק או שאין בו שורות תקינות.\n\n"
+    "ודאו שיש שורת כותרות: שם הספר, המחבר, עמודה, מדף, צבע."
+)
+DLG_REPLACE_BEIS_TITLE = "לטעון קובץ בית מדרש אחר?"
+DLG_REPLACE_BEIS_BODY = (
+    "ב-ExcelTool על המחשב טעונים כרגע {n} ספרי בית מדרש.\n"
+    "קובץ חדש יחליף רק את מה שמוצג כאן — לא את הספרים בטאבלט.\n\n"
+    "להמשיך?"
+)
+DLG_SAVE_BEIS = "שמירת קובץ ספרי בית מדרש"
+DLG_SAVED_BEIS = "נשמרו {n} ספרי בית מדרש ב:\n{path}"
+FOOTER_SAVED_BEIS = "נשמר {fname} ({n} ספרי בית מדרש)"
+DLG_SEND_BEIS_TITLE = "לשלוח ספרי בית מדרש לטאבלט?"
+DLG_SEND_BEIS_BODY = (
+    "ודאו שהטאבלט מחובר ב-USB.\n\n"
+    "קובץ מקור: {src}\n"
+    "יישלח כ: beis-{batch}.xlsx\n"
+    "ספרים לשליחה: {n}\n\n"
+    "מה יקרה:\n"
+    "• בטאבלט יופיע חלון — לחצו אישור\n"
+    "• רק ספרים חדשים יתווספו לבית המדרש\n"
+    "• ספרי אוצר הספרים לא יושפעו\n\n"
+    "לשלוח?"
+)
+PROGRESS_SEND_BEIS = "מעלה ספרי בית מדרש לטאבלט…"
+PROGRESS_CONFIRMED_BEIS = "אושר בטאבלט — ספרי בית המדרש נוספו."
+BEIS_SEND_CANCELLED = "בוטל בטאבלט — beis-{batch}.xlsx לא נוסף."
+BEIS_SEND_TIMEOUT = (
+    "הקובץ נשלח (beis-{batch}.xlsx) אך לא התקבל אישור בזמן.\n"
+    "פתחו את האפליקציה בטאבלט ואשרו."
+)
+BEIS_SEND_DONE = "הושלם! {count} ספרי בית מדרש חדשים נוספו לטאבלט."
+BEIS_SEND_PENDING = "הקובץ beis-{batch}.xlsx נשלח — המתינו לאישור בטאבלט."
+BEIS_SYNC_BODY = (
+    "{msg}\n\n"
+    "קובץ מקור: {src}\n"
+    "קובץ שנשלח: beis-{batch}.xlsx\n"
+    "עותק במחשב: {archive}\n"
+    "טאבלט: {model}"
+)
+DLG_SEND_BEIS_FAILED = "שליחת ספרי בית מדרש נכשלה"
+
 # --- Dialogs: restore --------------------------------------------------------
 
 DLG_ABORTED_TITLE = "הופסק"
@@ -296,6 +359,13 @@ HINT_LAST_MATCHINGS = (
 )
 HINT_AFTER_MATCHINGS = (
     "לחצו ״שלח התאמות לטאבלט״ — הקובץ matchings-{n}.xlsx יישלח. "
+    "השאירו USB מחובר."
+)
+HINT_LAST_BEIS = (
+    "beis-{batch}.xlsx נשלח — אשרו בטאבלט."
+)
+HINT_AFTER_BEIS = (
+    "לחצו ״שלח בית מדרש לטאבלט״ — הקובץ beis-{n}.xlsx יישלח. "
     "השאירו USB מחובר."
 )
 
@@ -394,6 +464,10 @@ ADB_TABLET_REJECTED_BOOKS = (
 )
 ADB_TABLET_REJECTED_MATCHINGS = (
     "הטאבלט דחה את קובץ ההתאמות: {line}\n"
+    "נסו לפתוח את האפליקציה בטאבלט ולשלוח שוב."
+)
+ADB_TABLET_REJECTED_BEIS = (
+    "הטאבלט דחה את קובץ בית המדרש: {line}\n"
     "נסו לפתוח את האפליקציה בטאבלט ולשלוח שוב."
 )
 

@@ -13,6 +13,7 @@ from . import __version__, adb_transfer, backups
 from . import strings_he as S
 from .converter import NAME, books_to_rows
 from .session import AbortError, AbortFlag, Session
+from .beis_converter import NAME as BEIS_NAME, beis_books_to_rows
 from .matchings_converter import matchings_to_rows
 from .xlsx_writer import write_xlsx
 from .ui_util import (
@@ -75,6 +76,7 @@ class LibraryToolApp:
         self._build_header(content)
         self._build_tablet_card(content)
         self._build_actions(content)
+        self._build_beis_actions(content)
         self._build_matchings_actions(content)
         self._build_findings(content)
 
@@ -196,6 +198,43 @@ class LibraryToolApp:
             command=self.on_restore_backup,
         )
         self.btn_restore_backup.pack(side="left", padx=(10, 0))
+
+    def _build_beis_actions(self, parent: ttk.Frame) -> None:
+        card = Card(
+            parent,
+            title=S.BEIS_FRAME,
+            subtitle=S.BEIS_DESC,
+            padding=20,
+            pady=(0, 14),
+        )
+        body = card.content()
+
+        self.beis_chosen_var = tk.StringVar(value=S.NO_BEIS_CHOSEN)
+        muted_caption(body, textvariable=self.beis_chosen_var, wrap=_WRAP).pack(
+            anchor="e", fill="x", pady=(10, 0),
+        )
+
+        row = action_row(body)
+        self.btn_import_beis = ttk.Button(
+            row, text=S.BTN_IMPORT_BEIS, style="Primary.TButton",
+            command=self.on_import_beis,
+        )
+        self.btn_import_beis.pack(side="left")
+        self.btn_save_beis = ttk.Button(
+            row, text=S.BTN_SAVE_BEIS, style="Secondary.TButton",
+            command=self.on_save_beis_local, state="disabled",
+        )
+        self.btn_save_beis.pack(side="left", padx=(10, 0))
+        self.btn_send_beis = ttk.Button(
+            row, text=S.BTN_SEND_BEIS, style="Primary.TButton",
+            command=self.on_send_beis_to_tablet, state="disabled",
+        )
+        self.btn_send_beis.pack(side="right")
+
+        self.beis_hint_var = tk.StringVar(value="")
+        InfoBanner(body, textvariable=self.beis_hint_var, tone="neutral").pack(
+            fill="x", pady=(12, 0),
+        )
 
     def _build_matchings_actions(self, parent: ttk.Frame) -> None:
         card = Card(
@@ -328,10 +367,28 @@ class LibraryToolApp:
         self.btn_send_matchings.config(state="normal" if can_send_matchings else "disabled")
         self.btn_save_matchings.config(state="normal" if has_matchings else "disabled")
 
+        bn = len(s.beis_books)
+        if s.beis_source_path:
+            src = os.path.basename(s.beis_source_path)
+            self.beis_chosen_var.set(S.CHOSEN_BEIS.format(src=src, n=bn))
+        else:
+            self.beis_chosen_var.set(S.NO_BEIS_CHOSEN)
+        self.beis_hint_var.set(rtl(s.beis_tablet_pick_hint()))
+
+        has_beis = bn > 0 and not self._busy
+        can_send_beis = has_beis and self._tablet_ready
+        self.btn_send_beis.config(state="normal" if can_send_beis else "disabled")
+        self.btn_save_beis.config(state="normal" if has_beis else "disabled")
+
     def _set_busy(self, busy: bool) -> None:
         self._busy = busy
         state = "disabled" if busy else "normal"
-        for b in (self.btn_import, self.btn_restore_backup, self.btn_import_matchings):
+        for b in (
+            self.btn_import,
+            self.btn_restore_backup,
+            self.btn_import_matchings,
+            self.btn_import_beis,
+        ):
             b.config(state=state)
         self.btn_abort.config(state="normal" if busy else "disabled")
         if not busy:
@@ -752,6 +809,131 @@ class LibraryToolApp:
             work, done, on_error=error,
             progress_label=S.PROGRESS_SEND_MATCHINGS,
             error_title=S.DLG_SEND_MATCHINGS_FAILED,
+        )
+
+    def on_import_beis(self) -> None:
+        path = filedialog.askopenfilename(
+            title=S.DLG_CHOOSE_BEIS,
+            filetypes=[(S.FILETYPE_XLSX, "*.xlsx"), (S.FILETYPE_ALL, "*.*")],
+        )
+        if not path:
+            return
+        if self.session.beis_books and not messagebox.askyesno(
+            S.DLG_REPLACE_BEIS_TITLE,
+            S.DLG_REPLACE_BEIS_BODY.format(n=len(self.session.beis_books)),
+        ):
+            return
+
+        def work(progress, abort):
+            return self.session.import_beis_xlsx(path, progress, abort)
+
+        def done(outcome):
+            src = os.path.basename(path)
+            n = outcome.convert.imported
+            self.footer_var.set(S.FOOTER_BEIS_LOADED.format(src=src, n=n))
+            if BEIS_NAME not in outcome.convert.header_map.columns:
+                messagebox.showerror(
+                    S.DLG_IMPORT_NO_NAME_TITLE,
+                    S.DLG_IMPORT_NO_NAME_BODY,
+                )
+            elif n == 0:
+                messagebox.showwarning(S.DLG_NO_BEIS_TITLE, S.DLG_NO_BEIS_BODY)
+            self._refresh_status()
+
+        self._run_worker(
+            work, done,
+            progress_label=S.PROGRESS_IMPORT_BEIS,
+            error_title=S.DLG_NO_BEIS_TITLE,
+        )
+
+    def on_save_beis_local(self) -> None:
+        initial = os.path.basename(self.session.beis_source_path or "beis.xlsx")
+        path = filedialog.asksaveasfilename(
+            title=S.DLG_SAVE_BEIS,
+            defaultextension=".xlsx",
+            initialfile=initial,
+            filetypes=[(S.FILETYPE_XLSX, "*.xlsx")],
+        )
+        if not path:
+            return
+        try:
+            write_xlsx(path, beis_books_to_rows(self.session.beis_books))
+        except Exception as exc:
+            self._show_error(S.DLG_SAVE_FAILED_TITLE, exc)
+            return
+        fname = os.path.basename(path)
+        self.footer_var.set(
+            S.FOOTER_SAVED_BEIS.format(n=len(self.session.beis_books), fname=fname),
+        )
+        messagebox.showinfo(
+            S.DLG_SAVED_TITLE,
+            S.DLG_SAVED_BEIS.format(n=len(self.session.beis_books), path=path),
+        )
+
+    def on_send_beis_to_tablet(self) -> None:
+        n = len(self.session.beis_books)
+        batch = self.session.next_beis_send_batch()
+        src = os.path.basename(self.session.beis_source_path or "") or "beis"
+        if not messagebox.askyesno(
+            S.DLG_SEND_BEIS_TITLE,
+            S.DLG_SEND_BEIS_BODY.format(src=src, batch=batch, n=n),
+        ):
+            return
+
+        def work(progress, abort):
+            return self.session.send_beis_to_tablet(progress, abort)
+
+        def done(result):
+            batch = (
+                self.session.last_sent_beis_batch
+                or self.session.next_beis_send_batch() - 1
+            )
+            count = result.imported_count
+            line = result.result_line or ""
+            if line.startswith("ERR:cancelled"):
+                msg = S.BEIS_SEND_CANCELLED.format(batch=batch)
+            elif line.startswith("ERR:confirm_timeout"):
+                msg = S.BEIS_SEND_TIMEOUT.format(batch=batch)
+            elif count is not None:
+                msg = S.BEIS_SEND_DONE.format(batch=batch, count=count)
+            else:
+                msg = S.BEIS_SEND_PENDING.format(batch=batch)
+            self.footer_var.set(msg)
+            if line.startswith("ERR:"):
+                messagebox.showwarning(
+                    S.DLG_TABLET_SYNC_TITLE,
+                    S.SYNC_DEVICE_ONLY.format(msg=msg, serial=result.device.serial),
+                )
+            else:
+                from .exports import beis_exports_dir
+
+                messagebox.showinfo(
+                    S.DLG_TABLET_SYNC_TITLE,
+                    S.BEIS_SYNC_BODY.format(
+                        msg=msg,
+                        src=src,
+                        batch=batch,
+                        archive=beis_exports_dir(),
+                        model=result.device.model,
+                        serial=result.device.serial,
+                    ),
+                )
+            self._refresh_status()
+
+        def error(exc):
+            diag = adb_transfer.diagnose()
+            extra = ""
+            if diag.devices_raw:
+                extra = S.ADB_DEVICES_HEADER.format(raw=diag.devices_raw)
+            messagebox.showerror(
+                S.DLG_SEND_BEIS_FAILED,
+                f"{user_error(exc)}{extra}",
+            )
+
+        self._run_worker(
+            work, done, on_error=error,
+            progress_label=S.PROGRESS_SEND_BEIS,
+            error_title=S.DLG_SEND_BEIS_FAILED,
         )
 
     def on_restore_import(self) -> None:

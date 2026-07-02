@@ -150,6 +150,7 @@ class MainActivity : ComponentActivity() {
         val action = intent?.action ?: return
         if (action != ExcelImportReceiver.ACTION &&
             action != MatchingsImportReceiver.ACTION &&
+            action != BeisImportReceiver.ACTION &&
             action != "com.mh.librarymanager.IMPORT_CATALOG"
         ) return
         intent.action = null
@@ -161,6 +162,10 @@ class MainActivity : ComponentActivity() {
                     // before this activity refresh runs.
                     MatchingsImportRunner.run(this@MainActivity)
                     windowsToolViewModel.onAdbMatchingsImportStaged()
+                }
+                BeisImportReceiver.ACTION -> {
+                    BeisImportRunner.run(this@MainActivity)
+                    windowsToolViewModel.onAdbBeisImportStaged()
                 }
                 else -> {
                     ExcelImportRunner.run(this@MainActivity)

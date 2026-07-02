@@ -56,6 +56,21 @@ MATCHINGS_IMPORT_ACTION = "com.mh.librarymanager.IMPORT_MATCHINGS_EXCEL"
 MATCHINGS_IMPORT_RECEIVER = "com.mh.librarymanager/.MatchingsImportReceiver"
 MATCHINGS_RESULT_FILE = "matchings-import-result.txt"
 
+BEIS_REMOTE_XLSX_TMP = "/data/local/tmp/beis-import.xlsx"
+BEIS_REMOTE_RESULT_TMP = "/data/local/tmp/beis-import-result.txt"
+BEIS_REMOTE_RESULT = "/sdcard/Download/beis-import-result.txt"
+BEIS_REMOTE_RESULT_APP = (
+    "/sdcard/Android/data/com.mh.librarymanager/files/beis-import-result.txt"
+)
+BEIS_REMOTE_RESULTS = [
+    BEIS_REMOTE_RESULT_APP,
+    BEIS_REMOTE_RESULT_TMP,
+    BEIS_REMOTE_RESULT,
+]
+BEIS_IMPORT_ACTION = "com.mh.librarymanager.IMPORT_BEIS_EXCEL"
+BEIS_IMPORT_RECEIVER = "com.mh.librarymanager/.BeisImportReceiver"
+BEIS_RESULT_FILE = "beis-import-result.txt"
+
 
 @dataclass(frozen=True)
 class ImportChannel:
@@ -102,6 +117,22 @@ MATCHINGS_CHANNEL = ImportChannel(
     ),
     pending_prefix="PENDING:added={added}:updated={other}",
     ok_skipped_key="updated",
+)
+
+BEIS_CHANNEL = ImportChannel(
+    remote_xlsx_tmp=BEIS_REMOTE_XLSX_TMP,
+    remote_results=tuple(BEIS_REMOTE_RESULTS),
+    remote_result_tmp=BEIS_REMOTE_RESULT_TMP,
+    import_action=BEIS_IMPORT_ACTION,
+    import_receiver=BEIS_IMPORT_RECEIVER,
+    logcat_tag="BeisImport",
+    mediastore_name=BEIS_RESULT_FILE,
+    merged_re=re.compile(
+        r"Merged beis catalog: \+(\d+) added, (\d+) skipped, total (\d+)"
+    ),
+    awaiting_re=re.compile(r"Awaiting confirmation: \+(\d+) to add, (\d+) skipped"),
+    pending_prefix="PENDING:added={added}:skipped={other}",
+    ok_skipped_key="skipped",
 )
 
 
@@ -783,3 +814,51 @@ def send_matchings(
         return result
     _quiet_remove(archive_path)
     raise IOError(S.ADB_TABLET_REJECTED_MATCHINGS.format(line=line))
+
+
+def send_beis(
+    books,
+    source_file: str = "",
+    batch_number: Optional[int] = None,
+) -> AdbSendResult:
+    """High-level: archive beis .xlsx, push on the beis channel, wait for confirm."""
+    from .beis_converter import beis_books_to_rows
+    from .export_counter import commit_beis_batch_number, peek_next_beis_batch_number
+    from .exports import beis_export_filename, beis_path_for_batch
+    from .xlsx_writer import write_xlsx
+
+    diag = diagnose(restart_server=False)
+    if not diag.adb_path:
+        raise FileNotFoundError(diag.error or S.ADB_NOT_FOUND.split("\n")[0])
+    if not diag.ready:
+        raise ConnectionError(diag.error or S.ADB_NO_DEVICE.split("\n")[0])
+
+    if len(diag.ready) > 1:
+        raise ConnectionError(S.ADB_MULTIPLE_TABLETS.format(n=len(diag.ready)))
+
+    device = diag.ready[0]
+    adb = diag.adb_path
+    batch = batch_number if batch_number is not None else peek_next_beis_batch_number()
+    archive_path = beis_path_for_batch(batch)
+    write_xlsx(archive_path, beis_books_to_rows(books))
+    download_name = beis_export_filename(batch)
+    result = push_and_import(
+        adb,
+        device.serial,
+        archive_path,
+        download_name=download_name,
+        channel=BEIS_CHANNEL,
+    )
+    result.device = device
+
+    line = result.result_line or ""
+    if line.startswith("OK:"):
+        commit_beis_batch_number(batch)
+        return result
+    if line.startswith("ERR:cancelled"):
+        _quiet_remove(archive_path)
+        return result
+    if line.startswith("ERR:confirm_timeout"):
+        return result
+    _quiet_remove(archive_path)
+    raise IOError(S.ADB_TABLET_REJECTED_BEIS.format(line=line))

@@ -36,6 +36,7 @@ class LibraryApp : Application() {
     val managementSeenStore: ManagementSeenStore by lazy { ManagementSeenStore(this) }
     val repository: BookRepository by lazy { BookRepository(catalogStore, auditStore) }
     val excelImportIo: ExcelImportIO by lazy { ExcelImportIO(this, repository) }
+    val beisImportIo: ExcelImportIO by lazy { ExcelImportIO.beis(this, repository) }
     val matchingsImportIo: MatchingsImportIO by lazy { MatchingsImportIO(this, matchingStore) }
     val backupManager: BackupManager by lazy { BackupManager(this, this) }
     val homeOverviewMapStore: HomeOverviewMapStore by lazy { HomeOverviewMapStore(this) }

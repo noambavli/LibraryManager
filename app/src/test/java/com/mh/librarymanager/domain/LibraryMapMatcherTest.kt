@@ -25,8 +25,8 @@ class HebrewShelfOrderTest {
 
 class LibraryMapMatcherTest {
     private val map = LibraryMap(
-        mapId = "beis_midrash",
-        place = BookPlace.BEIS_MIDRASH,
+        mapId = "otzar",
+        place = BookPlace.OTZAR,
         frameWidth = 1024,
         frameHeight = 715,
         imageResId = 0,
@@ -64,9 +64,94 @@ class LibraryMapMatcherTest {
 
     @Test
     fun wrong_place_does_not_match() {
-        val book = sampleBook(letter = "ב", displayNumber = "2", color = "כתום", place = BookPlaceText.OTZAR_LABEL)
+        val book = sampleBook(letter = "ב", displayNumber = "2", color = "כתום", place = BookPlaceText.BEIS_MIDRASH_LABEL)
         assertTrue(LibraryMapMatcher.findSection(map, book) == null)
     }
+
+    // ---- Beis-Midrash: color + עמודה (+ מדף range / letter-column set) ----
+
+    private val beis = LibraryMap(
+        mapId = "beis_midrash",
+        place = BookPlace.BEIS_MIDRASH,
+        frameWidth = 1151,
+        frameHeight = 719,
+        imageResId = 0,
+        sections = listOf(
+            LibraryMapSection(
+                id = "red_2", label = "אדום · עמודה 2", color = "אדום",
+                column = "2", hotspot = MapHotspot(424f, 24f, 30f, 40f),
+            ),
+            LibraryMapSection(
+                id = "red_3", label = "אדום · עמודה 3", color = "אדום",
+                column = "3", hotspot = MapHotspot(392f, 24f, 30f, 40f),
+            ),
+            LibraryMapSection(
+                id = "mussar_1_4", label = "מוסר · 1-4", color = "מוסר",
+                shelfFrom = 1, shelfTo = 4, hotspot = MapHotspot(545f, 592f, 72f, 38f),
+            ),
+            LibraryMapSection(
+                id = "mussar_5_9", label = "מוסר · 5-9", color = "מוסר",
+                shelfFrom = 5, shelfTo = 9, hotspot = MapHotspot(690f, 592f, 72f, 38f),
+            ),
+            LibraryMapSection(
+                id = "mishna_berura_a", label = "משנה ברורה", color = "משנה ברורה",
+                columns = listOf("א", "ב", "ג", "ד", "ה", "ו"),
+                hotspot = MapHotspot(880f, 560f, 42f, 95f),
+            ),
+        ),
+    )
+
+    @Test
+    fun beis_matches_by_color_and_column() {
+        val book = beisBook(color = "אדום", column = "3")
+        assertTrue(LibraryMapMatcher.findSection(beis, book)?.id == "red_3")
+    }
+
+    @Test
+    fun beis_wrong_column_does_not_match() {
+        val book = beisBook(color = "אדום", column = "9")
+        assertTrue(LibraryMapMatcher.findSection(beis, book) == null)
+    }
+
+    @Test
+    fun beis_mussar_uses_shelf_range() {
+        assertTrue(LibraryMapMatcher.findSection(beis, beisBook(color = "מוסר", shelf = "3"))?.id == "mussar_1_4")
+        assertTrue(LibraryMapMatcher.findSection(beis, beisBook(color = "מוסר", shelf = "7"))?.id == "mussar_5_9")
+    }
+
+    @Test
+    fun beis_mishna_berura_matches_letter_column_set() {
+        assertTrue(LibraryMapMatcher.findSection(beis, beisBook(color = "משנה ברורה", column = "ד"))?.id == "mishna_berura_a")
+        assertTrue(LibraryMapMatcher.findSection(beis, beisBook(color = "משנה ברורה", column = "ז")) == null)
+    }
+
+    @Test
+    fun beis_compound_color_ignores_spaces_and_hyphens() {
+        val map = LibraryMap(
+            mapId = "beis_midrash", place = BookPlace.BEIS_MIDRASH,
+            frameWidth = 1151, frameHeight = 719, imageResId = 0,
+            sections = listOf(
+                LibraryMapSection(
+                    id = "brown_black_1", label = "חום - שחור · 1", color = "חום - שחור",
+                    column = "1", hotspot = MapHotspot(216f, 24f, 30f, 40f),
+                ),
+            ),
+        )
+        assertTrue(LibraryMapMatcher.findSection(map, beisBook(color = "חום שחור", column = "1"))?.id == "brown_black_1")
+    }
+
+    private fun beisBook(
+        color: String,
+        column: String = "",
+        shelf: String = "",
+    ) = Book(
+        id = "1", logicalBookId = "1", version = 1, isLatest = true,
+        name = "Test", topics = "", writer = "", bookNumber = "1",
+        displayNumber = "", letter = "", color = color, category = "",
+        subcategories = emptyList(), notes = "", column = column, shelf = shelf,
+        place = BookPlaceText.BEIS_MIDRASH_LABEL, state = BookState.AVAILABLE,
+        parentBookId = null, relations = emptyList(), createdAt = 0L, updatedAt = 0L,
+    )
 
     @Test
     fun otzar_green_nun1_pins_leftmost_halacha_cell() {
@@ -214,7 +299,7 @@ class LibraryMapMatcherTest {
         letter: String,
         displayNumber: String,
         color: String,
-        place: String = BookPlaceText.BEIS_MIDRASH_LABEL,
+        place: String = BookPlaceText.OTZAR_LABEL,
     ) = Book(
         id = "1",
         logicalBookId = "1",

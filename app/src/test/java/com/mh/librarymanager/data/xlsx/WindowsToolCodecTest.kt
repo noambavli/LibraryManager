@@ -98,6 +98,8 @@ class WindowsToolCodecTest {
     fun books_exportHasHeaderAndMapsColumns() {
         val rows = WindowsToolCodec.booksToRows(listOf(sampleBook()))
         assertEquals(WindowsToolCodec.BOOK_HEADERS, rows.first())
+        // Otzar sheet is placeless: 9 columns, no מקום column.
+        assertEquals(9, rows.first().size)
         val row = rows[1]
         assertEquals("בראשית", row[0])
         assertEquals("רש\"י", row[2])
@@ -105,7 +107,6 @@ class WindowsToolCodecTest {
         assertEquals("אדום", row[5])
         assertEquals("חומש", row[6])
         assertEquals("תורה", row[7])
-        assertEquals(BookPlaceText.OTZAR_LABEL, row[9])
     }
 
     @Test
@@ -114,6 +115,32 @@ class WindowsToolCodecTest {
         assertEquals(1, rows.size)
         assertTrue(rows.first().isNotEmpty())
     }
+
+    @Test
+    fun beis_exportHasHeaderAndMapsColumns() {
+        val rows = WindowsToolCodec.beisToRows(listOf(sampleBeisBook()))
+        assertEquals(WindowsToolCodec.BEIS_HEADERS, rows.first())
+        assertEquals(7, rows.first().size)
+        val row = rows[1]
+        assertEquals("משנה ברורה", row[0])
+        assertEquals("החפץ חיים", row[2])
+        assertEquals("3", row[3])
+        assertEquals("5", row[4])
+        assertEquals("אדום", row[5])
+    }
+
+    private fun sampleBeisBook(): Book = sampleBook().copy(
+        name = "משנה ברורה",
+        writer = "החפץ חיים",
+        displayNumber = "",
+        letter = "",
+        category = "",
+        subcategories = emptyList(),
+        column = "3",
+        shelf = "5",
+        color = "אדום",
+        place = BookPlaceText.BEIS_MIDRASH_LABEL,
+    )
 
     private fun sampleBook(): Book = Book(
         id = "b1",

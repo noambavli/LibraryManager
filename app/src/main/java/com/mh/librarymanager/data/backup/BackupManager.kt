@@ -11,9 +11,11 @@ import com.mh.librarymanager.data.store.CatalogStore
 import com.mh.librarymanager.data.xlsx.WindowsToolCodec
 import com.mh.librarymanager.data.xlsx.XlsxWriter
 import com.mh.librarymanager.domain.Announcement
+import com.mh.librarymanager.domain.BookPlace
 import com.mh.librarymanager.domain.PublicRequest
 import com.mh.librarymanager.domain.RequestStatus
 import com.mh.librarymanager.domain.TechSupportRequest
+import com.mh.librarymanager.domain.mapPlace
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -227,8 +229,10 @@ class BackupManager(
     }
 
     private fun writeManifest(zip: ZipOutputStream, now: Long) {
+        val latest = app.catalogStore.books.value.filter { it.isLatest }
         val counts = JSONObject()
-            .put("books", app.catalogStore.books.value.count { it.isLatest })
+            .put("books", latest.count { it.mapPlace() != BookPlace.BEIS_MIDRASH })
+            .put("beisBooks", latest.count { it.mapPlace() == BookPlace.BEIS_MIDRASH })
             .put("shortcuts", app.shortcutStore.shortcuts.value.size)
             .put("matchings", app.matchingStore.matchings.value.size)
             .put("requests", app.requestStore.requests.value.size)
@@ -269,9 +273,15 @@ class BackupManager(
 
     private fun writeReadable(zip: ZipOutputStream) {
         val books = app.catalogStore.books.value.filter { it.isLatest }
+        val beisBooks = books.filter { it.mapPlace() == BookPlace.BEIS_MIDRASH }
+        val otzarBooks = books.filter { it.mapPlace() != BookPlace.BEIS_MIDRASH }
         zip.putBytes(
             "readable/books.xlsx",
-            XlsxWriter.toBytes(WindowsToolCodec.booksToRows(books), "books"),
+            XlsxWriter.toBytes(WindowsToolCodec.booksToRows(otzarBooks), "books"),
+        )
+        zip.putBytes(
+            "readable/beis.xlsx",
+            XlsxWriter.toBytes(WindowsToolCodec.beisToRows(beisBooks), "beis"),
         )
         zip.putBytes(
             "readable/shortcuts.xlsx",

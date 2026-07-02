@@ -1,8 +1,51 @@
 {
   "mapId": "beis_midrash",
   "place": "beis_midrash",
-  "frameWidth": 1920,
-  "frameHeight": 1200,
-  "imageDrawable": "",
-  "sections": []
+  "frameWidth": 1151,
+  "frameHeight": 719,
+  "imageDrawable": "map_beis_midrash",
+  "sections": [
+    { "id": "brown_black_1", "label": "חום - שחור · עמודה 1", "color": "חום - שחור", "column": "1", "hotspot": { "x": 216, "y": 24, "w": 30, "h": 40 } },
+    { "id": "brown_black_2", "label": "חום - שחור · עמודה 2", "color": "חום - שחור", "column": "2", "hotspot": { "x": 184, "y": 24, "w": 30, "h": 40 } },
+    { "id": "brown_black_3", "label": "חום - שחור · עמודה 3", "color": "חום - שחור", "column": "3", "hotspot": { "x": 152, "y": 24, "w": 30, "h": 40 } },
+    { "id": "brown_black_4", "label": "חום - שחור · עמודה 4", "color": "חום - שחור", "column": "4", "hotspot": { "x": 120, "y": 24, "w": 30, "h": 40 } },
+    { "id": "brown_black_5", "label": "חום - שחור · עמודה 5", "color": "חום - שחור", "column": "5", "hotspot": { "x": 64, "y": 72, "w": 30, "h": 40 } },
+
+    { "id": "red_1", "label": "אדום · עמודה 1", "color": "אדום", "column": "1", "hotspot": { "x": 456, "y": 24, "w": 30, "h": 40 } },
+    { "id": "red_2", "label": "אדום · עמודה 2", "color": "אדום", "column": "2", "hotspot": { "x": 424, "y": 24, "w": 30, "h": 40 } },
+    { "id": "red_3", "label": "אדום · עמודה 3", "color": "אדום", "column": "3", "hotspot": { "x": 392, "y": 24, "w": 30, "h": 40 } },
+    { "id": "red_4", "label": "אדום · עמודה 4", "color": "אדום", "column": "4", "hotspot": { "x": 360, "y": 24, "w": 30, "h": 40 } },
+
+    { "id": "blue_1", "label": "כחול · עמודה 1", "color": "כחול", "column": "1", "hotspot": { "x": 636, "y": 24, "w": 30, "h": 40 } },
+    { "id": "blue_2", "label": "כחול · עמודה 2", "color": "כחול", "column": "2", "hotspot": { "x": 604, "y": 24, "w": 30, "h": 40 } },
+    { "id": "blue_3", "label": "כחול · עמודה 3", "color": "כחול", "column": "3", "hotspot": { "x": 572, "y": 24, "w": 30, "h": 40 } },
+    { "id": "blue_4", "label": "כחול · עמודה 4", "color": "כחול", "column": "4", "hotspot": { "x": 540, "y": 24, "w": 30, "h": 40 } },
+
+    { "id": "yellow_1", "label": "צהוב · עמודה 1", "color": "צהוב", "column": "1", "hotspot": { "x": 1026, "y": 24, "w": 30, "h": 40 } },
+    { "id": "yellow_2", "label": "צהוב · עמודה 2", "color": "צהוב", "column": "2", "hotspot": { "x": 994, "y": 24, "w": 30, "h": 40 } },
+    { "id": "yellow_3", "label": "צהוב · עמודה 3", "color": "צהוב", "column": "3", "hotspot": { "x": 962, "y": 24, "w": 30, "h": 40 } },
+    { "id": "yellow_4", "label": "צהוב · עמודה 4", "color": "צהוב", "column": "4", "hotspot": { "x": 930, "y": 24, "w": 30, "h": 40 } },
+
+    { "id": "purple_1", "label": "סגול · עמודה 1", "color": "סגול", "column": "1", "hotspot": { "x": 1030, "y": 210, "w": 44, "h": 48 } },
+    { "id": "green_yellow_1", "label": "ירוק - צהוב · עמודה 1", "color": "ירוק - צהוב", "column": "1", "hotspot": { "x": 1030, "y": 375, "w": 44, "h": 48 } },
+
+    { "id": "brown_1", "label": "חום · עמודה 1", "color": "חום", "column": "1", "hotspot": { "x": 1035, "y": 545, "w": 38, "h": 42 } },
+    { "id": "brown_2", "label": "חום · עמודה 2", "color": "חום", "column": "2", "hotspot": { "x": 990, "y": 545, "w": 38, "h": 42 } },
+
+    { "id": "gray_1", "label": "אפור · עמודה 1", "color": "אפור", "column": "1", "hotspot": { "x": 58, "y": 520, "w": 32, "h": 34 } },
+    { "id": "gray_2", "label": "אפור · עמודה 2", "color": "אפור", "column": "2", "hotspot": { "x": 58, "y": 560, "w": 32, "h": 34 } },
+    { "id": "gray_3", "label": "אפור · עמודה 3", "color": "אפור", "column": "3", "hotspot": { "x": 112, "y": 596, "w": 32, "h": 34 } },
+    { "id": "gray_4", "label": "אפור · עמודה 4", "color": "אפור", "column": "4", "hotspot": { "x": 150, "y": 596, "w": 32, "h": 34 } },
+
+    { "id": "green_1", "label": "ירוק · עמודה 1", "color": "ירוק", "column": "1", "hotspot": { "x": 345, "y": 596, "w": 32, "h": 34 } },
+    { "id": "green_2", "label": "ירוק · עמודה 2", "color": "ירוק", "column": "2", "hotspot": { "x": 383, "y": 596, "w": 32, "h": 34 } },
+    { "id": "green_3", "label": "ירוק · עמודה 3", "color": "ירוק", "column": "3", "hotspot": { "x": 421, "y": 596, "w": 32, "h": 34 } },
+    { "id": "green_4", "label": "ירוק · עמודה 4", "color": "ירוק", "column": "4", "hotspot": { "x": 459, "y": 596, "w": 32, "h": 34 } },
+
+    { "id": "mussar_1_4", "label": "מוסר · מדפים 1-4", "color": "מוסר", "shelfFrom": 1, "shelfTo": 4, "hotspot": { "x": 545, "y": 592, "w": 72, "h": 38 } },
+    { "id": "mussar_5_9", "label": "מוסר · מדפים 5-9", "color": "מוסר", "shelfFrom": 5, "shelfTo": 9, "hotspot": { "x": 690, "y": 592, "w": 72, "h": 38 } },
+
+    { "id": "mishna_berura_a", "label": "משנה ברורה", "color": "משנה ברורה", "columns": ["א", "ב", "ג", "ד", "ה", "ו"], "hotspot": { "x": 880, "y": 560, "w": 42, "h": 95 } },
+    { "id": "mishna_berura_b", "label": "משנה ברורה", "color": "משנה ברורה", "columns": ["א", "ב", "ג", "ו"], "hotspot": { "x": 815, "y": 595, "w": 42, "h": 70 } }
+  ]
 }

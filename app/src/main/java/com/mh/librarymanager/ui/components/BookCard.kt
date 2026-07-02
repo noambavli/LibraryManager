@@ -335,6 +335,20 @@ private fun BookChipsRow(
                 contentColor = cs.onSurfaceVariant,
             )
         }
+        if (book.column.isNotBlank()) {
+            ChipPill(
+                label = stringResource(R.string.book_location_column_prefix) + " " + book.column,
+                containerColor = cs.surfaceVariant,
+                contentColor = cs.onSurfaceVariant,
+            )
+        }
+        if (book.shelf.isNotBlank()) {
+            ChipPill(
+                label = stringResource(R.string.book_location_shelf_prefix) + " " + book.shelf,
+                containerColor = cs.surfaceVariant,
+                contentColor = cs.onSurfaceVariant,
+            )
+        }
         if (book.category.isNotBlank()) ChipPill(book.category)
         book.subcategories.firstOrNull()?.takeIf { it.isNotBlank() }?.let { ChipPill(it) }
         book.displayPlace()?.let { place ->

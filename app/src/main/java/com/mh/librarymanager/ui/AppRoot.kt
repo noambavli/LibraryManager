@@ -122,9 +122,11 @@ fun AppRoot(
     val session: ManagementSession = managementSession
     val adbPending by windowsToolVm.adbPending.collectAsStateWithLifecycle()
     val adbConfirming by windowsToolVm.adbConfirming.collectAsStateWithLifecycle()
+    val adbBeisPending by windowsToolVm.adbBeisPending.collectAsStateWithLifecycle()
+    val adbBeisConfirming by windowsToolVm.adbBeisConfirming.collectAsStateWithLifecycle()
     val adbMatchingsPending by windowsToolVm.adbMatchingsPending.collectAsStateWithLifecycle()
     val adbMatchingsConfirming by windowsToolVm.adbMatchingsConfirming.collectAsStateWithLifecycle()
-    val adbDialogOpen = adbPending != null || adbMatchingsPending != null
+    val adbDialogOpen = adbPending != null || adbBeisPending != null || adbMatchingsPending != null
     fun returnToAttract() {
         session.logout()
         searchVm.finalizePublicSearchSession()
@@ -133,6 +135,7 @@ fun AppRoot(
 
     LaunchedEffect(Unit) {
         windowsToolVm.refreshAdbPending()
+        windowsToolVm.refreshAdbBeisPending()
         windowsToolVm.refreshAdbMatchingsPending()
     }
 
@@ -502,6 +505,17 @@ fun AppRoot(
                 onCancel = { windowsToolVm.cancelAdbPending() },
                 onConfirm = { windowsToolVm.confirmAdbPending() },
                 confirmEnabled = !adbConfirming,
+            )
+        }
+
+        adbBeisPending?.let { preview ->
+            ImportConfirmDialog(
+                preview = preview,
+                title = stringResource(R.string.beis_import_adb_confirm_title),
+                fileLabel = preview.fileLabel(),
+                onCancel = { windowsToolVm.cancelAdbBeisPending() },
+                onConfirm = { windowsToolVm.confirmAdbBeisPending() },
+                confirmEnabled = !adbBeisConfirming,
             )
         }
 

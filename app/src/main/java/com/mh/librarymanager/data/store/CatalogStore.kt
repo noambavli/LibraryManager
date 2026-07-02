@@ -35,7 +35,7 @@ class CatalogStore(private val context: Context) {
 
     companion object {
         /** Bump when persisted book fields change so the bundled xlsx is re-imported. */
-        const val CATALOG_FORMAT_VERSION = 4
+        const val CATALOG_FORMAT_VERSION = 5
         const val PALETTE_FORMAT_VERSION = 1
     }
 
@@ -158,7 +158,11 @@ class CatalogStore(private val context: Context) {
             return emptyList()
         }
         val version = root.optInt("version", 0)
-        if (version != CATALOG_FORMAT_VERSION) return emptyList()
+        // Accept any version up to the current one and migrate forward: every
+        // field is read defensively with a default, so books written by an older
+        // build (e.g. before column/shelf existed) load without data loss and
+        // are re-saved in the current format on the next write.
+        if (version !in 1..CATALOG_FORMAT_VERSION) return emptyList()
         val arr = root.optJSONArray("books") ?: return emptyList()
         val result = ArrayList<Book>(arr.length())
         for (i in 0 until arr.length()) {
@@ -187,6 +191,8 @@ class CatalogStore(private val context: Context) {
             category = safeString("category"),
             subcategories = optJSONArray("subcategories").toStringList(),
             notes = safeString("notes"),
+            column = safeString("column"),
+            shelf = safeString("shelf"),
             place = BookPlaceText.fromStored(safeString("place")),
             state = BookState.fromStored(safeString("state")),
             parentBookId = parent,
@@ -218,6 +224,8 @@ class CatalogStore(private val context: Context) {
             o.put("category", b.category)
             o.put("subcategories", JSONArray(b.subcategories))
             o.put("notes", b.notes)
+            o.put("column", b.column)
+            o.put("shelf", b.shelf)
             o.put("place", b.place)
             o.put("state", b.state.storedValue)
             o.put("parentBookId", b.parentBookId.orEmpty())

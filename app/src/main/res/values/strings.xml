@@ -76,6 +76,9 @@
     <string name="book_location_no_map">מפת מיקום אינה זמינה לחדר זה.</string>
     <string name="book_location_no_map_for_place">אין מפה זמינה למקום %1$s</string>
     <string name="book_location_section_unknown">הספר אינו משויך לאזור במפה (בדקו צבע, אות ומספר).</string>
+    <string name="book_location_section_unknown_beis">הספר אינו משויך לאזור במפה (בדקו צבע ועמודה).</string>
+    <string name="book_location_column_prefix">עמודה</string>
+    <string name="book_location_shelf_prefix">מדף</string>
     <string name="book_state_available">זמין</string>
     <string name="book_state_unavailable">לא זמין</string>
     <string name="book_state_in_repair">בתיקון</string>
@@ -354,8 +357,10 @@
     <string name="field_writer">המחבר</string>
     <string name="field_book_number">מספר במערכת</string>
     <string name="field_display_number">מספר (תצוגה)</string>
-    <string name="field_place">מקום</string>
+    <string name="field_place">ספרייה</string>
     <string name="field_letter">אות</string>
+    <string name="field_column">עמודה</string>
+    <string name="field_shelf">מדף</string>
     <string name="field_color">צבע</string>
     <string name="field_category">קטגוריה</string>
     <string name="field_subcategories">תת קטגוריה</string>
@@ -391,6 +396,7 @@
 
     <!-- Windows Tool (backup + xlsx import/export) -->
     <string name="excel_import_adb_confirm_title">קובץ אקסל הגיע מהמחשב — לאשר הוספה?</string>
+    <string name="beis_import_adb_confirm_title">קובץ ספרי בית מדרש הגיע מהמחשב — לאשר הוספה?</string>
     <string name="excel_import_chosen_file">בחרתם: קובץ %1$s</string>
     <string name="excel_import_confirm_preview">יתווספו %1$d חדשים · %2$d כבר קיימים · מ‑%3$d ל‑%4$d סה״כ.</string>
     <string name="excel_import_confirm_safety">נשמר גיבוי מלא לפני הייבוא — אפשר לשחזר מכלי Windows.</string>
@@ -413,8 +419,10 @@
     <string name="windows_tool_backup_done">הגיבוי נשמר: %1$s (בתיקיית Download)</string>
     <string name="windows_tool_backup_failed">הגיבוי נכשל: %1$s</string>
 
-    <string name="windows_tool_books_section">ספרים</string>
-    <string name="windows_tool_books_format">בוחרים קובץ אקסל שנמצא על הטאבלט. ספרים חדשים יתווספו — קיימים לא יוחלפו.</string>
+    <string name="windows_tool_books_section">ספרים (אוצר הספרים)</string>
+    <string name="windows_tool_books_format">בוחרים קובץ אקסל של אוצר הספרים שנמצא על הטאבלט. ספרים חדשים יתווספו — קיימים לא יוחלפו.</string>
+    <string name="windows_tool_beis_section">ספרי בית מדרש</string>
+    <string name="windows_tool_beis_format">בוחרים קובץ אקסל של בית מדרש (עם עמודה ומדף) שנמצא על הטאבלט. ספרים חדשים יתווספו — קיימים לא יוחלפו.</string>
     <string name="windows_tool_matchings_section">קיצורי חיפוש</string>
     <string name="windows_tool_matchings_format">בוחרים קובץ התאמות שנמצא על הטאבלט.</string>
 
@@ -425,15 +433,19 @@
     <string name="windows_tool_export_step_tap">לחצו על סוג הקובץ להורדה (ספרים או התאמות)</string>
     <string name="windows_tool_export_step_save">בחלון השמירה שנפתח — בחרו ״Download״ ולחצו ״שמירה״</string>
     <string name="windows_tool_export_step_copy">חברו את הטאבלט למחשב ב-USB ← פתחו את הטאבלט ← העתיקו את הקובץ</string>
-    <string name="windows_tool_export_books_btn">הורדת ספרים</string>
+    <string name="windows_tool_export_books_btn">הורדת ספרי אוצר</string>
+    <string name="windows_tool_export_beis_btn">הורדת ספרי בית מדרש</string>
     <string name="windows_tool_export_matchings_btn">הורדת התאמות</string>
-    <string name="windows_tool_export_books_hint">כל הספרים בקטלוג → books_תאריך.xlsx</string>
+    <string name="windows_tool_export_books_hint">ספרי אוצר הספרים → books_תאריך.xlsx</string>
+    <string name="windows_tool_export_beis_hint">ספרי בית מדרש → beis_תאריך.xlsx</string>
     <string name="windows_tool_export_matchings_hint">כל קיצורי החיפוש → matchings_תאריך.xlsx</string>
-    <string name="windows_tool_export_books_working">מכין קובץ ספרים…</string>
+    <string name="windows_tool_export_books_working">מכין קובץ ספרי אוצר…</string>
+    <string name="windows_tool_export_beis_working">מכין קובץ ספרי בית מדרש…</string>
     <string name="windows_tool_export_matchings_working">מכין קובץ התאמות…</string>
     <string name="windows_tool_export_saving">שומר את הקובץ…</string>
     <string name="windows_tool_export_save_failed">השמירה נכשלה — נסו שוב, ובחרו תיקייה אחרת (למשל Download).</string>
-    <string name="windows_tool_export_result_title_books">קובץ הספרים נשמר</string>
+    <string name="windows_tool_export_result_title_books">קובץ ספרי אוצר נשמר</string>
+    <string name="windows_tool_export_result_title_beis">קובץ ספרי בית מדרש נשמר</string>
     <string name="windows_tool_export_result_title_matchings">קובץ ההתאמות נשמר</string>
     <string name="windows_tool_export_result_file">שם הקובץ: %1$s</string>
     <string name="windows_tool_export_result_rows">%1$d שורות נתונים</string>
@@ -457,19 +469,27 @@
     <string name="windows_tool_restore_ok">שחזר</string>
 
     <string name="windows_tool_import_confirm_title">לאשר ייבוא?</string>
-    <string name="windows_tool_import_books_confirm">ייבוא הספרים יוסיף רק ספרים חדשים — שורות שכבר קיימות בקטלוג (אותו תוכן) ידולגו. גיבוי מלא יישמר אוטומטית לפני הייבוא. להמשיך?</string>
+    <string name="windows_tool_import_books_confirm">ייבוא ספרי אוצר יוסיף רק ספרים חדשים — שורות שכבר קיימות בקטלוג (אותו תוכן) ידולגו. הספרים ישויכו לאוצר הספרים. גיבוי מלא יישמר אוטומטית לפני הייבוא. להמשיך?</string>
+    <string name="windows_tool_import_beis_confirm">ייבוא ספרי בית מדרש יוסיף רק ספרים חדשים — שורות שכבר קיימות (אותו תוכן) ידולגו. הספרים ישויכו לבית המדרש. גיבוי מלא יישמר אוטומטית לפני הייבוא. להמשיך?</string>
     <string name="windows_tool_import_matchings_confirm">ייבוא ההתאמות יוסיף קיצורים חדשים ויעדכן מילים/כיוון לקיצורים שכבר קיימים. גיבוי מלא יישמר אוטומטית לפני הייבוא. להמשיך?</string>
 
     <string name="windows_tool_danger_section">מחיקה</string>
     <string name="windows_tool_danger_desc">מחיקת כל הספרים או כל קיצורי החיפוש. לפני המחיקה נשמר אוטומטית גיבוי.\nכדי למנוע טעות — תתבקשו להקליד מילת אישור.</string>
-    <string name="windows_tool_delete_all_books">מחק את כל הספרים</string>
+    <string name="windows_tool_delete_all_books">מחק את כל ספרי אוצר הספרים</string>
+    <string name="windows_tool_delete_all_beis">מחק את כל ספרי בית מדרש</string>
     <string name="windows_tool_delete_all_matchings">מחק את כל התאמות החיפוש</string>
-    <string name="windows_tool_delete_books_confirm_title">מחיקת כל הספרים</string>
-    <string name="windows_tool_delete_books_confirm_body">כל הספרים בקטלוג יימחקו לצמיתות. לפני המחיקה יישמר גיבוי מלא אוטומטית. הקלידו ״מחק ספרים״ לאישור.</string>
+    <string name="windows_tool_delete_books_confirm_title">מחיקת כל ספרי אוצר הספרים</string>
+    <string name="windows_tool_delete_books_confirm_body">כל ספרי אוצר הספרים יימחקו לצמיתות (ספרי בית מדרש לא יושפעו). לפני המחיקה יישמר גיבוי מלא אוטומטית. הקלידו ״מחק ספרים״ לאישור.</string>
     <string name="windows_tool_delete_books_phrase">מחק ספרים</string>
     <string name="windows_tool_delete_books_ok">מחק הכל</string>
-    <string name="windows_tool_delete_books_done">נמחקו %1$d ספרים. נשמר גיבוי מלא לפני המחיקה — ניתן לשחזר מכלי Windows.</string>
-    <string name="windows_tool_delete_books_empty">אין ספרים למחיקה.</string>
+    <string name="windows_tool_delete_books_done">נמחקו %1$d ספרי אוצר. נשמר גיבוי מלא לפני המחיקה — ניתן לשחזר מכלי Windows.</string>
+    <string name="windows_tool_delete_books_empty">אין ספרי אוצר למחיקה.</string>
+    <string name="windows_tool_delete_beis_confirm_title">מחיקת כל ספרי בית מדרש</string>
+    <string name="windows_tool_delete_beis_confirm_body">כל ספרי בית המדרש יימחקו לצמיתות (ספרי אוצר הספרים לא יושפעו). לפני המחיקה יישמר גיבוי מלא אוטומטית. הקלידו ״מחק בית מדרש״ לאישור.</string>
+    <string name="windows_tool_delete_beis_phrase">מחק בית מדרש</string>
+    <string name="windows_tool_delete_beis_ok">מחק הכל</string>
+    <string name="windows_tool_delete_beis_done">נמחקו %1$d ספרי בית מדרש. נשמר גיבוי מלא לפני המחיקה — ניתן לשחזר מכלי Windows.</string>
+    <string name="windows_tool_delete_beis_empty">אין ספרי בית מדרש למחיקה.</string>
     <string name="windows_tool_delete_matchings_confirm_title">מחיקת כל התאמות החיפוש</string>
     <string name="windows_tool_delete_matchings_confirm_body">כל התאמות החיפוש (קיצורים, מילים נרדפות) יימחקו. לפני המחיקה יישמר גיבוי מלא אוטומטית. הקלידו ״מחק התאמות״ לאישור.</string>
     <string name="windows_tool_delete_matchings_phrase">מחק התאמות</string>
@@ -477,7 +497,8 @@
     <string name="windows_tool_delete_matchings_done">נמחקו %1$d התאמות חיפוש. נשמר גיבוי מלא לפני המחיקה — ניתן לשחזר מכלי Windows.</string>
     <string name="windows_tool_delete_matchings_empty">אין התאמות חיפוש למחיקה.</string>
     <string name="windows_tool_delete_working_backup">יוצר גיבוי מלא לפני המחיקה…</string>
-    <string name="windows_tool_delete_books_working">מוחק את כל הספרים…</string>
+    <string name="windows_tool_delete_books_working">מוחק את כל ספרי אוצר הספרים…</string>
+    <string name="windows_tool_delete_beis_working">מוחק את כל ספרי בית מדרש…</string>
     <string name="windows_tool_delete_matchings_working">מוחק את כל התאמות החיפוש…</string>
 
     <string name="windows_tool_dismiss">סגור</string>

@@ -19,7 +19,9 @@ import com.mh.librarymanager.data.xlsx.CatalogImporter
 import com.mh.librarymanager.data.xlsx.WindowsToolCodec
 import com.mh.librarymanager.data.xlsx.XlsxReader
 import com.mh.librarymanager.data.xlsx.XlsxWriter
+import com.mh.librarymanager.domain.BookPlace
 import com.mh.librarymanager.domain.HomeOverviewMapKind
+import com.mh.librarymanager.domain.mapPlace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -77,7 +79,7 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
 
     data class BackupInfo(val at: Long, val name: String)
 
-    enum class ExportKind { Books, Matchings }
+    enum class ExportKind { Books, Beis, Matchings }
 
     data class LastExport(
         val kind: ExportKind,
@@ -138,7 +140,21 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
         sheet = "books",
     ) {
         container.catalogStore.loadFromDisk()
-        WindowsToolCodec.booksToRows(container.catalogStore.books.value.filter { it.isLatest })
+        WindowsToolCodec.booksToRows(
+            container.catalogStore.books.value.filter { it.isLatest && it.mapPlace() != BookPlace.BEIS_MIDRASH },
+        )
+    }
+
+    fun exportBeis() = export(
+        kind = ExportKind.Beis,
+        workingRes = R.string.windows_tool_export_beis_working,
+        baseName = "beis",
+        sheet = "beis",
+    ) {
+        container.catalogStore.loadFromDisk()
+        WindowsToolCodec.beisToRows(
+            container.catalogStore.books.value.filter { it.isLatest && it.mapPlace() == BookPlace.BEIS_MIDRASH },
+        )
     }
 
     fun exportMatchings() = export(
@@ -255,7 +271,15 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
     fun importBooks(uri: Uri) = importWithBackup(uri) {
         val stream = openBounded(uri) ?: return@importWithBackup OpStatus.Error("לא ניתן לפתוח את הקובץ.")
         val result = stream.use {
-            CatalogImporter(getApplication(), container.repository).mergeFromStream(it)
+            CatalogImporter(getApplication(), container.repository).mergeFromStream(it, BookPlace.OTZAR)
+        }
+        OpStatus.Success(booksImportMessage(result))
+    }
+
+    fun importBeis(uri: Uri) = importWithBackup(uri) {
+        val stream = openBounded(uri) ?: return@importWithBackup OpStatus.Error("לא ניתן לפתוח את הקובץ.")
+        val result = stream.use {
+            CatalogImporter(getApplication(), container.repository).mergeFromStream(it, BookPlace.BEIS_MIDRASH)
         }
         OpStatus.Success(booksImportMessage(result))
     }
@@ -444,6 +468,84 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
         if (_adbConfirming.value) return
         _adbPending.value = null
         excelIo.discardPendingImport()
+    }
+
+    // ---- PC adb push (Beis-Midrash Excel import) --------------------------
+
+    private val beisIo get() = container.beisImportIo
+
+    private val _adbBeisPending = MutableStateFlow<ExcelImportIO.ImportPreview?>(null)
+    val adbBeisPending: StateFlow<ExcelImportIO.ImportPreview?> = _adbBeisPending.asStateFlow()
+
+    private val _adbBeisConfirming = MutableStateFlow(false)
+    val adbBeisConfirming: StateFlow<Boolean> = _adbBeisConfirming.asStateFlow()
+
+    fun refreshAdbBeisPending() {
+        viewModelScope.launch { refreshAdbBeisPendingInternal(retries = 0) }
+    }
+
+    fun onAdbBeisImportStaged() {
+        viewModelScope.launch { refreshAdbBeisPendingInternal(retries = 8) }
+    }
+
+    private suspend fun refreshAdbBeisPendingInternal(retries: Int) {
+        repeat(retries + 1) { attempt ->
+            when (val outcome = beisIo.loadPendingPreview()) {
+                is ExcelImportIO.PreviewOutcome.Ready -> {
+                    _adbBeisPending.value = outcome.preview
+                    return
+                }
+                is ExcelImportIO.PreviewOutcome.Failed -> {
+                    if (attempt < retries) delay(350)
+                    else _adbBeisPending.value = null
+                }
+            }
+        }
+    }
+
+    fun confirmAdbBeisPending() {
+        if (_adbBeisConfirming.value) return
+        _adbBeisConfirming.value = true
+        _adbBeisPending.value = null
+        _opStatus.value = OpStatus.Working("יוצר גיבוי מלא לפני הייבוא…")
+        viewModelScope.launch {
+            try {
+                val backupError = withContext(Dispatchers.IO) { ensurePreChangeBackup() }
+                if (backupError != null) {
+                    beisIo.discardPendingImport()
+                    beisIo.writeImportResult(
+                        ExcelImportIO.ImportResult.IoFailure(backupError.message),
+                    )
+                    _opStatus.value = backupError
+                    return@launch
+                }
+                val result = withContext(Dispatchers.IO) { beisIo.commitPendingImport() }
+                beisIo.writeImportResult(result)
+                _opStatus.value = when (result) {
+                    is ExcelImportIO.ImportResult.Ok ->
+                        OpStatus.Success(booksImportMessage(
+                            CatalogImporter.ImportResult(
+                                added = result.addedCount,
+                                duplicates = result.skippedCount,
+                                blankRows = 0,
+                                totalAfter = result.totalAfter,
+                            ),
+                        ))
+                    is ExcelImportIO.ImportResult.Invalid -> OpStatus.Error(result.reason)
+                    is ExcelImportIO.ImportResult.IoFailure -> OpStatus.Error(result.reason)
+                    else -> OpStatus.Idle
+                }
+                refreshLastBackup()
+            } finally {
+                _adbBeisConfirming.value = false
+            }
+        }
+    }
+
+    fun cancelAdbBeisPending() {
+        if (_adbBeisConfirming.value) return
+        _adbBeisPending.value = null
+        beisIo.discardPendingImport()
     }
 
     // ---- PC adb push (matchings import) -----------------------------------
@@ -644,11 +746,27 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
         deleteWorking = getApplication<Application>().getString(R.string.windows_tool_delete_books_working),
     ) {
         val app = getApplication<Application>()
-        val count = container.repository.clearCatalog()
+        // The "books" library is everything that isn't Beis-Midrash (Otzar +
+        // any unspecified place), so a Beis delete never touches these and
+        // vice-versa.
+        val count = container.repository.clearCatalogMatching { it.mapPlace() != BookPlace.BEIS_MIDRASH }
         if (count <= 0) {
             OpStatus.Success(app.getString(R.string.windows_tool_delete_books_empty))
         } else {
             OpStatus.Success(app.getString(R.string.windows_tool_delete_books_done, count))
+        }
+    }
+
+    fun deleteAllBeis() = deleteWithBackup(
+        backupWorking = getApplication<Application>().getString(R.string.windows_tool_delete_working_backup),
+        deleteWorking = getApplication<Application>().getString(R.string.windows_tool_delete_beis_working),
+    ) {
+        val app = getApplication<Application>()
+        val count = container.repository.clearCatalogMatching { it.mapPlace() == BookPlace.BEIS_MIDRASH }
+        if (count <= 0) {
+            OpStatus.Success(app.getString(R.string.windows_tool_delete_beis_empty))
+        } else {
+            OpStatus.Success(app.getString(R.string.windows_tool_delete_beis_done, count))
         }
     }
 

@@ -7,9 +7,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
@@ -20,6 +24,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.mh.librarymanager.R
@@ -35,6 +40,7 @@ fun LibraryMapView(
     map: LibraryMap,
     highlightSection: LibraryMapSection?,
     modifier: Modifier = Modifier,
+    calloutText: String? = null,
 ) {
     // Maps are physical layout: coords come from Figma top-left (LTR).
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
@@ -99,6 +105,26 @@ fun LibraryMapView(
                                 )
                                 .size(pinSize),
                         )
+
+                        // Beis-Midrash writes the מדף beside the red sign.
+                        if (!calloutText.isNullOrBlank()) {
+                            Surface(
+                                color = Color(0xFFD32F2F),
+                                contentColor = Color.White,
+                                shape = RoundedCornerShape(6.dp),
+                                shadowElevation = 3.dp,
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .offset(x = left + width + 6.dp, y = top),
+                            ) {
+                                Text(
+                                    text = calloutText,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                )
+                            }
+                        }
                     }
                 }
             }

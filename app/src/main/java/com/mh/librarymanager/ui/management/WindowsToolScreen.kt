@@ -57,9 +57,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private enum class ImportKind { Books, Matchings }
+private enum class ImportKind { Books, Beis, Matchings }
 
-private enum class PendingDelete { Books, Matchings }
+private enum class PendingDelete { Books, Beis, Matchings }
 
 private data class PendingImport(val kind: ImportKind, val uri: Uri)
 
@@ -118,6 +118,13 @@ fun WindowsToolScreen(
     val booksPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             pendingImport = PendingImport(ImportKind.Books, uri)
+        } else {
+            session.endExternalTask()
+        }
+    }
+    val beisPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            pendingImport = PendingImport(ImportKind.Beis, uri)
         } else {
             session.endExternalTask()
         }
@@ -220,6 +227,7 @@ fun WindowsToolScreen(
                     ExportToPcSection(
                         lastExport = lastExport,
                         onExportBooks = { viewModel.exportBooks() },
+                        onExportBeis = { viewModel.exportBeis() },
                         onExportMatchings = { viewModel.exportMatchings() },
                         onDismissExport = { viewModel.dismissExport() },
                     )
@@ -227,6 +235,7 @@ fun WindowsToolScreen(
 
                     LocalImportSection(
                         onImportBooks = { pick(booksPicker, xlsxTypes) },
+                        onImportBeis = { pick(beisPicker, xlsxTypes) },
                         onImportMatchings = { pick(matchingsPicker, xlsxTypes) },
                     )
 
@@ -238,6 +247,7 @@ fun WindowsToolScreen(
 
                     DangerZoneCard(
                         onDeleteAllBooks = { pendingDelete = PendingDelete.Books },
+                        onDeleteAllBeis = { pendingDelete = PendingDelete.Beis },
                         onDeleteAllMatchings = { pendingDelete = PendingDelete.Matchings },
                     )
 
@@ -274,6 +284,7 @@ fun WindowsToolScreen(
     pendingImport?.let { request ->
         val body = when (request.kind) {
             ImportKind.Books -> stringResource(R.string.windows_tool_import_books_confirm)
+            ImportKind.Beis -> stringResource(R.string.windows_tool_import_beis_confirm)
             ImportKind.Matchings -> stringResource(R.string.windows_tool_import_matchings_confirm)
         }
         AlertDialog(
@@ -284,6 +295,7 @@ fun WindowsToolScreen(
                 TextButton(onClick = {
                     when (request.kind) {
                         ImportKind.Books -> viewModel.importBooks(request.uri)
+                        ImportKind.Beis -> viewModel.importBeis(request.uri)
                         ImportKind.Matchings -> viewModel.importMatchings(request.uri)
                     }
                     pendingImport = null
@@ -321,6 +333,17 @@ fun WindowsToolScreen(
             onConfirmed = {
                 pendingDelete = null
                 viewModel.deleteAllBooks()
+            },
+        )
+        PendingDelete.Beis -> TypedConfirmDialog(
+            title = stringResource(R.string.windows_tool_delete_beis_confirm_title),
+            body = stringResource(R.string.windows_tool_delete_beis_confirm_body),
+            requiredPhrase = stringResource(R.string.windows_tool_delete_beis_phrase),
+            confirmLabel = stringResource(R.string.windows_tool_delete_beis_ok),
+            onDismiss = { pendingDelete = null },
+            onConfirmed = {
+                pendingDelete = null
+                viewModel.deleteAllBeis()
             },
         )
         PendingDelete.Matchings -> TypedConfirmDialog(
@@ -590,6 +613,7 @@ private fun HomeOverviewMapUploadRow(
 private fun ExportToPcSection(
     lastExport: WindowsToolViewModel.LastExport?,
     onExportBooks: () -> Unit,
+    onExportBeis: () -> Unit,
     onExportMatchings: () -> Unit,
     onDismissExport: () -> Unit,
 ) {
@@ -622,6 +646,25 @@ private fun ExportToPcSection(
             }
             Column(modifier = Modifier.weight(1f)) {
                 PrimaryActionButton(
+                    text = "\u2193  " + stringResource(R.string.windows_tool_export_beis_btn),
+                    onClick = onExportBeis,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.windows_tool_export_beis_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = AppColors.TextMuted,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                PrimaryActionButton(
                     text = "\u2193  " + stringResource(R.string.windows_tool_export_matchings_btn),
                     onClick = onExportMatchings,
                     modifier = Modifier.fillMaxWidth(),
@@ -633,6 +676,7 @@ private fun ExportToPcSection(
                     color = AppColors.TextMuted,
                 )
             }
+            Spacer(modifier = Modifier.weight(1f))
         }
         if (lastExport != null) {
             Spacer(modifier = Modifier.height(16.dp))
@@ -671,6 +715,7 @@ private fun ExportStepRow(number: String, text: String) {
 @Composable
 private fun LocalImportSection(
     onImportBooks: () -> Unit,
+    onImportBeis: () -> Unit,
     onImportMatchings: () -> Unit,
 ) {
     ToolSection(
@@ -681,6 +726,12 @@ private fun LocalImportSection(
             title = stringResource(R.string.windows_tool_books_section),
             hint = stringResource(R.string.windows_tool_books_format),
             onImport = onImportBooks,
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        LocalImportRow(
+            title = stringResource(R.string.windows_tool_beis_section),
+            hint = stringResource(R.string.windows_tool_beis_format),
+            onImport = onImportBeis,
         )
         Spacer(modifier = Modifier.height(14.dp))
         LocalImportRow(
@@ -733,6 +784,7 @@ private fun ExportResultCard(
 ) {
     val titleRes = when (export.kind) {
         WindowsToolViewModel.ExportKind.Books -> R.string.windows_tool_export_result_title_books
+        WindowsToolViewModel.ExportKind.Beis -> R.string.windows_tool_export_result_title_beis
         WindowsToolViewModel.ExportKind.Matchings -> R.string.windows_tool_export_result_title_matchings
     }
     Surface(
@@ -804,6 +856,7 @@ private fun ExportResultCard(
 @Composable
 private fun DangerZoneCard(
     onDeleteAllBooks: () -> Unit,
+    onDeleteAllBeis: () -> Unit,
     onDeleteAllMatchings: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -813,31 +866,36 @@ private fun DangerZoneCard(
         accent = cs.error,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            OutlinedButton(
+            DangerButton(
+                text = stringResource(R.string.windows_tool_delete_all_books),
                 onClick = onDeleteAllBooks,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = cs.error),
-                border = BorderStroke(1.dp, cs.error),
-            ) {
-                Text(
-                    text = stringResource(R.string.windows_tool_delete_all_books),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-            OutlinedButton(
+            )
+            DangerButton(
+                text = stringResource(R.string.windows_tool_delete_all_beis),
+                onClick = onDeleteAllBeis,
+            )
+            DangerButton(
+                text = stringResource(R.string.windows_tool_delete_all_matchings),
                 onClick = onDeleteAllMatchings,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = cs.error),
-                border = BorderStroke(1.dp, cs.error),
-            ) {
-                Text(
-                    text = stringResource(R.string.windows_tool_delete_all_matchings),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
+            )
         }
+    }
+}
+
+@Composable
+private fun DangerButton(text: String, onClick: () -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().height(52.dp),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = cs.error),
+        border = BorderStroke(1.dp, cs.error),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
 
