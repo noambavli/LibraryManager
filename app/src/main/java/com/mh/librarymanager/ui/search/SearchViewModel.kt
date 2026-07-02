@@ -60,7 +60,15 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
     val catalogLoaded: StateFlow<Boolean> = container.repository.observeCatalogLoaded()
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
-    private val engine: StateFlow<SearchEngine> = combine(
+    /**
+     * When on (default), the staff-managed matching table expands the query with
+     * synonyms/aliases (e.g. "ח״ח" also finds "חפץ חיים"). Toggled off, the
+     * visitor gets a literal search with no expansions.
+     */
+    private val _useMatching = MutableStateFlow(true)
+    val useMatching: StateFlow<Boolean> = _useMatching.asStateFlow()
+
+    private val engineWithSynonyms: StateFlow<SearchEngine> = combine(
         catalog,
         container.matchingStore.matchings.onStart { container.matchingStore.loadFromDisk() },
     ) { books, rules ->
@@ -69,7 +77,20 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.Eagerly, SearchEngine(emptyList()))
 
-    val catalogSize: StateFlow<Int> = engine.map { it.size }
+    private val enginePlain: StateFlow<SearchEngine> = catalog
+        .map { books -> SearchEngine(books) }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, SearchEngine(emptyList()))
+
+    /** The engine the current results are computed against, per the toggle. */
+    private val activeEngine: StateFlow<SearchEngine> = combine(
+        engineWithSynonyms,
+        enginePlain,
+        _useMatching,
+    ) { withSynonyms, plain, on -> if (on) withSynonyms else plain }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, SearchEngine(emptyList()))
+
+    val catalogSize: StateFlow<Int> = engineWithSynonyms.map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     val customColors: StateFlow<List<CustomColor>> = container.repository.observeColors()
@@ -104,7 +125,7 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val results: StateFlow<List<Book>> = combine(
-        engine,
+        activeEngine,
         _fieldValues.debounce(60),
     ) { eng, values ->
         // The public search screen stays on its idle hint until the visitor
@@ -126,6 +147,11 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setFocused(field: SearchField) {
         _focusedField.value = field
+    }
+
+    /** Enables/disables synonym expansion for the current search session. */
+    fun setUseMatching(enabled: Boolean) {
+        _useMatching.value = enabled
     }
 
     /** Fills the general field with a shortcut word and focuses it. */

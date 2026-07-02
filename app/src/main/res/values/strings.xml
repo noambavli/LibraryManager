@@ -57,6 +57,8 @@
     <string name="search_field_book_number">מספר במערכת</string>
     <string name="search_field_notes">הערות</string>
     <string name="search_shortcuts_label">קיצורי חיפוש</string>
+    <string name="search_matching_toggle_label">חיפוש עם התאמות</string>
+    <string name="search_matching_toggle_hint">כולל שמות נרדפים בחיפוש, לדוגמה: ח״ח = חפץ חיים = ישראל מאיר הכהן מראדין</string>
 
     <string name="results_total">%1$d תוצאות מתוך %2$d ספרים</string>
     <string name="results_empty">לא נמצאו תוצאות</string>

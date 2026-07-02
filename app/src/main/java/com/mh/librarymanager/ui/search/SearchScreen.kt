@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -72,6 +73,7 @@ fun SearchScreen(
     val customColors by viewModel.customColors.collectAsStateWithLifecycle()
     val booksById by viewModel.booksById.collectAsStateWithLifecycle()
     val shortcuts by viewModel.shortcuts.collectAsStateWithLifecycle()
+    val useMatching by viewModel.useMatching.collectAsStateWithLifecycle()
 
     SuppressPlatformKeyboardEffect()
 
@@ -90,6 +92,8 @@ fun SearchScreen(
                 fieldValues = fieldValues,
                 focusedField = focusedField,
                 shortcuts = shortcuts,
+                useMatching = useMatching,
+                onSetUseMatching = viewModel::setUseMatching,
                 onApplyShortcut = viewModel::applyShortcut,
                 onSetValue = viewModel::setValue,
                 onSetFocused = viewModel::setFocused,
@@ -124,6 +128,8 @@ private fun SearchPane(
     fieldValues: Map<SearchField, androidx.compose.ui.text.input.TextFieldValue>,
     focusedField: SearchField,
     shortcuts: List<String>,
+    useMatching: Boolean,
+    onSetUseMatching: (Boolean) -> Unit,
     onApplyShortcut: (String) -> Unit,
     onSetValue: (SearchField, androidx.compose.ui.text.input.TextFieldValue) -> Unit,
     onSetFocused: (SearchField) -> Unit,
@@ -155,6 +161,8 @@ private fun SearchPane(
                 fieldValues = fieldValues,
                 focusedField = focusedField,
                 shortcuts = shortcuts,
+                useMatching = useMatching,
+                onSetUseMatching = onSetUseMatching,
                 onApplyShortcut = onApplyShortcut,
                 onSetValue = onSetValue,
                 onSetFocused = onSetFocused,
@@ -180,6 +188,8 @@ private fun SearchFieldsGrid(
     fieldValues: Map<SearchField, androidx.compose.ui.text.input.TextFieldValue>,
     focusedField: SearchField,
     shortcuts: List<String>,
+    useMatching: Boolean,
+    onSetUseMatching: (Boolean) -> Unit,
     onApplyShortcut: (String) -> Unit,
     onSetValue: (SearchField, androidx.compose.ui.text.input.TextFieldValue) -> Unit,
     onSetFocused: (SearchField) -> Unit,
@@ -208,6 +218,7 @@ private fun SearchFieldsGrid(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(spacing),
     ) {
+        MatchingToggle(checked = useMatching, onToggle = onSetUseMatching)
         if (shortcuts.isNotEmpty()) {
             ShortcutTags(shortcuts = shortcuts, onApply = onApplyShortcut)
         }
@@ -230,6 +241,38 @@ private fun SearchFieldsGrid(
             field(SearchField.BOOK_NUMBER, Modifier.weight(1f))
         }
         field(SearchField.NOTES)
+    }
+}
+
+@Composable
+private fun MatchingToggle(
+    checked: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onToggle(!checked) }
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = checked, onCheckedChange = onToggle)
+        Spacer(modifier = Modifier.width(4.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.search_matching_toggle_label),
+                style = MaterialTheme.typography.labelLarge,
+                color = cs.onSurface,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = stringResource(R.string.search_matching_toggle_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = cs.onSurfaceVariant,
+            )
+        }
     }
 }
 
