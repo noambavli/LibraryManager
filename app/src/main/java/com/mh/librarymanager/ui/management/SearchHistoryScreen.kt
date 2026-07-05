@@ -32,10 +32,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
+import com.mh.librarymanager.ui.text.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -391,24 +390,26 @@ private fun QueryChip(text: String) {
 
 @Composable
 private fun queryLines(query: SearchQuery): List<String> {
-    val resources = LocalContext.current.resources
-    fun line(field: SearchField, value: String): String? {
+    // Resolve field labels through the override-aware stringResource so a
+    // management rename of a search field (e.g. search_field_name) shows here
+    // too — not just on the search screen.
+    fun line(field: SearchField, label: String, value: String): String? {
         val trimmed = value.trim()
         if (trimmed.isEmpty()) return null
-        return resources.getString(field.labelRes) + ": " + trimmed
+        return "$label: $trimmed"
     }
     return listOfNotNull(
-        line(SearchField.GENERAL, query.general),
-        line(SearchField.NAME, query.name),
-        line(SearchField.TOPICS, query.topics),
-        line(SearchField.WRITER, query.writer),
-        line(SearchField.LETTER, query.letter),
-        line(SearchField.COLOR, query.color),
-        line(SearchField.CATEGORY, query.category),
-        line(SearchField.SUBCATEGORY, query.subcategory),
-        line(SearchField.DISPLAY_NUMBER, query.displayNumber),
-        line(SearchField.BOOK_NUMBER, query.bookNumber),
-        line(SearchField.NOTES, query.notes),
+        line(SearchField.GENERAL, stringResource(SearchField.GENERAL.labelRes), query.general),
+        line(SearchField.NAME, stringResource(SearchField.NAME.labelRes), query.name),
+        line(SearchField.TOPICS, stringResource(SearchField.TOPICS.labelRes), query.topics),
+        line(SearchField.WRITER, stringResource(SearchField.WRITER.labelRes), query.writer),
+        line(SearchField.LETTER, stringResource(SearchField.LETTER.labelRes), query.letter),
+        line(SearchField.COLOR, stringResource(SearchField.COLOR.labelRes), query.color),
+        line(SearchField.CATEGORY, stringResource(SearchField.CATEGORY.labelRes), query.category),
+        line(SearchField.SUBCATEGORY, stringResource(SearchField.SUBCATEGORY.labelRes), query.subcategory),
+        line(SearchField.DISPLAY_NUMBER, stringResource(SearchField.DISPLAY_NUMBER.labelRes), query.displayNumber),
+        line(SearchField.BOOK_NUMBER, stringResource(SearchField.BOOK_NUMBER.labelRes), query.bookNumber),
+        line(SearchField.NOTES, stringResource(SearchField.NOTES.labelRes), query.notes),
     )
 }
 

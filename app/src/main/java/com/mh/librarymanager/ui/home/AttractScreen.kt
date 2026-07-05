@@ -36,7 +36,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.stringResource
+import com.mh.librarymanager.ui.text.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,14 +46,13 @@ import com.mh.librarymanager.domain.Announcement
 import com.mh.librarymanager.ui.components.AppColors
 import com.mh.librarymanager.ui.components.AppLogo
 
-private val AttractBlueTop = Color(0xFF1A3354)
-private val AttractBlueBottom = Color(0xFF243F66)
-private val AttractHint = Color(0xFFB8C9DE)
+// Translucent white overlays read well over any (dark) hero gradient, so they
+// stay fixed; the gradient and hint colours follow the selected theme.
 private val AttractPanel = Color(0x1AFFFFFF)
 private val AttractPanelBorder = Color(0x33FFFFFF)
 
 /**
- * Default kiosk standby: blue branding, active announcements, swipe up to open.
+ * Default kiosk standby: themed branding, active announcements, swipe up to open.
  */
 @Composable
 fun AttractScreen(
@@ -68,8 +67,8 @@ fun AttractScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    0f to AttractBlueTop,
-                    1f to AttractBlueBottom,
+                    0f to AppColors.HeroStart,
+                    1f to AppColors.HeroEnd,
                 ),
             )
             .pointerInput(Unit) {
@@ -122,7 +121,7 @@ fun AttractScreen(
                     Text(
                         text = stringResource(R.string.announcements_home_title),
                         style = MaterialTheme.typography.titleSmall,
-                        color = AttractHint,
+                        color = AppColors.HeroSubtitle,
                         fontWeight = FontWeight.SemiBold,
                     )
                     announcements.forEach { announcement ->
@@ -161,7 +160,7 @@ private fun AttractAnnouncementCard(announcement: Announcement) {
                 Text(
                     text = announcement.description,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = AttractHint,
+                    color = AppColors.HeroSubtitle,
                     maxLines = 4,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -206,7 +205,7 @@ private fun SwipeUpHint() {
         Text(
             text = stringResource(R.string.attract_swipe_up),
             style = MaterialTheme.typography.bodySmall,
-            color = AttractHint.copy(alpha = alpha),
+            color = AppColors.HeroSubtitle.copy(alpha = alpha),
             textAlign = TextAlign.Center,
         )
     }

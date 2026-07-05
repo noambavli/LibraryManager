@@ -42,7 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
+import com.mh.librarymanager.ui.text.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -108,6 +108,13 @@ fun WindowsToolScreen(
     DisposableEffect(busy) {
         if (busy) session.beginExternalTask()
         onDispose { if (busy) session.endExternalTask() }
+    }
+
+    // Safety net: if the screen is left (e.g. hardware back while a picker
+    // confirm dialog is open) release any external-task hold started here, so
+    // idle auto-logout can never get stuck permanently off.
+    DisposableEffect(Unit) {
+        onDispose { if (session.isExternalTaskActive()) session.endExternalTask() }
     }
 
     fun pick(launcher: androidx.activity.result.ActivityResultLauncher<Array<String>>, types: Array<String>) {

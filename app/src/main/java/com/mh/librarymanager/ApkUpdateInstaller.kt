@@ -4,9 +4,11 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
+import android.net.Uri
 import android.util.Log
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileOutputStream
 
 /**
  * Silent update install for the device-owner app. Bypasses [UserManager.DISALLOW_INSTALL_APPS]
@@ -32,7 +34,37 @@ object ApkUpdateInstaller {
             .map { File(it) }
             .firstOrNull { it.isFile && it.canRead() }
 
-    fun install(context: Context, apk: File): Boolean {
+    /**
+     * Copies a picked APK (a `content://` document from a USB stick / SD card)
+     * into private cache and installs it as the device owner. Works both for a
+     * self-update and for installing another app — the package name is derived
+     * from the APK itself, so it is not restricted to our own package.
+     *
+     * Runs on the caller's (background) thread.
+     */
+    fun installFromUri(context: Context, uri: Uri): Boolean {
+        if (!KioskPolicyManager.isDeviceOwner(context)) {
+            Log.w(TAG, "Not device owner — cannot install picked APK")
+            return false
+        }
+        val staged = File(context.cacheDir, "picked-install.apk")
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                FileOutputStream(staged).use { output -> input.copyTo(output) }
+            } ?: run {
+                Log.w(TAG, "Could not open picked APK stream")
+                return false
+            }
+            install(context, staged, restrictToSelf = false)
+        } catch (e: Exception) {
+            Log.e(TAG, "installFromUri failed", e)
+            false
+        } finally {
+            staged.delete()
+        }
+    }
+
+    fun install(context: Context, apk: File, restrictToSelf: Boolean = true): Boolean {
         if (!KioskPolicyManager.isDeviceOwner(context)) {
             Log.w(TAG, "Not device owner — cannot install ${apk.absolutePath}")
             return false
@@ -47,7 +79,10 @@ object ApkUpdateInstaller {
             val params = PackageInstaller.SessionParams(
                 PackageInstaller.SessionParams.MODE_FULL_INSTALL,
             ).apply {
-                setAppPackageName(context.packageName)
+                // Only pin the package name for the self-update path; a picked
+                // APK may legitimately be another app, so let the installer read
+                // the package name from the APK in that case.
+                if (restrictToSelf) setAppPackageName(context.packageName)
             }
 
             val sessionId = installer.createSession(params)

@@ -15,7 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
+import com.mh.librarymanager.ui.text.stringResource
 import androidx.compose.ui.unit.dp
 import com.mh.librarymanager.R
 import com.mh.librarymanager.domain.ManagementBadgeSection
@@ -50,6 +50,9 @@ fun ManagementDashboardScreen(
     onOpenTechSupport: () -> Unit,
     onOpenWindowsTool: () -> Unit,
     onOpenStorageBrowser: () -> Unit,
+    onOpenTexts: () -> Unit,
+    onOpenTheme: () -> Unit,
+    onOpenDeveloper: () -> Unit,
     onLogout: () -> Unit,
 ) {
     AppScreenBackground {
@@ -86,6 +89,9 @@ fun ManagementDashboardScreen(
                     onOpenTechSupport = onOpenTechSupport,
                     onOpenWindowsTool = onOpenWindowsTool,
                     onOpenStorageBrowser = onOpenStorageBrowser,
+                    onOpenTexts = onOpenTexts,
+                    onOpenTheme = onOpenTheme,
+                    onOpenDeveloper = onOpenDeveloper,
                 )
             }
         }
@@ -109,6 +115,9 @@ private fun DashboardGrid(
     onOpenTechSupport: () -> Unit,
     onOpenWindowsTool: () -> Unit,
     onOpenStorageBrowser: () -> Unit,
+    onOpenTexts: () -> Unit,
+    onOpenTheme: () -> Unit,
+    onOpenDeveloper: () -> Unit,
 ) {
     val tiles = listOf(
         DashboardEntry(
@@ -194,6 +203,24 @@ private fun DashboardGrid(
             stringResource(R.string.management_storage_browser_subtitle),
             AppColors.Accent,
             onClick = onOpenStorageBrowser,
+        ),
+        DashboardEntry(
+            stringResource(R.string.management_texts),
+            stringResource(R.string.management_texts_subtitle),
+            AppColors.Accent,
+            onClick = onOpenTexts,
+        ),
+        DashboardEntry(
+            stringResource(R.string.management_theme),
+            stringResource(R.string.management_theme_subtitle),
+            AppColors.Accent,
+            onClick = onOpenTheme,
+        ),
+        DashboardEntry(
+            stringResource(R.string.management_developer),
+            stringResource(R.string.management_developer_subtitle),
+            AppColors.Warning,
+            onClick = onOpenDeveloper,
         ),
     )
 

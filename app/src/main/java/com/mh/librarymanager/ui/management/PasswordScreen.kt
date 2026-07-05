@@ -32,7 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
+import com.mh.librarymanager.ui.text.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -47,8 +47,6 @@ import com.mh.librarymanager.ui.components.AppScreenBackground
 import com.mh.librarymanager.ui.components.PublicBackBar
 import kotlinx.coroutines.delay
 
-private const val MAX_LEN = 8
-
 /**
  * Numeric password gate. The kiosk forcibly hides the system IME so we own a
  * deliberately big, tactile keypad. A small shake-style error label appears
@@ -59,9 +57,12 @@ private const val MAX_LEN = 8
  */
 @Composable
 fun PasswordScreen(
-    session: ManagementSession,
     onBack: () -> Unit,
     onUnlocked: () -> Unit,
+    validate: (String) -> Boolean,
+    title: String = stringResource(R.string.password_title),
+    subtitle: String = stringResource(R.string.password_subtitle),
+    wrongMessage: String = stringResource(R.string.password_wrong),
 ) {
     var code by remember { mutableStateOf("") }
     var showError by remember { mutableStateOf(false) }
@@ -75,14 +76,14 @@ fun PasswordScreen(
 
     val onDigit: (Char) -> Unit = { d ->
         showError = false
-        if (code.length < MAX_LEN) code += d
+        if (code.length < ManagementSession.CODE_MAX_LEN) code += d
     }
     val onBackspace: () -> Unit = {
         showError = false
         if (code.isNotEmpty()) code = code.dropLast(1)
     }
     val onSubmit: () -> Unit = {
-        if (session.tryUnlock(code)) {
+        if (validate(code)) {
             code = ""
             onUnlocked()
         } else {
@@ -112,6 +113,9 @@ fun PasswordScreen(
                                 .weight(1f)
                                 .fillMaxHeight()
                                 .padding(horizontal = 24.dp),
+                            title = title,
+                            subtitle = subtitle,
+                            wrongMessage = wrongMessage,
                             codeLength = code.length,
                             showError = showError,
                             logoSize = 88.dp,
@@ -153,6 +157,9 @@ fun PasswordScreen(
                     ) {
                         PasswordBrandingPane(
                             modifier = Modifier.fillMaxWidth(),
+                            title = title,
+                            subtitle = subtitle,
+                            wrongMessage = wrongMessage,
                             codeLength = code.length,
                             showError = showError,
                             logoSize = 80.dp,
@@ -181,6 +188,9 @@ fun PasswordScreen(
 
 @Composable
 private fun PasswordBrandingPane(
+    title: String,
+    subtitle: String,
+    wrongMessage: String,
     codeLength: Int,
     showError: Boolean,
     logoSize: Dp,
@@ -198,7 +208,7 @@ private fun PasswordBrandingPane(
         AppLogo(size = logoSize)
         Spacer(modifier = Modifier.height(18.dp))
         Text(
-            text = stringResource(R.string.password_title),
+            text = title,
             style = MaterialTheme.typography.headlineMedium,
             color = AppColors.TextPrimary,
             fontWeight = FontWeight.SemiBold,
@@ -207,7 +217,7 @@ private fun PasswordBrandingPane(
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = stringResource(R.string.password_subtitle),
+            text = subtitle,
             style = MaterialTheme.typography.titleMedium,
             color = AppColors.TextSecondary,
             textAlign = textAlign,
@@ -218,7 +228,7 @@ private fun PasswordBrandingPane(
         Spacer(modifier = Modifier.height(12.dp))
         AnimatedVisibility(visible = showError) {
             Text(
-                text = stringResource(R.string.password_wrong),
+                text = wrongMessage,
                 color = AppColors.Warning,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
@@ -230,12 +240,14 @@ private fun PasswordBrandingPane(
 }
 
 @Composable
-private fun CodeDots(length: Int) {
+internal fun CodeDots(length: Int) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val total = MAX_LEN.coerceAtMost(8)
+        // Cap the number of visible dots for layout; typing is still allowed up
+        // to CODE_MAX_LEN even if that exceeds the shown dots.
+        val total = ManagementSession.CODE_MAX_LEN.coerceAtMost(10)
         repeat(total) { i ->
             val filled = i < length
             Box(
@@ -252,12 +264,13 @@ private fun CodeDots(length: Int) {
 }
 
 @Composable
-private fun Keypad(
+internal fun Keypad(
     modifier: Modifier = Modifier,
     onDigit: (Char) -> Unit,
     onBackspace: () -> Unit,
     onSubmit: () -> Unit,
     submitEnabled: Boolean,
+    submitLabel: String = stringResource(R.string.password_unlock),
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
@@ -291,7 +304,7 @@ private fun Keypad(
             KeyAction(label = "⌫", onClick = onBackspace, accent = false, modifier = Modifier.weight(1f))
             KeyDigit('0', onDigit, Modifier.weight(1f))
             KeyAction(
-                label = stringResource(R.string.password_unlock),
+                label = submitLabel,
                 onClick = onSubmit,
                 accent = true,
                 disabled = !submitEnabled,

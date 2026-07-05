@@ -5,8 +5,10 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.mh.librarymanager.ApkUpdateInstaller
 import com.mh.librarymanager.LibraryApp
 import com.mh.librarymanager.R
+import com.mh.librarymanager.ui.text.appString
 import com.mh.librarymanager.data.backup.BackupManager
 import com.mh.librarymanager.data.backup.BackupState
 import com.mh.librarymanager.data.backup.BackupTrigger
@@ -176,12 +178,12 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
     ) {
         if (isBusy()) {
             _opStatus.value = OpStatus.Error(
-                getApplication<Application>().getString(R.string.windows_tool_busy),
+                getApplication<Application>().appString(R.string.windows_tool_busy),
             )
             return
         }
         val app = getApplication<Application>()
-        _opStatus.value = OpStatus.Working(app.getString(workingRes))
+        _opStatus.value = OpStatus.Working(app.appString(workingRes))
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
@@ -215,7 +217,7 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
     fun saveExportTo(uri: Uri) {
         val pending = _pendingDownload.value ?: return
         val app = getApplication<Application>()
-        _opStatus.value = OpStatus.Working(app.getString(R.string.windows_tool_export_saving))
+        _opStatus.value = OpStatus.Working(app.appString(R.string.windows_tool_export_saving))
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
@@ -242,7 +244,7 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
                 onFailure = {
                     _pendingDownload.value = null
                     _opStatus.value = OpStatus.Error(
-                        app.getString(R.string.windows_tool_export_save_failed),
+                        app.appString(R.string.windows_tool_export_save_failed),
                     )
                 },
             )
@@ -361,7 +363,7 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
     private fun importWithBackup(uri: Uri, doImport: suspend () -> OpStatus) {
         if (isBusy()) {
             _opStatus.value = OpStatus.Error(
-                getApplication<Application>().getString(R.string.windows_tool_busy),
+                getApplication<Application>().appString(R.string.windows_tool_busy),
             )
             return
         }
@@ -650,12 +652,12 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
     fun stageHomeMapUpload(kind: HomeOverviewMapKind, uri: Uri) {
         if (isBusy()) {
             _opStatus.value = OpStatus.Error(
-                getApplication<Application>().getString(R.string.windows_tool_busy),
+                getApplication<Application>().appString(R.string.windows_tool_busy),
             )
             return
         }
         _opStatus.value = OpStatus.Working(
-            getApplication<Application>().getString(R.string.windows_tool_home_map_processing),
+            getApplication<Application>().appString(R.string.windows_tool_home_map_processing),
         )
         viewModelScope.launch {
             val status = runCatching {
@@ -685,14 +687,14 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
                     withContext(Dispatchers.IO) {
                         ensurePreChangeBackup()?.let { return@withContext it }
                         _opStatus.value = OpStatus.Working(
-                            getApplication<Application>().getString(R.string.windows_tool_home_map_saving),
+                            getApplication<Application>().appString(R.string.windows_tool_home_map_saving),
                         )
                         homeMapStore.saveMap(pending.kind, pending.preview.pngBytes)
                         _homeMapRevision.value++
                         OpStatus.Success(
-                            getApplication<Application>().getString(
+                            getApplication<Application>().appString(
                                 R.string.windows_tool_home_map_saved,
-                                getApplication<Application>().getString(pending.kind.titleRes()),
+                                getApplication<Application>().appString(pending.kind.titleRes()),
                             ),
                         )
                     }
@@ -715,7 +717,7 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
     fun restoreFromZip(uri: Uri) {
         if (isBusy()) {
             _opStatus.value = OpStatus.Error(
-                getApplication<Application>().getString(R.string.windows_tool_busy),
+                getApplication<Application>().appString(R.string.windows_tool_busy),
             )
             return
         }
@@ -739,11 +741,42 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ---- App update / install from USB (device-owner silent install) ------
+
+    /**
+     * Installs an APK the user picked from a USB stick / SD card. Used to ship
+     * new app versions (or add another app) with adb turned off — the device
+     * owner performs the install in-process, so no "unknown sources" prompt and
+     * no adb are needed. On a successful self-update the app process restarts.
+     */
+    fun installAppUpdate(uri: Uri) {
+        if (isBusy()) {
+            _opStatus.value = OpStatus.Error(
+                getApplication<Application>().appString(R.string.windows_tool_busy),
+            )
+            return
+        }
+        _opStatus.value = OpStatus.Working(
+            getApplication<Application>().appString(R.string.windows_tool_app_update_working),
+        )
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                ApkUpdateInstaller.installFromUri(getApplication(), uri)
+            }
+            val app = getApplication<Application>()
+            _opStatus.value = if (ok) {
+                OpStatus.Success(app.appString(R.string.windows_tool_app_update_staged))
+            } else {
+                OpStatus.Error(app.appString(R.string.windows_tool_app_update_failed))
+            }
+        }
+    }
+
     // ---- Destructive deletes (backup first + typed confirm in UI) ---------
 
     fun deleteAllBooks() = deleteWithBackup(
-        backupWorking = getApplication<Application>().getString(R.string.windows_tool_delete_working_backup),
-        deleteWorking = getApplication<Application>().getString(R.string.windows_tool_delete_books_working),
+        backupWorking = getApplication<Application>().appString(R.string.windows_tool_delete_working_backup),
+        deleteWorking = getApplication<Application>().appString(R.string.windows_tool_delete_books_working),
     ) {
         val app = getApplication<Application>()
         // The "books" library is everything that isn't Beis-Midrash (Otzar +
@@ -751,37 +784,37 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
         // vice-versa.
         val count = container.repository.clearCatalogMatching { it.mapPlace() != BookPlace.BEIS_MIDRASH }
         if (count <= 0) {
-            OpStatus.Success(app.getString(R.string.windows_tool_delete_books_empty))
+            OpStatus.Success(app.appString(R.string.windows_tool_delete_books_empty))
         } else {
-            OpStatus.Success(app.getString(R.string.windows_tool_delete_books_done, count))
+            OpStatus.Success(app.appString(R.string.windows_tool_delete_books_done, count))
         }
     }
 
     fun deleteAllBeis() = deleteWithBackup(
-        backupWorking = getApplication<Application>().getString(R.string.windows_tool_delete_working_backup),
-        deleteWorking = getApplication<Application>().getString(R.string.windows_tool_delete_beis_working),
+        backupWorking = getApplication<Application>().appString(R.string.windows_tool_delete_working_backup),
+        deleteWorking = getApplication<Application>().appString(R.string.windows_tool_delete_beis_working),
     ) {
         val app = getApplication<Application>()
         val count = container.repository.clearCatalogMatching { it.mapPlace() == BookPlace.BEIS_MIDRASH }
         if (count <= 0) {
-            OpStatus.Success(app.getString(R.string.windows_tool_delete_beis_empty))
+            OpStatus.Success(app.appString(R.string.windows_tool_delete_beis_empty))
         } else {
-            OpStatus.Success(app.getString(R.string.windows_tool_delete_beis_done, count))
+            OpStatus.Success(app.appString(R.string.windows_tool_delete_beis_done, count))
         }
     }
 
     fun deleteAllMatchings() = deleteWithBackup(
-        backupWorking = getApplication<Application>().getString(R.string.windows_tool_delete_working_backup),
-        deleteWorking = getApplication<Application>().getString(R.string.windows_tool_delete_matchings_working),
+        backupWorking = getApplication<Application>().appString(R.string.windows_tool_delete_working_backup),
+        deleteWorking = getApplication<Application>().appString(R.string.windows_tool_delete_matchings_working),
     ) {
         val app = getApplication<Application>()
         container.matchingStore.loadFromDisk()
         val count = container.matchingStore.matchings.value.size
         container.matchingStore.replaceAll(emptyList())
         if (count <= 0) {
-            OpStatus.Success(app.getString(R.string.windows_tool_delete_matchings_empty))
+            OpStatus.Success(app.appString(R.string.windows_tool_delete_matchings_empty))
         } else {
-            OpStatus.Success(app.getString(R.string.windows_tool_delete_matchings_done, count))
+            OpStatus.Success(app.appString(R.string.windows_tool_delete_matchings_done, count))
         }
     }
 
@@ -792,7 +825,7 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
     ) {
         if (isBusy()) {
             _opStatus.value = OpStatus.Error(
-                getApplication<Application>().getString(R.string.windows_tool_busy),
+                getApplication<Application>().appString(R.string.windows_tool_busy),
             )
             return
         }
@@ -819,10 +852,10 @@ class WindowsToolViewModel(app: Application) : AndroidViewModel(app) {
         val detail = when (val state = backup.state.value) {
             is BackupState.Failed -> state.message
             is BackupState.Cancelled ->
-                app.getString(R.string.windows_tool_backup_cancelled_before_op)
-            else -> app.getString(R.string.windows_tool_backup_unknown_failure)
+                app.appString(R.string.windows_tool_backup_cancelled_before_op)
+            else -> app.appString(R.string.windows_tool_backup_unknown_failure)
         }
-        return OpStatus.Error(app.getString(R.string.windows_tool_backup_required_failed, detail))
+        return OpStatus.Error(app.appString(R.string.windows_tool_backup_required_failed, detail))
     }
 
     private fun isBusy(): Boolean =

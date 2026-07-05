@@ -13,7 +13,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import com.mh.librarymanager.ui.text.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -26,6 +26,7 @@ import com.mh.librarymanager.ui.home.HomeOverviewMapScreen
 import com.mh.librarymanager.ui.home.HomeScreen
 import com.mh.librarymanager.ui.location.BookLocationScreen
 import com.mh.librarymanager.ui.management.BookEditorScreen
+import com.mh.librarymanager.ui.management.DeveloperDashboardScreen
 import com.mh.librarymanager.ui.management.BooksManagementScreen
 import com.mh.librarymanager.ui.management.BooksManagementViewModel
 import com.mh.librarymanager.ui.management.HistoryScreen
@@ -58,6 +59,13 @@ import com.mh.librarymanager.ui.management.TechSupportManagementScreen
 import com.mh.librarymanager.ui.management.TechSupportManagementViewModel
 import com.mh.librarymanager.ui.management.StorageBrowserScreen
 import com.mh.librarymanager.ui.management.StorageBrowserViewModel
+import com.mh.librarymanager.ui.management.TextManagementScreen
+import com.mh.librarymanager.ui.management.TextManagementViewModel
+import com.mh.librarymanager.ui.management.ThemeManagementScreen
+import com.mh.librarymanager.ui.management.ThemeManagementViewModel
+import com.mh.librarymanager.ui.text.ProvideAppText
+import com.mh.librarymanager.ui.theme.AppTheme
+import com.mh.librarymanager.ui.theme.AppThemeState
 import com.mh.librarymanager.ui.management.WindowsToolScreen
 import com.mh.librarymanager.ui.management.WindowsToolViewModel
 import com.mh.librarymanager.ui.requests.PublicRequestScreen
@@ -99,6 +107,8 @@ fun AppRoot(
     windowsToolViewModel: WindowsToolViewModel,
     storageBrowserViewModel: StorageBrowserViewModel,
     managementDashboardViewModel: ManagementDashboardViewModel,
+    textManagementViewModel: TextManagementViewModel,
+    themeManagementViewModel: ThemeManagementViewModel,
     managementSession: ManagementSession,
     onRegisterBackHandler: (handler: (() -> Boolean)) -> Unit,
 ) {
@@ -119,7 +129,20 @@ fun AppRoot(
     val windowsToolVm: WindowsToolViewModel = windowsToolViewModel
     val storageBrowserVm: StorageBrowserViewModel = storageBrowserViewModel
     val managementDashboardVm: ManagementDashboardViewModel = managementDashboardViewModel
+    val textManagementVm: TextManagementViewModel = textManagementViewModel
+    val themeManagementVm: ThemeManagementViewModel = themeManagementViewModel
     val session: ManagementSession = managementSession
+    val libraryApp = LocalContext.current.applicationContext as LibraryApp
+    val textOverrideStore = libraryApp.textOverrideStore
+    val textOverrides by textOverrideStore.overrides.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { textOverrideStore.loadFromDisk() }
+    // Apply the selected theme app-wide and keep it in sync with the store, so a
+    // management change (or a backup restore) re-skins every screen instantly.
+    val selectedThemeId by libraryApp.themeStore.selectedId.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { libraryApp.themeStore.loadFromDisk() }
+    LaunchedEffect(selectedThemeId) {
+        AppThemeState.palette = AppTheme.paletteFor(selectedThemeId)
+    }
     val adbPending by windowsToolVm.adbPending.collectAsStateWithLifecycle()
     val adbConfirming by windowsToolVm.adbConfirming.collectAsStateWithLifecycle()
     val adbBeisPending by windowsToolVm.adbBeisPending.collectAsStateWithLifecycle()
@@ -217,6 +240,7 @@ fun AppRoot(
         nav.push(AppScreen.BookLocation(bookId))
     }
 
+    ProvideAppText(textOverrides) {
     Surface(modifier = Modifier.fillMaxSize()) {
         NoSystemKeyboard {
         PublicIdleScope(
@@ -294,10 +318,33 @@ fun AppRoot(
             )
 
             AppScreen.ManagementGate -> PasswordScreen(
-                session = session,
                 onBack = { nav.pop() },
                 onUnlocked = { nav.replaceTop(AppScreen.ManagementHome) },
+                validate = { session.tryUnlock(it) },
             )
+
+            AppScreen.DeveloperGate -> ManagementGuard(session = session, nav = nav) {
+                PasswordScreen(
+                    onBack = { nav.pop() },
+                    onUnlocked = { nav.replaceTop(AppScreen.DeveloperDashboard) },
+                    validate = { session.isDeveloperKey(it) },
+                    title = stringResource(R.string.developer_gate_title),
+                    subtitle = stringResource(R.string.developer_gate_subtitle),
+                    wrongMessage = stringResource(R.string.developer_gate_wrong),
+                )
+            }
+
+            AppScreen.DeveloperDashboard -> ManagementGuard(session = session, nav = nav) {
+                DeveloperDashboardScreen(
+                    viewModel = windowsToolVm,
+                    session = session,
+                    onBack = { nav.pop() },
+                    onLogout = {
+                        session.logout()
+                        nav.resetTo(AppScreen.Attract)
+                    },
+                )
+            }
 
             AppScreen.ManagementHome -> ManagementGuard(session = session, nav = nav) {
                 val outOfOrderCount by managementVm.outOfOrderCount.collectAsStateWithLifecycle()
@@ -319,6 +366,31 @@ fun AppRoot(
                     onOpenTechSupport = { nav.push(AppScreen.ManagementTechSupport) },
                     onOpenWindowsTool = { nav.push(AppScreen.ManagementWindowsTool) },
                     onOpenStorageBrowser = { nav.push(AppScreen.ManagementStorageBrowser) },
+                    onOpenTexts = { nav.push(AppScreen.ManagementTexts) },
+                    onOpenTheme = { nav.push(AppScreen.ManagementTheme) },
+                    onOpenDeveloper = { nav.push(AppScreen.DeveloperGate) },
+                    onLogout = {
+                        session.logout()
+                        nav.resetTo(AppScreen.Attract)
+                    },
+                )
+            }
+
+            AppScreen.ManagementTexts -> ManagementGuard(session = session, nav = nav) {
+                TextManagementScreen(
+                    viewModel = textManagementVm,
+                    onBack = { nav.pop() },
+                    onLogout = {
+                        session.logout()
+                        nav.resetTo(AppScreen.Attract)
+                    },
+                )
+            }
+
+            AppScreen.ManagementTheme -> ManagementGuard(session = session, nav = nav) {
+                ThemeManagementScreen(
+                    viewModel = themeManagementVm,
+                    onBack = { nav.pop() },
                     onLogout = {
                         session.logout()
                         nav.resetTo(AppScreen.Attract)
@@ -529,6 +601,7 @@ fun AppRoot(
         }
 
     }
+    }
 }
 
 private fun AppScreen.tracksPublicIdle(): Boolean = when (this) {
@@ -546,6 +619,10 @@ private fun AppScreen.tracksPublicIdle(): Boolean = when (this) {
     AppScreen.ManagementTechSupport,
     AppScreen.ManagementWindowsTool,
     AppScreen.ManagementStorageBrowser,
+    AppScreen.ManagementTexts,
+    AppScreen.ManagementTheme,
+    AppScreen.DeveloperGate,
+    AppScreen.DeveloperDashboard,
     is AppScreen.BookEditor -> false
     else -> true
 }

@@ -17,6 +17,8 @@ import com.mh.librarymanager.data.store.SearchMatchingStore
 import com.mh.librarymanager.data.store.SearchShortcutStore
 import com.mh.librarymanager.data.homemap.HomeOverviewMapStore
 import com.mh.librarymanager.data.store.TechSupportStore
+import com.mh.librarymanager.data.store.TextOverrideStore
+import com.mh.librarymanager.data.store.ThemeStore
 /**
  * Tiny manual DI container. One layer above singletons, one layer below Hilt.
  * Sufficient for this milestone; the API is stable so swapping for Hilt later
@@ -34,6 +36,8 @@ class LibraryApp : Application() {
     val bookLocationPressStore: BookLocationPressStore by lazy { BookLocationPressStore(this) }
     val techSupportStore: TechSupportStore by lazy { TechSupportStore(this) }
     val managementSeenStore: ManagementSeenStore by lazy { ManagementSeenStore(this) }
+    val textOverrideStore: TextOverrideStore by lazy { TextOverrideStore(this) }
+    val themeStore: ThemeStore by lazy { ThemeStore(this) }
     val repository: BookRepository by lazy { BookRepository(catalogStore, auditStore) }
     val excelImportIo: ExcelImportIO by lazy { ExcelImportIO(this, repository) }
     val beisImportIo: ExcelImportIO by lazy { ExcelImportIO.beis(this, repository) }

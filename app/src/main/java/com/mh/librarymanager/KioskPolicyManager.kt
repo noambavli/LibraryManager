@@ -12,6 +12,20 @@ object KioskPolicyManager {
 
     private const val TAG = "KioskPolicyManager"
 
+    /**
+     * System document-picker packages allowed to run inside lock task so the
+     * "choose a file" screen can appear for imports and the in-app APK update.
+     * Both the AOSP and Google package names are whitelisted; only the one that
+     * exists on a given device is used.
+     */
+    private val DOCUMENT_PICKER_PACKAGES = listOf(
+        "com.android.documentsui",
+        "com.google.android.documentsui",
+    )
+
+    private fun lockTaskPackages(packageName: String): Array<String> =
+        (listOf(packageName) + DOCUMENT_PICKER_PACKAGES).toTypedArray()
+
     fun adminComponent(context: Context): ComponentName =
         ComponentName(context, KioskDeviceAdminReceiver::class.java)
 
@@ -51,7 +65,9 @@ object KioskPolicyManager {
         val packageName = context.packageName
 
         try {
-            dpm.setLockTaskPackages(admin, arrayOf(packageName))
+            // Whitelist our app plus the system file picker so imports and the
+            // in-app APK update can open their picker while the kiosk is locked.
+            dpm.setLockTaskPackages(admin, lockTaskPackages(packageName))
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 dpm.setLockTaskFeatures(admin, DevicePolicyManager.LOCK_TASK_FEATURE_NONE)
             }
@@ -60,25 +76,22 @@ object KioskPolicyManager {
 
             setHomeLauncher(context, dpm, admin)
 
-            // Keep USB debugging and file transfer available for adb deploy / maintenance.
-            val allowForMaintenance = arrayOf(
-                UserManager.DISALLOW_USB_FILE_TRANSFER,
-                UserManager.DISALLOW_DEBUGGING_FEATURES,
-            )
-            for (restriction in allowForMaintenance) {
-                dpm.clearUserRestriction(admin, restriction)
-            }
-
-            // Never block installs/uninstalls — that breaks Android Studio / adb deploy.
-            // Kiosk is enforced via lock task + home launcher, not via these restrictions.
-            dpm.clearUserRestriction(admin, UserManager.DISALLOW_INSTALL_APPS)
-            dpm.clearUserRestriction(admin, UserManager.DISALLOW_UNINSTALL_APPS)
+            // Sealed device. Nobody — not a user, not the Play Store, not a
+            // sideload, not a PC over adb — may install or remove apps, and adb
+            // itself is turned off. The one exception is the device-owner app
+            // itself: it can still install/update packages in-process (that path
+            // bypasses DISALLOW_INSTALL_APPS), which is how staff update the app
+            // or add apps from a USB stick via the password-protected screen.
+            dpm.setUninstallBlocked(admin, packageName, true)
 
             val restrictions = buildList {
+                add(UserManager.DISALLOW_INSTALL_APPS)
+                add(UserManager.DISALLOW_UNINSTALL_APPS)
+                add(UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES)
+                add(UserManager.DISALLOW_DEBUGGING_FEATURES)
                 add(UserManager.DISALLOW_SAFE_BOOT)
                 add(UserManager.DISALLOW_FACTORY_RESET)
                 add(UserManager.DISALLOW_ADD_USER)
-                add(UserManager.DISALLOW_MOUNT_PHYSICAL_MEDIA)
                 add(UserManager.DISALLOW_CONFIG_WIFI)
                 add(UserManager.DISALLOW_CONFIG_BLUETOOTH)
                 add(UserManager.DISALLOW_ADJUST_VOLUME)
@@ -90,6 +103,10 @@ object KioskPolicyManager {
             for (restriction in restrictions) {
                 dpm.addUserRestriction(admin, restriction)
             }
+
+            // A USB flash drive / SD card must still mount so staff can import
+            // books and pick an update APK directly on the tablet.
+            dpm.clearUserRestriction(admin, UserManager.DISALLOW_MOUNT_PHYSICAL_MEDIA)
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 dpm.setPermissionPolicy(

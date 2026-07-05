@@ -34,31 +34,40 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
+import com.mh.librarymanager.ui.text.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.mh.librarymanager.R
+import com.mh.librarymanager.ui.theme.AppThemeState
 
-/** Shared palette for the refreshed tablet UI. */
+/**
+ * Shared palette for the tablet UI. Every colour is sourced from the active
+ * [AppThemeState] palette, so reading `AppColors.X` inside a composable makes
+ * that composable follow the selected theme automatically (the palette is
+ * snapshot-backed, so a theme change recomposes every reader). The values are
+ * plain getters, so non-composable callers keep working too.
+ */
 object AppColors {
-    val BgTop = Color(0xFFDDE3EC)
-    val BgBottom = Color(0xFFD0D8E4)
-    val Panel = Color(0xFFF4F6F9)
-    val PanelElevated = Color.White
-    val Border = Color(0xFFC8D0DC)
-    val BorderLight = Color(0xFFD8DEE8)
-    val TextPrimary = Color(0xFF1C2838)
-    val TextSecondary = Color(0xFF5A6578)
-    val TextMuted = Color(0xFF6B7789)
-    val Accent = Color(0xFF4A7BB7)
-    val AccentMuted = Color(0xFF9AA8BA)
-    val HeroStart = Color(0xFF1A3354)
-    val HeroEnd = Color(0xFF243F66)
-    val HeroSubtitle = Color(0xFFB8C9DE)
-    val Divider = Color(0xFFDCE1E8)
-    val Warning = Color(0xFFB45309)
+    private inline val p get() = AppThemeState.palette
+
+    val BgTop: Color get() = p.bgTop
+    val BgBottom: Color get() = p.bgBottom
+    val Panel: Color get() = p.panel
+    val PanelElevated: Color get() = p.panelElevated
+    val Border: Color get() = p.border
+    val BorderLight: Color get() = p.borderLight
+    val TextPrimary: Color get() = p.textPrimary
+    val TextSecondary: Color get() = p.textSecondary
+    val TextMuted: Color get() = p.textMuted
+    val Accent: Color get() = p.accent
+    val AccentMuted: Color get() = p.accentMuted
+    val HeroStart: Color get() = p.heroStart
+    val HeroEnd: Color get() = p.heroEnd
+    val HeroSubtitle: Color get() = p.heroSubtitle
+    val Divider: Color get() = p.divider
+    val Warning: Color get() = p.warning
 }
 
 @Composable
@@ -396,7 +405,7 @@ fun AppHeroButton(
                 Text(
                     text = "‹",
                     style = MaterialTheme.typography.headlineMedium,
-                    color = Color(0xFF8FAFD4),
+                    color = AppColors.HeroSubtitle,
                     fontWeight = FontWeight.Bold,
                 )
             }

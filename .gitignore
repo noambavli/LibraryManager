@@ -16,3 +16,10 @@ app/map-assets/*.png
 .externalNativeBuild
 .cxx
 local.properties
+# App signing secrets — NEVER commit these. Back them up separately (see keystore.properties.example).
+keystore.properties
+*.jks
+*.keystore
+# App passwords (developer key + default management password). NEVER commit.
+# See secrets.properties.example.
+secrets.properties

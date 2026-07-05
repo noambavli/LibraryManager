@@ -48,6 +48,18 @@ sealed interface AppScreen {
     /** Sandboxed file browser for safe storage management. */
     data object ManagementStorageBrowser : AppScreen
 
+    /** Editor for all user-facing app texts (labels, hints, explanations). */
+    data object ManagementTexts : AppScreen
+
+    /** Appearance dashboard — pick the app-wide colour theme. */
+    data object ManagementTheme : AppScreen
+
+    /** Developer-key gate guarding the developer dashboard (inside management). */
+    data object DeveloperGate : AppScreen
+
+    /** Developer-only tools: install APK updates + reset the management password. */
+    data object DeveloperDashboard : AppScreen
+
     /** Book editor — `bookId == null` means "create a brand new book". */
     data class BookEditor(val bookId: String?) : AppScreen
 

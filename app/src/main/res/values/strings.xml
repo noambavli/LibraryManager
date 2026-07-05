@@ -129,10 +129,58 @@
     <string name="management_tech_support_subtitle">דיווחי תקלות מהציבור</string>
     <string name="management_catalog_transfer">סנכרון מהמחשב</string>
     <string name="management_catalog_transfer_subtitle">אישור ייבוא וצפייה בסיכום</string>
-    <string name="management_windows_tool">כלי Windows</string>
-    <string name="management_windows_tool_subtitle">גיבוי, ייבוא/ייצוא אקסל, וחיבור למחשב (ExcelTool)</string>
+    <string name="management_windows_tool">כלי טאבלט</string>
+    <string name="management_windows_tool_subtitle">גיבוי, שחזור, ייבוא/ייצוא אקסל ומפות — מהטאבלט</string>
     <string name="management_storage_browser">ניהול קבצים</string>
     <string name="management_storage_browser_subtitle">צפייה ומחיקה בטוחה של קבצים בטאבלט</string>
+    <string name="management_texts">עריכת טקסטים</string>
+    <string name="management_texts_subtitle">שינוי כותרות, כפתורים והסברים בכל האפליקציה</string>
+    <string name="management_theme">עיצוב וצבעים</string>
+    <string name="management_theme_subtitle">בחירת ערכת צבעים לכל האפליקציה</string>
+    <string name="management_developer">אזור מפתח</string>
+    <string name="management_developer_subtitle">כניסה עם מפתח מפתח — עדכון אפליקציה ואיפוס סיסמה</string>
+
+    <!-- Developer dashboard (gated by the developer key, not the management password) -->
+    <string name="developer_title">אזור מפתח</string>
+    <string name="developer_gate_title">אזור מפתח</string>
+    <string name="developer_gate_subtitle">הזן/י את מפתח המפתח</string>
+    <string name="developer_gate_wrong">מפתח שגוי. נסו שוב.</string>
+    <string name="developer_app_update_section">עדכון האפליקציה (APK)</string>
+    <string name="developer_app_update_desc">התקנת גרסה חדשה של האפליקציה מקובץ APK (למשל מכונן USB). זהו המקום היחיד שבו ניתן להתקין אפליקציה.</string>
+    <string name="developer_app_update_button">בחירת קובץ APK והתקנה</string>
+    <string name="developer_app_update_confirm_title">להתקין עדכון?</string>
+    <string name="developer_app_update_confirm_body">האפליקציה תתעדכן מהקובץ שנבחר. יש לוודא שהקובץ חתום באותו מפתח חתימה, אחרת ההתקנה תיכשל.</string>
+    <string name="developer_password_section">סיסמת הניהול</string>
+    <string name="developer_password_desc">שינוי או איפוס הסיסמה שנדרשת כדי להיכנס לאזור הניהול הרגיל.</string>
+    <string name="developer_password_current">הסיסמה הנוכחית: %1$s</string>
+    <string name="developer_password_change_button">שינוי סיסמת ניהול</string>
+    <string name="developer_password_reset_button">איפוס לברירת המחדל</string>
+    <string name="developer_password_change_title">סיסמת ניהול חדשה</string>
+    <string name="developer_password_change_hint">הקלד/י את הסיסמה החדשה ולחצ/י שמירה</string>
+    <string name="developer_password_change_save">שמירה</string>
+    <string name="developer_password_change_success">הסיסמה עודכנה. הסיסמה החדשה: %1$s</string>
+    <string name="developer_password_reset_confirm_title">איפוס סיסמת ניהול?</string>
+    <string name="developer_password_reset_confirm_body">הסיסמה תחזור לברירת המחדל (%1$s).</string>
+    <string name="developer_password_reset_success">הסיסמה אופסה. הסיסמה כעת: %1$s</string>
+    <string name="theme_title">עיצוב וצבעים</string>
+    <string name="theme_subtitle">בחרו ערכת צבעים. השינוי יחול מיד על כל מסכי האפליקציה.</string>
+
+    <!-- App texts management -->
+    <string name="texts_customized_count">%1$d טקסטים הותאמו אישית</string>
+    <string name="texts_customized_badge">%1$d מותאמים</string>
+    <string name="texts_entry_customized">מותאם אישית</string>
+    <string name="texts_reset_one">איפוס</string>
+    <string name="texts_reset_all">איפוס כל ההתאמות</string>
+    <string name="texts_reset_all_title">לאפס את כל הטקסטים?</string>
+    <string name="texts_reset_all_body">כל הטקסטים שהותאמו אישית יחזרו לברירת המחדל של האפליקציה. פעולה זו אינה משפיעה על ספרים או נתונים אחרים.</string>
+    <string name="texts_reset_all_confirm">אפס הכל</string>
+    <string name="texts_editor_title">עריכת טקסט</string>
+    <string name="texts_editor_default_prefix">ברירת מחדל:</string>
+    <string name="texts_editor_field">הטקסט שיוצג</string>
+    <string name="texts_editor_reset">החזרה לברירת מחדל</string>
+    <string name="texts_editor_placeholders_hint">יש לשמור את הסימונים הבאים בטקסט (מייצגים מספרים/שמות שישתנו אוטומטית). לחצו כדי להוסיף:</string>
+    <string name="texts_editor_missing_tokens">חסרים סימונים חיוניים: %1$s</string>
+    <string name="texts_editor_extra_tokens">יש סימונים לא מוכרים שאינם בברירת המחדל: %1$s</string>
 
     <!-- Out-of-order books (missing / swapped letter &amp; number) -->
     <string name="out_of_order_title">ספרים לא מסודרים</string>
@@ -407,11 +455,11 @@
     <string name="matchings_import_confirm_preview">יתווספו %1$d · יעודכנו %2$d · %3$d ללא שינוי · מ‑%4$d ל‑%5$d סה״כ.</string>
     <string name="matchings_import_confirm_ok">ייבא</string>
 
-    <string name="windows_tool_title">כלי Windows</string>
-    <string name="windows_tool_intro">ניהול בטאבלט: גיבוי, שחזור, מפות ועוד.\n\nלייבוא וייצוא מול המחשב — פתחו את ExcelTool במחשב (כבל USB). לא צריך את המסך הזה בשביל זה.</string>
+    <string name="windows_tool_title">כלי טאבלט</string>
+    <string name="windows_tool_intro">ניהול בטאבלט: גיבוי, שחזור, מפות וייבוא — הכל ישירות מהטאבלט.\n\nלייבוא ספרים: שמרו את קובץ האקסל על דיסק־און־קי, חברו אותו לטאבלט, ובחרו את הקובץ מהמסך הזה. אין צורך במחשב או בחיבור פקודות.</string>
 
     <string name="windows_tool_local_import_section">ייבוא מקובץ על הטאבלט</string>
-    <string name="windows_tool_local_import_note">רק כשקובץ האקסל כבר נמצא על הטאבלט.\nלייבוא מהמחשב — השתמשו ב-ExcelTool במחשב, לא כאן.</string>
+    <string name="windows_tool_local_import_note">חברו דיסק־און־קי עם קובץ האקסל לטאבלט (או קובץ שכבר נמצא על הטאבלט), ובחרו אותו כאן.</string>
 
     <string name="windows_tool_backup_section">גיבוי</string>
     <string name="windows_tool_backup_desc">שומר עותק של כל הנתונים, ליתר ביטחון.\nלחצו ״צור גיבוי עכשיו״ והמתינו עד שמופיעה הודעה שהגיבוי נשמר.</string>
@@ -430,11 +478,11 @@
 
     <string name="windows_tool_export">ייצוא למחשב</string>
     <string name="windows_tool_import">בחר קובץ על הטאבלט…</string>
-    <string name="windows_tool_export_section_title">הורדת קובץ למחשב</string>
-    <string name="windows_tool_export_section_subtitle">להעתקה ידנית של קובץ מהטאבלט למחשב (USB).\nלעדכון קטלוג דרך המחשב — ExcelTool, לא כאן.</string>
-    <string name="windows_tool_export_step_tap">לחצו על סוג הקובץ להורדה (ספרים או התאמות)</string>
-    <string name="windows_tool_export_step_save">בחלון השמירה שנפתח — בחרו ״Download״ ולחצו ״שמירה״</string>
-    <string name="windows_tool_export_step_copy">חברו את הטאבלט למחשב ב-USB ← פתחו את הטאבלט ← העתיקו את הקובץ</string>
+    <string name="windows_tool_export_section_title">ייצוא קובץ לדיסק</string>
+    <string name="windows_tool_export_section_subtitle">שמירת קובץ אקסל מהטאבלט לדיסק־און־קי.\n1. לחצו על סוג הקובץ.\n2. בחרו את הדיסק כיעד השמירה.</string>
+    <string name="windows_tool_export_step_tap">לחצו על סוג הקובץ לייצוא (ספרים, בית מדרש או התאמות)</string>
+    <string name="windows_tool_export_step_save">בחלון השמירה — בחרו את דיסק־און־קי ולחצו ״שמירה״</string>
+    <string name="windows_tool_export_step_copy">הוציאו את הדיסק — הקובץ מוכן לשימוש במחשב</string>
     <string name="windows_tool_export_books_btn">הורדת ספרי אוצר</string>
     <string name="windows_tool_export_beis_btn">הורדת ספרי בית מדרש</string>
     <string name="windows_tool_export_matchings_btn">הורדת התאמות</string>
@@ -452,10 +500,10 @@
     <string name="windows_tool_export_result_file">שם הקובץ: %1$s</string>
     <string name="windows_tool_export_result_rows">%1$d שורות נתונים</string>
     <string name="windows_tool_export_result_empty">אין שורות — נשמר קובץ עם כותרות בלבד</string>
-    <string name="windows_tool_export_result_where">איך להעתיק למחשב:</string>
-    <string name="windows_tool_export_result_steps">חברו USB ← פתחו את הטאבלט במחשב ← מצאו את %1$s ← העתיקו</string>
-    <string name="windows_tool_export_result_path">נשמר בטאבלט: %1$s</string>
-    <string name="windows_tool_export_result_done">הקובץ נשמר בהצלחה — אפשר להעתיק למחשב</string>
+    <string name="windows_tool_export_result_where">הקובץ נשמר:</string>
+    <string name="windows_tool_export_result_steps">%1$s — ניתן לפתוח אותו במחשב לאחר חיבור הדיסק</string>
+    <string name="windows_tool_export_result_path">נשמר ב: %1$s</string>
+    <string name="windows_tool_export_result_done">הקובץ נשמר בהצלחה על הדיסק</string>
     <string name="windows_tool_export_error_hint">אם השגיאה חוזרת: נסו שוב, או פנו לטכנאי. אין צורך בהרשאות מיוחדות — השמירה דרך המערכת.</string>
     <string name="windows_tool_busy">לא ניתן כעת — המתינו לסיום הפעולה הקודמת.</string>
     <string name="windows_tool_backup_required_failed">הפעולה בוטלה — הגיבוי לפני השינוי נכשל: %1$s. לא בוצע שינוי.</string>
@@ -469,6 +517,10 @@
     <string name="windows_tool_restore_confirm_body">השחזור יחליף את כל נתוני האפליקציה (ספרים, קיצורים, בקשות, תמיכה, הודעות ועוד) בנתונים מתוך הגיבוי. הקלידו ״שחזר״ לאישור.</string>
     <string name="windows_tool_restore_phrase">שחזר</string>
     <string name="windows_tool_restore_ok">שחזר</string>
+
+    <string name="windows_tool_app_update_working">מתקין את הקובץ…</string>
+    <string name="windows_tool_app_update_staged">ההתקנה החלה. אם זו גרסה חדשה של האפליקציה — היא תיסגר ותיפתח מחדש תוך כמה שניות. אם לא קרה כלום — ייתכן שהקובץ אינו תקין או אינו תואם, נסו קובץ אחר.</string>
+    <string name="windows_tool_app_update_failed">ההתקנה נכשלה. ודאו שבחרתם קובץ APK תקין ותואם (חתום באותו מפתח), ונסו שוב.</string>
 
     <string name="windows_tool_import_confirm_title">לאשר ייבוא?</string>
     <string name="windows_tool_import_books_confirm">ייבוא ספרי אוצר יוסיף רק ספרים חדשים — שורות שכבר קיימות בקטלוג (אותו תוכן) ידולגו. הספרים ישויכו לאוצר הספרים. גיבוי מלא יישמר אוטומטית לפני הייבוא. להמשיך?</string>

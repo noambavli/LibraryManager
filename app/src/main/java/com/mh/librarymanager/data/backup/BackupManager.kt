@@ -89,6 +89,8 @@ class BackupManager(
             "search_history.json",
             "book_location_presses.json",
             "civ_import_log.json",
+            "text_overrides.json",
+            "theme.json",
         )
 
         /** Overview map PNGs uploaded via Windows Tool (home page only). */
@@ -481,6 +483,8 @@ class BackupManager(
         app.auditStore.loadFromDisk()
         app.searchHistoryStore.loadFromDisk()
         app.bookLocationPressStore.loadFromDisk()
+        app.textOverrideStore.loadFromDisk()
+        app.themeStore.loadFromDisk()
     }
 
     private suspend fun reloadAllStores() {
@@ -493,6 +497,8 @@ class BackupManager(
         app.auditStore.reloadFromDisk()
         app.searchHistoryStore.reloadFromDisk()
         app.bookLocationPressStore.reloadFromDisk()
+        app.textOverrideStore.reloadFromDisk()
+        app.themeStore.reloadFromDisk()
     }
 
     private fun requestsText(requests: List<PublicRequest>): String = buildString {

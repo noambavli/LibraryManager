@@ -29,6 +29,8 @@ import com.mh.librarymanager.ui.management.ShortcutsManagementViewModel
 import com.mh.librarymanager.ui.management.TechSupportManagementViewModel
 import com.mh.librarymanager.ui.management.ManagementDashboardViewModel
 import com.mh.librarymanager.ui.management.StorageBrowserViewModel
+import com.mh.librarymanager.ui.management.TextManagementViewModel
+import com.mh.librarymanager.ui.management.ThemeManagementViewModel
 import com.mh.librarymanager.ui.management.WindowsToolViewModel
 import com.mh.librarymanager.ui.requests.PublicRequestViewModel
 import com.mh.librarymanager.ui.support.TechSupportViewModel
@@ -54,6 +56,8 @@ class MainActivity : ComponentActivity() {
     private val windowsToolViewModel: WindowsToolViewModel by viewModels()
     private val storageBrowserViewModel: StorageBrowserViewModel by viewModels()
     private val managementDashboardViewModel: ManagementDashboardViewModel by viewModels()
+    private val textManagementViewModel: TextManagementViewModel by viewModels()
+    private val themeManagementViewModel: ThemeManagementViewModel by viewModels()
     private val managementSession: ManagementSession by viewModels()
 
     /**
@@ -65,6 +69,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Apply the saved theme before the first frame so there is no flash of
+        // the default palette on cold start.
+        com.mh.librarymanager.ui.theme.AppThemeState.palette =
+            com.mh.librarymanager.ui.theme.AppTheme.paletteFor(
+                (application as LibraryApp).themeStore.peekSelectedId(),
+            )
         handleMaintenanceIntent(intent)
         handleImportIntent(intent)
         onBackPressedDispatcher.addCallback(
@@ -99,6 +109,8 @@ class MainActivity : ComponentActivity() {
                     windowsToolViewModel = windowsToolViewModel,
                     storageBrowserViewModel = storageBrowserViewModel,
                     managementDashboardViewModel = managementDashboardViewModel,
+                    textManagementViewModel = textManagementViewModel,
+                    themeManagementViewModel = themeManagementViewModel,
                     managementSession = managementSession,
                     onRegisterBackHandler = { handler ->
                         composeBackHandler = handler

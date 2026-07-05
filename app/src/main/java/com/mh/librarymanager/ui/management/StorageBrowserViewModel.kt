@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mh.librarymanager.R
+import com.mh.librarymanager.ui.text.appString
 import com.mh.librarymanager.data.storage.SandboxStorage
 import com.mh.librarymanager.data.storage.StorageEntry
 import com.mh.librarymanager.data.storage.StorageZone
@@ -134,16 +135,16 @@ class StorageBrowserViewModel(app: Application) : AndroidViewModel(app) {
             clearSelection()
             _feedback.value = when {
                 deleted > 0 && failed == 0 ->
-                    getApplication<Application>().getString(R.string.storage_browser_bulk_done, deleted)
+                    getApplication<Application>().appString(R.string.storage_browser_bulk_done, deleted)
                 deleted > 0 && failed > 0 ->
-                    getApplication<Application>().getString(
+                    getApplication<Application>().appString(
                         R.string.storage_browser_bulk_partial,
                         deleted,
                         failed,
                         lastError,
                     )
                 failed > 0 -> lastError
-                else -> getApplication<Application>().getString(R.string.storage_browser_bulk_none)
+                else -> getApplication<Application>().appString(R.string.storage_browser_bulk_none)
             }
             refreshEntries()
             _isWorking.value = false
